@@ -32,3 +32,15 @@
   - The postable filter lives in the route handler (dashboard/app/api/tasks/route.ts), not lib/data.ts — US-007's run-poster.sh should call `GET /api/tasks?postable=true` and still needs to skip failed/attempts>=3 defensively per-posting when iterating (a task can be returned for one actionable posting while another posting on it is exhausted).
   - See Learnings section for prod-server-on-3000 gotcha and the temp-dev-server verification recipe.
 ---
+
+## Iteration 3 - US-003: Ad output parser
+- Created workers/posting/parse-ad-output.ts: `parseAdOutput(outputDir, platform)` reads `<outputDir>/<platform>.md`, extracts the `## HEADLINE (x/y chars)` and `## DESCRIPTION (x/y chars)` section bodies (stops at the next heading, so "## Why this angle" is excluded), and throws descriptive errors for missing file / missing section / empty section body.
+- Created workers/posting/parse-ad-output.test.ts (node:test, 5 tests, all pass) using the real sample workers/workspace/outputs/task-1780891259218-ppunbv (landmodo + land_com), plus tmpdir fixtures for error cases.
+- Created workers/posting/tsconfig.json and workers/posting/README.md.
+- Files changed: workers/posting/{parse-ad-output.ts,parse-ad-output.test.ts,tsconfig.json,README.md}
+- Verified: typecheck passes via dashboard's tsc; all 5 unit tests pass.
+- Learnings for future iterations:
+  - Node here is v20.18.1 (no TS type-stripping) and workers/ has no node_modules — workers/posting/tsconfig.json borrows the dashboard's toolchain via `typeRoots: ["../../dashboard/node_modules/@types"]` + `types: ["node"]`, and typecheck runs with `../../dashboard/node_modules/.bin/tsc -p tsconfig.json`. When US-004 runs `npm install` in workers/posting, revisit typeRoots (a local @types/node should take over).
+  - tsconfig uses module CommonJS so compiled tests run directly under node; test recipe: compile with `--noEmit false --outDir /tmp/posting-test-build`, then `node --test /tmp/posting-test-build/*.test.js` FROM workers/posting/ (tests resolve the sample dir relative to cwd).
+  - Only task-1779308355008-lg0z6q and task-1780891259218-ppunbv in outputs/ have the per-platform `<platform>.md` format; older dirs hold legacy single-file posts (land_post.md etc.) and some are empty — posting scripts should rely on parseAdOutput's errors rather than assuming files exist.
+---

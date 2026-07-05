@@ -38,11 +38,11 @@ V1 targets **Landmodo** and **Land.com** only, with the architecture (per-platfo
 **Description:** As the poster script, I need to extract the headline and description from a platform's generated Markdown file so it can be typed into the listing form.
 
 **Acceptance Criteria:**
-- [ ] New module `workers/posting/parse-ad-output.ts` exporting `parseAdOutput(outputDir: string, platform: string): { headline: string; description: string }`
-- [ ] Parses the `## HEADLINE (x/y chars)` and `## DESCRIPTION (x/y chars)` sections of `<outputDir>/<platform>.md`, returning body text only (no headers, no "Why this angle" section)
-- [ ] Throws a descriptive error if the file or either section is missing
-- [ ] Unit test using a real sample from `workers/workspace/outputs/` passes
-- [ ] Typecheck passes
+- [x] New module `workers/posting/parse-ad-output.ts` exporting `parseAdOutput(outputDir: string, platform: string): { headline: string; description: string }`
+- [x] Parses the `## HEADLINE (x/y chars)` and `## DESCRIPTION (x/y chars)` sections of `<outputDir>/<platform>.md`, returning body text only (no headers, no "Why this angle" section)
+- [x] Throws a descriptive error if the file or either section is missing
+- [x] Unit test using a real sample from `workers/workspace/outputs/` passes
+- [x] Typecheck passes
 
 ### US-004: Playwright setup and login-capture script
 **Description:** As the operator, I want to log in to each marketplace once in a real browser and have the session saved, so posting scripts can reuse it without storing my password.
