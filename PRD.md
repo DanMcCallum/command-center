@@ -69,9 +69,9 @@ V1 targets **Landmodo** and **Land.com** only, with the architecture (per-platfo
 **Description:** As the system, I want the same posting capability for Land.com.
 
 **Acceptance Criteria:**
-- [ ] `workers/posting/post-land_com.ts` with the same interface, auth handling, photo upload, screenshot, listing-URL return, and `--dry-run` behavior as US-005
-- [ ] Runnable via `npm run post -- land_com <taskId>`
-- [ ] Typecheck passes
+- [x] `workers/posting/post-land_com.ts` with the same interface, auth handling, photo upload, screenshot, listing-URL return, and `--dry-run` behavior as US-005
+- [x] Runnable via `npm run post -- land_com <taskId>`
+- [x] Typecheck passes
 
 ### US-007: Poster runner script and run-poster API route
 **Description:** As the system, I need an orchestrator that finds queued/retryable postings, runs the right platform script, records the result, and enforces the retry policy.

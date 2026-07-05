@@ -19,6 +19,7 @@ import {
   PostResult,
   loadPlatformConfig,
 } from './post-common'
+import { postToLandCom } from './post-land_com'
 import { postToLandmodo } from './post-landmodo'
 
 const DASHBOARD_URL = process.env.DASHBOARD_URL || 'http://localhost:3000'
@@ -31,7 +32,7 @@ type Poster = (
 
 const POSTERS: Record<string, Poster> = {
   landmodo: postToLandmodo,
-  // land_com: added in US-006
+  land_com: postToLandCom,
 }
 
 async function fetchTask(taskId: string): Promise<PosterTask> {

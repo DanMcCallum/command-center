@@ -45,6 +45,9 @@ fills the platform's new-listing form, uploads any images in
 `outputs/<taskId>/postings/<platform>.png`, and prints a JSON result
 (`{listingUrl, screenshotPath}`) on stdout.
 
+Implemented platforms: `landmodo` (`post-landmodo.ts`), `land_com`
+(`post-land_com.ts`).
+
 Form selectors live in one `SELECTORS` block per platform script
 (e.g. `post-landmodo.ts`) — when a site redesign breaks posting, that block is
 the only thing to fix. The initial selectors are best-effort guesses and must

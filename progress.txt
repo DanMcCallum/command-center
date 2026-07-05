@@ -70,3 +70,14 @@
   - US-006 (land_com): add postToLandComm to the POSTERS registry in post.ts, reuse everything in post-common.ts — the platform script should only contain its SELECTORS block and flow quirks.
   - No auth/ dir exists yet on this box, so posting scripts can be exercised safely end-to-end up to the requireAuthState error without touching live sites.
 ---
+## Iteration 6 - US-006: Land.com posting script
+- Created workers/posting/post-land_com.ts: postToLandCom(task, adCopy, opts) mirroring post-landmodo.ts exactly — auth-state load, login-page detection (URL regex + password-input selector) on landing AND after submit, form fill via post-common helpers, photo upload if input exists, dry-run screenshot, real submit waits for URL change then returns page.url().
+- LAND_COM_SELECTORS block uses case-insensitive name/id/placeholder attribute guesses (Land.com is a .NET/React app, not Rails) — comma-separated candidates, first match wins.
+- Registered land_com in post.ts POSTERS registry; README lists implemented platforms.
+- Files changed: workers/posting/{post-land_com.ts,post.ts,README.md}
+- Verified: npm run typecheck passes; 11/11 tests pass; `npm run post -- land_com task-1780891259218-ppunbv --dry-run` live-tested — fetches task from prod API (read-only), parses land_com.md, then fails fast on missing auth with the capture-login hint (exit 1), same contract as landmodo.
+- Learnings for future iterations:
+  - LAND_COM_SELECTORS are UNVERIFIED like landmodo's — both need a supervised --dry-run after capture-login before US-007's automated runs can succeed against live sites.
+  - Both posters are pure clones except the SELECTORS block and PLATFORM/SCRIPT constants; if a third platform is ever added, consider extracting the shared flow into post-common (kept duplicated for now since PRD says selectors + flow quirks stay per-script).
+  - US-007's run-poster.sh can rely on: stdout last line JSON {listingUrl, screenshotPath}, stderr logs, exit 1 with human-readable message on any failure.
+---
