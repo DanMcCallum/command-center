@@ -81,3 +81,14 @@
   - Both posters are pure clones except the SELECTORS block and PLATFORM/SCRIPT constants; if a third platform is ever added, consider extracting the shared flow into post-common (kept duplicated for now since PRD says selectors + flow quirks stay per-script).
   - US-007's run-poster.sh can rely on: stdout last line JSON {listingUrl, screenshotPath}, stderr logs, exit 1 with human-readable message on any failure.
 ---
+## Iteration 7 - US-007: Poster runner script and run-poster API route
+- Created workers/run-poster.sh: flock lockfile (/tmp/command-center-poster.lock, separate from worker), fetches GET /api/tasks?postable=true, per actionable posting (queued OR failed with attempts<3): PATCH status=posting + attempts+=1, runs `./node_modules/.bin/tsx post.ts <platform> <taskId>` from workers/posting under `timeout` (POST_TIMEOUT_SECONDS=600), then PATCHes posted (postedAt/listingUrl/screenshotPath, del lastError) or failed (lastError = last stderr lines, 500-char cap). Exhausted (attempts>=3) postings skipped per-posting via jq select. Logs to workers/logs/poster-*.log with same rotation pattern; poster-cron.log capped for US-010.
+- Created dashboard/app/api/run-poster/route.ts: exact mirror of run-worker/route.ts (detached spawn, unref, DASHBOARD_URL passthrough).
+- Files changed: workers/run-poster.sh, dashboard/app/api/run-poster/route.ts
+- Verified: bash -n clean; dashboard tsc + workers/posting typecheck pass; full live test on temp dev server (3001): queued→posting→failed with real post.ts error as lastError; re-run increments attempts (retry policy); success path via POST_CMD stub records posted/postedAt/listingUrl/screenshotPath and drops lastError; posted + attempts>=3 postings excluded; POST /api/run-poster spawned detached poster that processed the task; concurrent second run exits 0 silently (flock). Temp task deleted, dev server killed, test logs removed.
+- Learnings for future iterations:
+  - createTask (POST /api/tasks) DROPS unknown fields like `postings` (withDefaults builds from a fixed field list) — postings must be attached via PATCH after create. US-008's Approve flow already PATCHes, so it's fine, but don't try to seed postings at task creation.
+  - run-poster.sh env overrides for testing: DASHBOARD_URL, POST_CMD (stub command run from workers/posting/, same stdout-JSON contract), POST_TIMEOUT_SECONDS, LOCKFILE.
+  - patch_posting rewrites by platform key via jq map() after a fresh GET, so concurrent UI edits to other postings aren't clobbered (array is full-replaced but from just-fetched state).
+  - When testing the run-poster route on a dev server, start next dev WITH DASHBOARD_URL=http://localhost:3001 — otherwise the spawned poster defaults to prod on 3000 (which shares the same tasks.json).
+---

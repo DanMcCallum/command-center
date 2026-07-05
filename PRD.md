@@ -77,12 +77,12 @@ V1 targets **Landmodo** and **Land.com** only, with the architecture (per-platfo
 **Description:** As the system, I need an orchestrator that finds queued/retryable postings, runs the right platform script, records the result, and enforces the retry policy.
 
 **Acceptance Criteria:**
-- [ ] `workers/run-poster.sh` (mirroring `run-worker.sh` conventions): `flock` lockfile, fetches `GET /api/tasks?postable=true`, and for each actionable posting sets status `posting`, increments `attempts`, runs the platform script, then PATCHes the result
-- [ ] Success → `status: 'posted'`, `postedAt`, `listingUrl`, `screenshotPath`; failure → `status: 'failed'`, `lastError` with the script's error message
-- [ ] Postings with `status: 'failed'` and `attempts < 3` are re-attempted on the next run; `attempts >= 3` are skipped (permanently flagged)
-- [ ] Logs to `workers/logs/` following the existing log pattern
-- [ ] New route `POST /api/run-poster` spawns `run-poster.sh` detached, mirroring `dashboard/app/api/run-worker/route.ts`
-- [ ] Typecheck passes
+- [x] `workers/run-poster.sh` (mirroring `run-worker.sh` conventions): `flock` lockfile, fetches `GET /api/tasks?postable=true`, and for each actionable posting sets status `posting`, increments `attempts`, runs the platform script, then PATCHes the result
+- [x] Success → `status: 'posted'`, `postedAt`, `listingUrl`, `screenshotPath`; failure → `status: 'failed'`, `lastError` with the script's error message
+- [x] Postings with `status: 'failed'` and `attempts < 3` are re-attempted on the next run; `attempts >= 3` are skipped (permanently flagged)
+- [x] Logs to `workers/logs/` following the existing log pattern
+- [x] New route `POST /api/run-poster` spawns `run-poster.sh` detached, mirroring `dashboard/app/api/run-worker/route.ts`
+- [x] Typecheck passes
 
 ### US-008: Approve queues postings and triggers the poster
 **Description:** As a reviewer, when I approve an ad I want posting to start automatically for the platforms I selected in the Ad Builder.
