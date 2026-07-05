@@ -117,10 +117,10 @@ V1 targets **Landmodo** and **Land.com** only, with the architecture (per-platfo
 **Description:** As the operator, I want to see whether each enabled platform has a saved login session so I know when to re-run capture-login.
 
 **Acceptance Criteria:**
-- [ ] New API `GET /api/posting-auth` returns, for each enabled platform, whether `workers/posting/auth/<platform>.json` exists and its file mtime
-- [ ] Settings page panel lists enabled platforms with a green "Session saved (date)" or amber "No session — run `npm run capture-login -- <platform>`" state
-- [ ] Typecheck passes
-- [ ] Verify changes work in browser
+- [x] New API `GET /api/posting-auth` returns, for each enabled platform, whether `workers/posting/auth/<platform>.json` exists and its file mtime
+- [x] Settings page panel lists enabled platforms with a green "Session saved (date)" or amber "No session — run `npm run capture-login -- <platform>`" state
+- [x] Typecheck passes
+- [x] Verify changes work in browser
 
 ## Non-Goals
 

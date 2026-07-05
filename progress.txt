@@ -124,3 +124,12 @@
   - Toggling cron via a dev server edits the real user crontab and the shared dashboard/data/cron-config.json — restore the original enabled/interval state when done testing.
   - dashboard/data/cron-config.json is runtime data (lastRun churns every 5 min) — leave it out of commits.
 ---
+## Iteration 11 - US-011: Platform auth status on Settings page
+- Created dashboard/app/api/posting-auth/route.ts: GET returns, for each ENABLED platform in config/posting-platforms.json, { platform, displayName, hasSession, savedAt } — hasSession/savedAt from fs.stat of workers/posting/auth/<platform>.json (mtime as ISO string, null when missing). Reuses the PostingPlatformConfig type from the posting-platforms route (type-only import, safe for bundling).
+- Created dashboard/components/PostingAuthPanel.tsx: "Marketplace logins" panel matching CronConfigPanel styling; green "Session saved (date)" (#4DAB9A) or amber "No session — run `npm run capture-login -- <platform>`" (#E5A54B, command in a <code> pill); polls every 30s like the cron panel. Added below CronConfigPanel on app/settings/page.tsx.
+- Files changed: dashboard/app/api/posting-auth/route.ts, dashboard/components/PostingAuthPanel.tsx, dashboard/app/settings/page.tsx
+- Verified: tsc clean; temp dev server (3001): API returned both enabled platforms with hasSession false (no auth dir on this box), then landmodo true + ISO mtime after creating a dummy auth file; Playwright browser test on /settings confirmed panel heading, one green "Session saved (7/5/2026)" row, one amber "No session" row with the exact capture-login command. Dummy auth dir removed (it did NOT exist before — don't leave one behind, posting scripts treat its presence as a real session), dev server killed.
+- Learnings for future iterations:
+  - No auth/ dir exists on this box yet, so a dummy workers/posting/auth/<platform>.json is a safe way to test session-present states — but always delete the whole dir afterward.
+  - Amber/warning color used in the dashboard: #E5A54B (matches the existing pending-ish palette); green is #4DAB9A, red #FF4D4D.
+---

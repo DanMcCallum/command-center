@@ -1,4 +1,5 @@
 import CronConfigPanel from '@/components/CronConfigPanel';
+import PostingAuthPanel from '@/components/PostingAuthPanel';
 
 export default function SettingsPage() {
   return (
@@ -9,6 +10,7 @@ export default function SettingsPage() {
         to also run queued tasks on a cron interval.
       </p>
       <CronConfigPanel />
+      <PostingAuthPanel />
     </div>
   );
 }
