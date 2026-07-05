@@ -1,0 +1,41 @@
+{
+  "_doc": "Per-platform character caps for ad listings. Caps are conservative — verify against current platform docs when posting. Headline is the title/subject line shown in search results; description is the body. The generate-ad workflow targets 95-100% of the cap for each. Caps and buyer profiles for land_century, landflip, land_listings, and landhub are best-effort defaults — confirm against the actual sites before relying on them. Note: description_max includes the trailing '(Property: Nickname)' call-attribution tag generate-ad appends to every listing — see generate-ad.md step 3 and knowledge-base/property-nicknames.md. The tag's room is carved out of description_max, not added on top of it, so these caps do not need adjusting.",
+  "platforms": {
+    "landmodo": {
+      "display_name": "Landmodo",
+      "headline_max": 60,
+      "description_max": 1500,
+      "buyer_profile": "Niche land-only marketplace heavy on owner-financed entry-level lots. Audience: first-time land buyers, off-gridders, recreational buyers comfortable with low-down-payment terms. Surface the low down payment + monthly somewhere in the headline when financing exists. Note: Landmodo enforces a tight 60-character headline cap, so the headline must compress to 54-60 chars. At this cap, keep the lead (acreage + place) and the concrete standout (what makes the lot unique); the value anchor (comp) drops to the description and the offer trims to its sharpest single number. The standout is mandatory: financing terms are an offer, not a standout, and a title that names only price/terms fails the headline-craft rules."
+    },
+    "land_century": {
+      "display_name": "Land Century",
+      "headline_max": 100,
+      "description_max": 1500,
+      "buyer_profile": "Discount and owner-financed land marketplace, sibling-style audience to Landmodo. Audience: deal-hunters, first-time land buyers, investors, and off-gridders comfortable with low-down-payment terms. Lead with the cash price advantage and the financing terms when present."
+    },
+    "landflip": {
+      "display_name": "Landflip.com",
+      "headline_max": 100,
+      "description_max": 1500,
+      "buyer_profile": "Land-only marketplace with a mix of investors, flippers, and retail recreational/rural buyers. Land-savvy audience — acronyms like BLM, HOA, and OS read fine. Wants acreage, access, utilities, zoning, and a clear value/comp angle."
+    },
+    "land_com": {
+      "display_name": "Land.com",
+      "headline_max": 100,
+      "description_max": 1500,
+      "buyer_profile": "Umbrella network for LandWatch and Lands of America. Same serious-buyer audience: out-of-state retirees, recreational and investor types. Wants acreage, access, utilities, zoning, comps."
+    },
+    "land_listings": {
+      "display_name": "Land-listings.com",
+      "headline_max": 100,
+      "description_max": 1500,
+      "buyer_profile": "Aggregator-style land marketplace. Audience: comparison shoppers filtering by acreage, price, and state. Mix of recreational and investor buyers. Wants quick scannable facts up front."
+    },
+    "landhub": {
+      "display_name": "Landhub.com",
+      "headline_max": 100,
+      "description_max": 1500,
+      "buyer_profile": "Land-focused marketplace comparable to LandFlip. Audience: hunting, recreational, rural-living, and investor buyers. Land-savvy — acronyms like BLM, HOA, OS read fine. Wants concrete terrain, access, and value-anchor detail."
+    }
+  }
+}

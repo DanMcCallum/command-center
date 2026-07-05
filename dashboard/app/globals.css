@@ -1,0 +1,55 @@
+@import "tailwindcss";
+
+:root {
+  --background: #191919;
+  --foreground: #ffffff;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-inter);
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+html,
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-inter), Inter, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Hide scrollbars per blueprint */
+* {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+*::-webkit-scrollbar {
+  display: none;
+}
+
+input[type="checkbox"],
+input[type="radio"] {
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+input,
+textarea,
+select,
+button {
+  font-family: inherit;
+}
+
+textarea {
+  resize: vertical;
+}
+
+h1 {
+  letter-spacing: -0.025em;
+}
+h2 {
+  letter-spacing: -0.02em;
+}

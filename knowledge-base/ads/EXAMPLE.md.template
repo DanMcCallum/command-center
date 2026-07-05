@@ -1,0 +1,25 @@
+---
+location: "County, ST"
+acreage: 40
+price_usd: 18500
+sold_on: "2026-04-12"
+days_to_sale: 23
+platform_sold_on: "LandWatch"
+features:
+  - "off-grid"
+  - "year-round-access"
+  - "borders-blm"
+buyer_type: "out-of-state-retiree"
+access: "dirt-year-round"
+utilities: ["none"]
+zoning: "rural-residential"
+notes: "Optional context about why this one closed."
+---
+
+# HEADLINE
+The headline that sold the property, exactly as posted.
+
+# DESCRIPTION
+The description body that sold the property, exactly as posted. Paste the final
+edited version, not the original AI draft, since the human edits are part of
+the voice and detail you want future ads to learn from.
