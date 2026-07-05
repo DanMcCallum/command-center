@@ -56,3 +56,17 @@
   - `npx playwright install chromium` on this box downloads only chromium-headless-shell; a HEADED run (capture-login, and any non-headless posting) may need the full chromium build — if `chromium.launch({headless: false})` complains about a missing executable, run `npx playwright install chromium --with-deps` or check for a display server first.
   - Scripts resolve config via path.resolve(__dirname, '../../config/...') so they work regardless of cwd; US-005/006 should follow suit.
 ---
+## Iteration 5 - US-005: Landmodo posting script
+- Created workers/posting/post-common.ts: shared plumbing for all platform posters — PosterTask/AdCopy/PostOptions/PostResult types, loadPlatformConfig, requireAuthState (throws "run capture-login"), loginExpiredError, listPhotos (photos/ dir, image extensions, sorted), splitLocation ("Elko County, Utah" → {county:"Elko", state:"Utah"}), requireListingFacts (price_usd/acreage/location from metadata), saveProofScreenshot (outputs/<taskId>/postings/<platform>.png, returns project-root-relative path), fillField (comma-separated candidate selectors, handles <select> by label→value, throws "update SELECTORS block" errors).
+- Created workers/posting/post-landmodo.ts: LANDMODO_SELECTORS constants block (single-file fix per PRD) + postToLandmodo(task, adCopy, opts): auth-state load, login-page detection (URL regex + password-input selector) on landing AND after submit, form fill, photo upload if input exists, dry-run (screenshot filled form, listingUrl null), real submit waits for URL change then screenshots and returns page.url().
+- Created workers/posting/post.ts CLI (`npm run post -- <platform> <taskId> [--dry-run]`): POSTERS registry (landmodo only until US-006), fetches task from DASHBOARD_URL/api/tasks/<id>, parses ad via parseAdOutput, logs to stderr, prints final JSON {listingUrl, screenshotPath} on stdout for US-007's run-poster.sh to parse.
+- Created post-common.test.ts (6 tests); package.json gained "post" script; README documents the post command.
+- Files changed: workers/posting/{post-common.ts,post-landmodo.ts,post.ts,post-common.test.ts,package.json,README.md}
+- Verified: typecheck passes; 11/11 tests pass; CLI error paths live-tested (usage, unknown/disabled/unimplemented platform, 404 task, missing auth fail-fast with real task + real ad parse against prod API GET — read-only, safe).
+- Learnings for future iterations:
+  - LANDMODO_SELECTORS are UNVERIFIED Rails-style guesses — the live form needs a supervised `--dry-run` after the operator runs capture-login; expect to prune/fix that block. Same will apply to US-006.
+  - Compiled test build runs from /tmp with cwd workers/posting, so post-common resolves PROJECT_ROOT via __dirname with a cwd fallback (both are <root>/workers/posting) — reuse this pattern, don't bare path.resolve(__dirname, '../..') for anything the tests import.
+  - post.ts stdout contract for US-007: stderr = logs, stdout last line = JSON PostResult; exit 1 with message on stderr for any failure.
+  - US-006 (land_com): add postToLandComm to the POSTERS registry in post.ts, reuse everything in post-common.ts — the platform script should only contain its SELECTORS block and flow quirks.
+  - No auth/ dir exists yet on this box, so posting scripts can be exercised safely end-to-end up to the requireAuthState error without touching live sites.
+---

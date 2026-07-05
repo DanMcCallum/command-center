@@ -57,13 +57,13 @@ V1 targets **Landmodo** and **Land.com** only, with the architecture (per-platfo
 **Description:** As the system, I want a script that posts one approved ad to Landmodo so the listing goes live without manual copy-paste.
 
 **Acceptance Criteria:**
-- [ ] `workers/posting/post-landmodo.ts` exports `postToLandmodo(task, adCopy, opts)` and is runnable via `npm run post -- landmodo <taskId>`
-- [ ] Loads saved auth state from `workers/posting/auth/landmodo.json`; fails fast with a clear "login expired / missing — run capture-login" error if absent or the site shows a login page
-- [ ] Fills the new-listing form using parsed headline/description plus task `metadata` (price, acreage, location/county/state)
-- [ ] Uploads any images found in `workers/workspace/outputs/<taskId>/photos/` if the form has a photo field
-- [ ] Saves a full-page screenshot to `workers/workspace/outputs/<taskId>/postings/landmodo.png` and returns the live listing URL after submit
-- [ ] `--dry-run` flag fills the form and screenshots but does not submit
-- [ ] Typecheck passes
+- [x] `workers/posting/post-landmodo.ts` exports `postToLandmodo(task, adCopy, opts)` and is runnable via `npm run post -- landmodo <taskId>`
+- [x] Loads saved auth state from `workers/posting/auth/landmodo.json`; fails fast with a clear "login expired / missing — run capture-login" error if absent or the site shows a login page
+- [x] Fills the new-listing form using parsed headline/description plus task `metadata` (price, acreage, location/county/state)
+- [x] Uploads any images found in `workers/workspace/outputs/<taskId>/photos/` if the form has a photo field
+- [x] Saves a full-page screenshot to `workers/workspace/outputs/<taskId>/postings/landmodo.png` and returns the live listing URL after submit
+- [x] `--dry-run` flag fills the form and screenshots but does not submit
+- [x] Typecheck passes
 
 ### US-006: Land.com posting script
 **Description:** As the system, I want the same posting capability for Land.com.

@@ -4,6 +4,7 @@
   "description": "Playwright scripts that post approved ads to marketplaces (see PRD: Auto-Post Approved Ads)",
   "scripts": {
     "capture-login": "tsx capture-login.ts",
+    "post": "tsx post.ts",
     "typecheck": "tsc -p tsconfig.json",
     "test": "tsc -p tsconfig.json --noEmit false --outDir /tmp/posting-test-build && node --test /tmp/posting-test-build/*.test.js"
   },
