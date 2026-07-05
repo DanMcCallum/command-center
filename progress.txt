@@ -103,3 +103,14 @@
   - patch_posting rewrites by platform key via jq map() after a fresh GET, so concurrent UI edits to other postings aren't clobbered (array is full-replaced but from just-fetched state).
   - When testing the run-poster route on a dev server, start next dev WITH DASHBOARD_URL=http://localhost:3001 — otherwise the spawned poster defaults to prod on 3000 (which shares the same tasks.json).
 ---
+## Iteration 9 - US-009: Posting status display and manual Retry on task cards
+- Created dashboard/components/PostingChips.tsx: one chip per posting (StatusBadge styling: gray Queued / blue Posting… / green Posted / red Failed), platform display_name from GET /api/posting-platforms (module-level cached promise, falls back to key), Posted chip wraps in <a target=_blank> to listingUrl, Failed chip gets title-attr tooltip with lastError, Retry button only when failed && attempts>=3 — it re-fetches the task, resets that posting to queued/attempts 0/new queuedAt/lastError dropped, PATCHes the full array, fires POST /api/run-poster fire-and-forget, then onChange().
+- TaskCard.tsx renders the chips row below the header button (always visible, outside the header <button> so links/buttons don't nest invalidly); chips refresh automatically because they render from the task prop which the tasks page re-fetches every 30s and on onChange.
+- Files changed: dashboard/components/PostingChips.tsx, dashboard/components/TaskCard.tsx
+- Verified: tsc clean; full Playwright browser test on temp dev server (3001, DASHBOARD_URL set): all 4 chip states with correct colors/labels, Posted links to listingUrl, Failed tooltip shows lastError, exactly one Retry button (only the attempts>=3 posting), Retry click → posting reset to queued/0 → poster auto-fired (log created) and re-processed it to failed/1 with a real parse error → Retry button disappeared without manual reload. Temp task deleted, dev server killed, test poster log removed.
+- Learnings for future iterations:
+  - Retry undefined-field trick: setting lastError: undefined before JSON.stringify removes the key on the full-array-replace PATCH — no need for a delete-field API.
+  - Playwright getAttribute('style') returns browser-normalized colors (hex #FF4D4D20 → rgba(255, 77, 77, 0.125)) — assert against rgb() strings, not the hex you wrote.
+  - Platform display names: landflip is "Landflip.com", land_century is "Land Century" — don't guess casing in tests; read config/posting-platforms.json.
+  - JSX style prop trick reused from StatusBadge: backgroundColor: `${color}20` gives the 12.5%-alpha pill background for any status color.
+---

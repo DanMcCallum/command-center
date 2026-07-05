@@ -99,11 +99,11 @@ V1 targets **Landmodo** and **Land.com** only, with the architecture (per-platfo
 **Description:** As a reviewer, I want to see per-platform posting progress on the task card and retry a permanently failed post after fixing the cause.
 
 **Acceptance Criteria:**
-- [ ] Task cards with `postings` show one chip per platform: gray `Queued`, blue `Posting…`, green `Posted` (linking to `listingUrl`), red `Failed`
-- [ ] Failed chip shows `lastError` (tooltip or expandable) and, when `attempts >= 3`, a **Retry** button that resets that posting to `queued` with `attempts: 0` and fires `POST /api/run-poster`
-- [ ] Posting chips poll/refresh with the existing task list refresh so status changes appear without a manual reload
-- [ ] Typecheck passes
-- [ ] Verify changes work in browser
+- [x] Task cards with `postings` show one chip per platform: gray `Queued`, blue `Posting…`, green `Posted` (linking to `listingUrl`), red `Failed`
+- [x] Failed chip shows `lastError` (tooltip or expandable) and, when `attempts >= 3`, a **Retry** button that resets that posting to `queued` with `attempts: 0` and fires `POST /api/run-poster`
+- [x] Posting chips poll/refresh with the existing task list refresh so status changes appear without a manual reload
+- [x] Typecheck passes
+- [x] Verify changes work in browser
 
 ### US-010: Poster runs on the cron schedule
 **Description:** As the operator, I want retries and any stragglers processed automatically, so a transient failure heals itself without me clicking anything.

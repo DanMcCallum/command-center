@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import type { AdPosting, Task } from '@/lib/types';
 import { formatRelative } from '@/lib/utils';
 import FileEditorModal from './FileEditorModal';
+import PostingChips from './PostingChips';
 import PriorityIndicator from './PriorityIndicator';
 import SaveToKbModal from './SaveToKbModal';
 import StatusBadge from './StatusBadge';
@@ -169,6 +170,12 @@ export default function TaskCard({ task, parentTitle, onChange }: Props) {
         </div>
         <ChevronIcon rotated={expanded} />
       </button>
+
+      {task.postings && task.postings.length > 0 && (
+        <div className="px-3 pb-3 -mt-1">
+          <PostingChips task={task} onChange={onChange} />
+        </div>
+      )}
 
       {expanded && (
         <div className="px-3 pb-4 pt-1 space-y-3 text-sm">
