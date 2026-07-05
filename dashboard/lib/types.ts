@@ -19,6 +19,19 @@ export const TASK_TYPES: TaskType[] = [
   'Admin',
 ];
 
+export type PostingStatus = 'queued' | 'posting' | 'posted' | 'failed';
+
+export interface AdPosting {
+  platform: string;
+  status: PostingStatus;
+  attempts: number;
+  queuedAt: string;
+  postedAt?: string;
+  lastError?: string;
+  listingUrl?: string;
+  screenshotPath?: string;
+}
+
 export interface Task {
   id: string;
   title: string;
@@ -42,6 +55,7 @@ export interface Task {
   completedAt: string | null;
   estimatedMinutes: number | null;
   metadata: Record<string, unknown> | null;
+  postings?: AdPosting[];
 }
 
 export interface CronConfig {

@@ -20,10 +20,10 @@ V1 targets **Landmodo** and **Land.com** only, with the architecture (per-platfo
 **Description:** As a developer, I need structured types for postings and a config file describing how to post to each platform, so all later stories build on a shared schema.
 
 **Acceptance Criteria:**
-- [ ] `dashboard/lib/types.ts` adds `PostingStatus = 'queued' | 'posting' | 'posted' | 'failed'` and `AdPosting` interface: `{ platform: string; status: PostingStatus; attempts: number; queuedAt: string; postedAt?: string; lastError?: string; listingUrl?: string; screenshotPath?: string }`
-- [ ] `Task` interface gains optional `postings?: AdPosting[]`
-- [ ] New file `config/posting-platforms.json` with all six platform keys matching `config/ad-platforms.json`; each entry has `display_name`, `enabled`, `login_url`, `new_listing_url`. Only `landmodo` and `land_com` have `enabled: true`
-- [ ] Typecheck passes
+- [x] `dashboard/lib/types.ts` adds `PostingStatus = 'queued' | 'posting' | 'posted' | 'failed'` and `AdPosting` interface: `{ platform: string; status: PostingStatus; attempts: number; queuedAt: string; postedAt?: string; lastError?: string; listingUrl?: string; screenshotPath?: string }`
+- [x] `Task` interface gains optional `postings?: AdPosting[]`
+- [x] New file `config/posting-platforms.json` with all six platform keys matching `config/ad-platforms.json`; each entry has `display_name`, `enabled`, `login_url`, `new_listing_url`. Only `landmodo` and `land_com` have `enabled: true`
+- [x] Typecheck passes
 
 ### US-002: Task API supports posting updates and queued-posting lookup
 **Description:** As the poster script, I need to read tasks that have work to do and write posting status back through the existing API.

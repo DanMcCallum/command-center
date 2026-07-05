@@ -2,5 +2,19 @@
 
 ## Learnings
 (Patterns discovered during implementation)
+- Dashboard has no `typecheck` npm script — run `npx tsc --noEmit` from `dashboard/` (passes clean).
+- Platform keys are canonical in `config/ad-platforms.json`; `config/posting-platforms.json` must keep the same six keys (landmodo, land_century, landflip, land_com, land_listings, landhub).
+- Config JSON files use a top-level `"_doc"` string + `"platforms"` object — follow that convention for new config files.
+- login_url/new_listing_url for all platforms are best-effort placeholders; verify against live sites during US-005/US-006 selector discovery.
 
+---
+
+## Iteration 1 - US-001: Posting data model and platform posting config
+- Added `PostingStatus` type and `AdPosting` interface to dashboard/lib/types.ts; `Task` gained optional `postings?: AdPosting[]`.
+- Created config/posting-platforms.json with all six platform keys (matching ad-platforms.json), each with display_name/enabled/login_url/new_listing_url; only landmodo and land_com enabled.
+- Files changed: dashboard/lib/types.ts, config/posting-platforms.json
+- Verified: `npx tsc --noEmit` passes; node script confirmed JSON keys match ad-platforms.json and all required fields present.
+- Learnings for future iterations:
+  - `postings` is optional on Task so existing tasks.json records stay valid without migration.
+  - URLs in posting-platforms.json are unverified placeholders — the posting scripts (US-005/006) should treat a redirect-to-login or 404 as "verify config" territory.
 ---
