@@ -4,8 +4,17 @@ import type { Task } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(request: Request) {
   const tasks = await getTasks();
+  const { searchParams } = new URL(request.url);
+  if (searchParams.get('postable') === 'true') {
+    const postable = tasks.filter(task =>
+      (task.postings ?? []).some(
+        p => p.status === 'queued' || (p.status === 'failed' && p.attempts < 3),
+      ),
+    );
+    return NextResponse.json(postable);
+  }
   return NextResponse.json(tasks);
 }
 

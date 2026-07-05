@@ -29,10 +29,10 @@ V1 targets **Landmodo** and **Land.com** only, with the architecture (per-platfo
 **Description:** As the poster script, I need to read tasks that have work to do and write posting status back through the existing API.
 
 **Acceptance Criteria:**
-- [ ] `PATCH /api/tasks/[id]` accepts and persists a `postings` array (full replace of the array)
-- [ ] `GET /api/tasks?postable=true` returns only tasks that have at least one posting with `status === 'queued'`, or `status === 'failed'` with `attempts < 3`
-- [ ] Existing task GET/PATCH behavior unchanged for tasks without postings
-- [ ] Typecheck passes
+- [x] `PATCH /api/tasks/[id]` accepts and persists a `postings` array (full replace of the array)
+- [x] `GET /api/tasks?postable=true` returns only tasks that have at least one posting with `status === 'queued'`, or `status === 'failed'` with `attempts < 3`
+- [x] Existing task GET/PATCH behavior unchanged for tasks without postings
+- [x] Typecheck passes
 
 ### US-003: Ad output parser
 **Description:** As the poster script, I need to extract the headline and description from a platform's generated Markdown file so it can be typed into the listing form.

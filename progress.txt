@@ -6,6 +6,10 @@
 - Platform keys are canonical in `config/ad-platforms.json`; `config/posting-platforms.json` must keep the same six keys (landmodo, land_century, landflip, land_com, land_listings, landhub).
 - Config JSON files use a top-level `"_doc"` string + `"platforms"` object — follow that convention for new config files.
 - login_url/new_listing_url for all platforms are best-effort placeholders; verify against live sites during US-005/US-006 selector discovery.
+- Port 3000 runs the PRODUCTION dashboard (`npm start` via @reboot cron) serving stale compiled code — don't test API changes against it and don't restart it. Spin up `npx next dev -p 3001` for live verification, then kill it.
+- No test framework in dashboard/ — verify API routes by curling a temp dev server (create temp task → exercise → DELETE it).
+- `updateTask` in dashboard/lib/data.ts merges `Partial<Task>` via spread, so any new optional Task field (like `postings`) is automatically persistable via PATCH with full-array-replace semantics — no data-layer change needed.
+- Careful with `pgrep -f`: the pattern matches the checking shell's own command line; use a character class (e.g. `-p 300[1]`) to avoid self-matches.
 
 ---
 
@@ -17,4 +21,14 @@
 - Learnings for future iterations:
   - `postings` is optional on Task so existing tasks.json records stay valid without migration.
   - URLs in posting-platforms.json are unverified placeholders — the posting scripts (US-005/006) should treat a redirect-to-login or 404 as "verify config" territory.
+---
+
+## Iteration 2 - US-002: Task API supports posting updates and queued-posting lookup
+- Added `?postable=true` filter to GET /api/tasks: returns tasks with ≥1 posting that is `queued`, or `failed` with `attempts < 3`.
+- PATCH /api/tasks/[id] needed NO change — `updateTask`'s spread merge already persists `postings` with full-array-replace semantics; verified live.
+- Files changed: dashboard/app/api/tasks/route.ts
+- Verified: `npx tsc --noEmit` passes; live-tested on a temp `next dev -p 3001` server — queued included, failed/2 included, failed/3 excluded, posted excluded, tasks without postings excluded from postable but plain GET/PATCH unchanged. Temp tasks deleted, dev server killed.
+- Learnings for future iterations:
+  - The postable filter lives in the route handler (dashboard/app/api/tasks/route.ts), not lib/data.ts — US-007's run-poster.sh should call `GET /api/tasks?postable=true` and still needs to skip failed/attempts>=3 defensively per-posting when iterating (a task can be returned for one actionable posting while another posting on it is exhausted).
+  - See Learnings section for prod-server-on-3000 gotcha and the temp-dev-server verification recipe.
 ---
