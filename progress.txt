@@ -81,6 +81,17 @@
   - Both posters are pure clones except the SELECTORS block and PLATFORM/SCRIPT constants; if a third platform is ever added, consider extracting the shared flow into post-common (kept duplicated for now since PRD says selectors + flow quirks stay per-script).
   - US-007's run-poster.sh can rely on: stdout last line JSON {listingUrl, screenshotPath}, stderr logs, exit 1 with human-readable message on any failure.
 ---
+## Iteration 8 - US-008: Approve queues postings and triggers the poster
+- TaskCard.tsx approve(): for ad-builder tasks (slashCommand generate-ad or ad-builder tag), builds queued postings (attempts 0, queuedAt now) for each platform in metadata.platforms that is enabled in config/posting-platforms.json, includes them in the approve PATCH, then fires POST /api/run-poster fire-and-forget (only when postings were queued). Non-ad tasks and no-enabled-platform cases approve exactly as before.
+- New GET /api/posting-platforms route serves the parsed config/posting-platforms.json platforms map (fs read per request, force-dynamic) — needed because Turbopack REFUSES to bundle imports outside the dashboard/ root, so a direct `import ... from '../../config/posting-platforms.json'` in a client component is a build error even though tsc accepts it.
+- Files changed: dashboard/components/TaskCard.tsx, dashboard/app/api/posting-platforms/route.ts
+- Verified: tsc clean; full browser test via Playwright (workers/posting's chromium headless shell) against a temp dev server on 3001 with DASHBOARD_URL set: task A (landmodo+land_com+landflip selected) → Approve queued exactly landmodo+land_com, poster auto-fired and processed both to failed/attempts=1 with real parse errors (temp task has no ad output — expected, proves the full chain); task B (only disabled platforms) → completed with NO postings and no poster run (log-count check); task C (non-ad) → unchanged approve. Temp tasks deleted, test poster log removed, dev server killed.
+- Learnings for future iterations:
+  - Turbopack cannot import files outside dashboard/ — anything in config/ must reach client components via an API route (GET /api/posting-platforms now exists; US-009/US-011 can reuse it, it returns display_name too).
+  - Playwright UI tests against next dev: first hit of a route compiles for ~10s, so don't put tight timeouts on the first interaction; prefer polling the API for the expected state change over waiting for DOM elements to disappear (list re-renders race with locators).
+  - Playwright drives the dashboard fine with the headless shell chromium already installed for workers/posting — require('.../workers/posting/node_modules/playwright') from any script.
+---
+
 ## Iteration 7 - US-007: Poster runner script and run-poster API route
 - Created workers/run-poster.sh: flock lockfile (/tmp/command-center-poster.lock, separate from worker), fetches GET /api/tasks?postable=true, per actionable posting (queued OR failed with attempts<3): PATCH status=posting + attempts+=1, runs `./node_modules/.bin/tsx post.ts <platform> <taskId>` from workers/posting under `timeout` (POST_TIMEOUT_SECONDS=600), then PATCHes posted (postedAt/listingUrl/screenshotPath, del lastError) or failed (lastError = last stderr lines, 500-char cap). Exhausted (attempts>=3) postings skipped per-posting via jq select. Logs to workers/logs/poster-*.log with same rotation pattern; poster-cron.log capped for US-010.
 - Created dashboard/app/api/run-poster/route.ts: exact mirror of run-worker/route.ts (detached spawn, unref, DASHBOARD_URL passthrough).

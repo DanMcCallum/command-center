@@ -88,12 +88,12 @@ V1 targets **Landmodo** and **Land.com** only, with the architecture (per-platfo
 **Description:** As a reviewer, when I approve an ad I want posting to start automatically for the platforms I selected in the Ad Builder.
 
 **Acceptance Criteria:**
-- [ ] In `TaskCard.tsx`, Approve on an ad-builder task (`slashCommand === 'generate-ad'` or `tags` includes `ad-builder`) also sets `postings`: one `queued` entry (attempts 0) per platform that is both in `metadata.platforms` and `enabled` in `config/posting-platforms.json`
-- [ ] After the PATCH succeeds, fires `POST /api/run-poster` (fire-and-forget)
-- [ ] If no selected platform is enabled, task is approved normally with no postings and no poster trigger
-- [ ] Approve on non-ad tasks is unchanged
-- [ ] Typecheck passes
-- [ ] Verify changes work in browser
+- [x] In `TaskCard.tsx`, Approve on an ad-builder task (`slashCommand === 'generate-ad'` or `tags` includes `ad-builder`) also sets `postings`: one `queued` entry (attempts 0) per platform that is both in `metadata.platforms` and `enabled` in `config/posting-platforms.json`
+- [x] After the PATCH succeeds, fires `POST /api/run-poster` (fire-and-forget)
+- [x] If no selected platform is enabled, task is approved normally with no postings and no poster trigger
+- [x] Approve on non-ad tasks is unchanged
+- [x] Typecheck passes
+- [x] Verify changes work in browser
 
 ### US-009: Posting status display and manual Retry on task cards
 **Description:** As a reviewer, I want to see per-platform posting progress on the task card and retry a permanently failed post after fixing the cause.
