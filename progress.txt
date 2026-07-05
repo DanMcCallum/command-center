@@ -114,3 +114,13 @@
   - Platform display names: landflip is "Landflip.com", land_century is "Land Century" — don't guess casing in tests; read config/posting-platforms.json.
   - JSX style prop trick reused from StatusBadge: backgroundColor: `${color}20` gives the 12.5%-alpha pill background for any status color.
 ---
+## Iteration 10 - US-010: Poster runs on the cron schedule
+- dashboard/lib/cron.ts: added POSTER_MARKER (# COMMAND-CENTER-POSTER), POSTER_SCRIPT (workers/run-poster.sh), POSTER_CRON_LOG (workers/logs/poster-cron.log — run-poster.sh already caps this file). installCron now writes a worker line AND a poster line at the same interval; stripMarker filters both markers, so removeCron and reinstalls handle both.
+- Files changed: dashboard/lib/cron.ts
+- Verified: tsc clean. Live toggle test via PUT /api/cron-config on a temp dev server (3001) against the REAL crontab: disable → both marked lines gone (unrelated crontab entries untouched); enable → both */5 lines present; interval change 5→15→5 → both lines replaced in place, exactly one of each (no duplicates). Final crontab state: enabled, */5, worker + poster lines — poster now runs on the cron cadence for real.
+- Learnings for future iterations:
+  - The cron-config route (PUT /api/cron-config) only touches the crontab when enabled or intervalMinutes actually CHANGES — after deploying a cron.ts change, the poster line appears on the next toggle/interval change. I did the enable/disable cycle during verification, so the live crontab already has the poster line; no operator action needed.
+  - isCronInstalled() still checks only the WORKER marker (used by worker-status route) — fine for now since both lines are installed/removed together, but a hand-edited crontab could desync them.
+  - Toggling cron via a dev server edits the real user crontab and the shared dashboard/data/cron-config.json — restore the original enabled/interval state when done testing.
+  - dashboard/data/cron-config.json is runtime data (lastRun churns every 5 min) — leave it out of commits.
+---

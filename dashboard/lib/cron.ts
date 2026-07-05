@@ -6,9 +6,12 @@ import { SUPPORTED_INTERVALS } from './types';
 const execP = promisify(exec);
 
 const MARKER = '# COMMAND-CENTER-WORKER';
+const POSTER_MARKER = '# COMMAND-CENTER-POSTER';
 const PROJECT_ROOT = path.resolve(process.cwd(), '..');
 const WORKER_SCRIPT = path.join(PROJECT_ROOT, 'workers', 'run-worker.sh');
+const POSTER_SCRIPT = path.join(PROJECT_ROOT, 'workers', 'run-poster.sh');
 const CRON_LOG = path.join(PROJECT_ROOT, 'workers', 'logs', 'cron.log');
+const POSTER_CRON_LOG = path.join(PROJECT_ROOT, 'workers', 'logs', 'poster-cron.log');
 
 function cronExpression(intervalMinutes: number): string {
   if (intervalMinutes < 60) return `*/${intervalMinutes} * * * *`;
@@ -41,7 +44,7 @@ async function writeCrontab(content: string): Promise<void> {
 function stripMarker(crontab: string): string {
   return crontab
     .split('\n')
-    .filter(line => !line.includes(MARKER))
+    .filter(line => !line.includes(MARKER) && !line.includes(POSTER_MARKER))
     .join('\n');
 }
 
@@ -52,10 +55,12 @@ export async function installCron(intervalMinutes: number): Promise<void> {
     );
   }
   const expr = cronExpression(intervalMinutes);
-  const line = `${expr} cd ${PROJECT_ROOT} && bash ${WORKER_SCRIPT} >> ${CRON_LOG} 2>&1 ${MARKER}`;
+  const workerLine = `${expr} cd ${PROJECT_ROOT} && bash ${WORKER_SCRIPT} >> ${CRON_LOG} 2>&1 ${MARKER}`;
+  const posterLine = `${expr} cd ${PROJECT_ROOT} && bash ${POSTER_SCRIPT} >> ${POSTER_CRON_LOG} 2>&1 ${POSTER_MARKER}`;
   const current = await readCrontab();
   const next = stripMarker(current).replace(/\n+$/, '');
-  const merged = next ? `${next}\n${line}\n` : `${line}\n`;
+  const lines = `${workerLine}\n${posterLine}\n`;
+  const merged = next ? `${next}\n${lines}` : lines;
   await writeCrontab(merged);
 }
 

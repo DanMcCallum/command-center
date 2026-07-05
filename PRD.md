@@ -109,9 +109,9 @@ V1 targets **Landmodo** and **Land.com** only, with the architecture (per-platfo
 **Description:** As the operator, I want retries and any stragglers processed automatically, so a transient failure heals itself without me clicking anything.
 
 **Acceptance Criteria:**
-- [ ] `dashboard/lib/cron.ts` installs a second marked crontab line (`# COMMAND-CENTER-POSTER`) running `workers/run-poster.sh` at the same interval when cron is enabled, and removes it when disabled
-- [ ] `crontab -l` shows/omits the poster line after toggling cron in Settings
-- [ ] Typecheck passes
+- [x] `dashboard/lib/cron.ts` installs a second marked crontab line (`# COMMAND-CENTER-POSTER`) running `workers/run-poster.sh` at the same interval when cron is enabled, and removes it when disabled
+- [x] `crontab -l` shows/omits the poster line after toggling cron in Settings
+- [x] Typecheck passes
 
 ### US-011: Platform auth status on Settings page
 **Description:** As the operator, I want to see whether each enabled platform has a saved login session so I know when to re-run capture-login.
