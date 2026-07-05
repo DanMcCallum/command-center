@@ -2,6 +2,7 @@
 .env
 .env.*
 !.env.example
+workers/posting/auth/
 
 # Dependencies
 node_modules/

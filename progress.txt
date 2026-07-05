@@ -44,3 +44,15 @@
   - tsconfig uses module CommonJS so compiled tests run directly under node; test recipe: compile with `--noEmit false --outDir /tmp/posting-test-build`, then `node --test /tmp/posting-test-build/*.test.js` FROM workers/posting/ (tests resolve the sample dir relative to cwd).
   - Only task-1779308355008-lg0z6q and task-1780891259218-ppunbv in outputs/ have the per-platform `<platform>.md` format; older dirs hold legacy single-file posts (land_post.md etc.) and some are empty — posting scripts should rely on parseAdOutput's errors rather than assuming files exist.
 ---
+## Iteration 4 - US-004: Playwright setup and login-capture script
+- Created workers/posting/package.json (playwright dep; tsx + typescript + @types/node devDeps; scripts: capture-login, typecheck, test) and ran npm install.
+- Created workers/posting/capture-login.ts: reads config/posting-platforms.json, validates platform key (unknown → error listing valid keys, disabled → error listing enabled ones, no arg → usage; all exit 1), launches headed chromium on login_url, waits for operator Enter via readline, saves context.storageState to workers/posting/auth/<platform>.json (chmod 600).
+- Updated README.md with setup/capture-login/typecheck/test docs; added workers/posting/auth/ to .gitignore (session files are secrets); dropped the tsconfig typeRoots hack now that local node_modules exists.
+- Files changed: workers/posting/{package.json,package-lock.json,capture-login.ts,README.md,tsconfig.json}, .gitignore
+- Verified: `npm run typecheck` passes; all 5 parse-ad-output tests still pass via `npm test`; all three error paths exercised live; `npx playwright install chromium` ran (Chrome Headless Shell 149 → ~/.cache/ms-playwright); headless smoke test confirmed launch + storageState save work. Full headed happy path needs an operator + display, so it remains a documented manual step.
+- Learnings for future iterations:
+  - workers/posting now has its own toolchain: use `npm run typecheck` and `npm test` from workers/posting/ (the old ../../dashboard/node_modules/.bin/tsc recipe is obsolete).
+  - tsx runs the CommonJS TS files directly (`npm run capture-login`); no build step needed for scripts.
+  - `npx playwright install chromium` on this box downloads only chromium-headless-shell; a HEADED run (capture-login, and any non-headless posting) may need the full chromium build — if `chromium.launch({headless: false})` complains about a missing executable, run `npx playwright install chromium --with-deps` or check for a display server first.
+  - Scripts resolve config via path.resolve(__dirname, '../../config/...') so they work regardless of cwd; US-005/006 should follow suit.
+---

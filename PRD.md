@@ -48,10 +48,10 @@ V1 targets **Landmodo** and **Land.com** only, with the architecture (per-platfo
 **Description:** As the operator, I want to log in to each marketplace once in a real browser and have the session saved, so posting scripts can reuse it without storing my password.
 
 **Acceptance Criteria:**
-- [ ] `workers/posting/package.json` created with Playwright dependency; `npm install` and `npx playwright install chromium` documented in `workers/posting/README.md`
-- [ ] `npm run capture-login -- <platform>` opens the platform's `login_url` (from `config/posting-platforms.json`) in a headed browser, waits for the operator to finish logging in (operator presses Enter in the terminal), then saves storage state to `workers/posting/auth/<platform>.json`
-- [ ] Errors clearly if the platform key is unknown or not enabled
-- [ ] Typecheck passes
+- [x] `workers/posting/package.json` created with Playwright dependency; `npm install` and `npx playwright install chromium` documented in `workers/posting/README.md`
+- [x] `npm run capture-login -- <platform>` opens the platform's `login_url` (from `config/posting-platforms.json`) in a headed browser, waits for the operator to finish logging in (operator presses Enter in the terminal), then saves storage state to `workers/posting/auth/<platform>.json`
+- [x] Errors clearly if the platform key is unknown or not enabled
+- [x] Typecheck passes
 
 ### US-005: Landmodo posting script
 **Description:** As the system, I want a script that posts one approved ad to Landmodo so the listing goes live without manual copy-paste.

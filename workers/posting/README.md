@@ -2,13 +2,37 @@
 
 Scripts that post approved ads to marketplaces (see PRD: Auto-Post Approved Ads).
 
-## Typecheck
-
-No local `node_modules` yet — the tsconfig borrows the dashboard's TypeScript and `@types/node`:
+## Setup
 
 ```bash
 cd workers/posting
-../../dashboard/node_modules/.bin/tsc -p tsconfig.json
+npm install
+npx playwright install chromium
+```
+
+## Capture a login session
+
+Posting scripts reuse a saved browser session per platform — no passwords are
+stored. To capture one (repeat whenever a session expires):
+
+```bash
+cd workers/posting
+npm run capture-login -- <platform>   # e.g. landmodo or land_com
+```
+
+A headed Chromium window opens on the platform's login page. Log in by hand,
+then press Enter in the terminal. The session is saved to
+`workers/posting/auth/<platform>.json`.
+
+**`auth/*.json` files are secrets** — they grant marketplace account access.
+The directory is gitignored; never expose it via the dashboard files API or
+logs.
+
+## Typecheck
+
+```bash
+cd workers/posting
+npm run typecheck
 ```
 
 ## Tests
@@ -18,6 +42,5 @@ sample worker output in `../workspace/outputs/` relative to the working director
 
 ```bash
 cd workers/posting
-../../dashboard/node_modules/.bin/tsc -p tsconfig.json --noEmit false --outDir /tmp/posting-test-build
-node --test /tmp/posting-test-build/*.test.js
+npm test
 ```
