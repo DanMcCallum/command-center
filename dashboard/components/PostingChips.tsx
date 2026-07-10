@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import type { PostingStatus, Task } from '@/lib/types';
+import { useEffect, useRef, useState } from 'react';
+import type { AdPosting, PostingStatus, Task } from '@/lib/types';
 
 export const POSTING_COLORS: Record<PostingStatus, { color: string; label: string }> = {
   queued: { color: '#6B6B6B', label: 'Queued' },
@@ -95,11 +95,21 @@ export default function PostingChips({ task, onChange }: Props) {
       {postings.map(p => {
         const { color, label } = POSTING_COLORS[p.status];
         const name = names[p.platform] ?? p.platform;
+        if (p.status === 'failed') {
+          return (
+            <FailedChip
+              key={p.platform}
+              posting={p}
+              name={name}
+              retrying={retrying === p.platform}
+              onRetry={() => retry(p.platform)}
+            />
+          );
+        }
         const chip = (
           <span
             className="inline-flex items-center px-2 py-0.5 text-xs rounded-full whitespace-nowrap"
             style={{ backgroundColor: `${color}20`, color }}
-            title={p.status === 'failed' && p.lastError ? p.lastError : undefined}
           >
             {name}: {label}
           </span>
@@ -117,23 +127,95 @@ export default function PostingChips({ task, onChange }: Props) {
             </a>
           );
         }
-        if (p.status === 'failed' && p.attempts >= MAX_ATTEMPTS) {
-          return (
-            <span key={p.platform} className="inline-flex items-center gap-1">
-              {chip}
-              <button
-                type="button"
-                disabled={retrying === p.platform}
-                onClick={() => retry(p.platform)}
-                className="px-2 py-0.5 text-xs font-medium rounded bg-[#2F2F2F] text-[#9B9B9B] hover:bg-[#373737] hover:text-white transition-colors disabled:opacity-50"
-              >
-                Retry
-              </button>
-            </span>
-          );
-        }
         return <span key={p.platform}>{chip}</span>;
       })}
     </div>
+  );
+}
+
+function FailedChip({
+  posting,
+  name,
+  retrying,
+  onRetry,
+}: {
+  posting: AdPosting;
+  name: string;
+  retrying: boolean;
+  onRetry: () => Promise<void>;
+}) {
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLSpanElement>(null);
+  const { color, label } = POSTING_COLORS.failed;
+
+  useEffect(() => {
+    if (!open) return;
+    function onMouseDown(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') setOpen(false);
+    }
+    document.addEventListener('mousedown', onMouseDown);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', onMouseDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [open]);
+
+  return (
+    <span ref={containerRef} className="relative inline-flex">
+      <button
+        type="button"
+        onClick={() => setOpen(v => !v)}
+        className="inline-flex items-center px-2 py-0.5 text-xs rounded-full whitespace-nowrap hover:brightness-125 transition"
+        style={{ backgroundColor: `${color}20`, color }}
+      >
+        {name}: {label}
+      </button>
+      {open && (
+        <div className="absolute left-0 top-full mt-1 z-20 w-80 rounded border border-[#2F2F2F] bg-[#202020] p-3 text-left space-y-2">
+          <div className="text-xs font-medium uppercase tracking-wide text-[#FF4D4D]">
+            {name} posting failed
+          </div>
+          <pre className="max-h-40 overflow-y-auto whitespace-pre-wrap font-sans text-xs text-[#D4D4D4]">
+            {posting.lastError || 'No error message recorded.'}
+          </pre>
+          <div className="text-xs text-[#6B6B6B]">
+            Attempts: {posting.attempts} of {MAX_ATTEMPTS}
+          </div>
+          {posting.screenshotPath && (
+            <a
+              href={`/api/files/${encodeURI(posting.screenshotPath)}`}
+              target="_blank"
+              rel="noreferrer"
+              className="block text-xs text-[#4DAB9A] hover:underline"
+            >
+              View screenshot
+            </a>
+          )}
+          {posting.attempts >= MAX_ATTEMPTS ? (
+            <button
+              type="button"
+              disabled={retrying}
+              onClick={async () => {
+                await onRetry();
+                setOpen(false);
+              }}
+              className="px-2 py-0.5 text-xs font-medium rounded bg-[#2F2F2F] text-[#9B9B9B] hover:bg-[#373737] hover:text-white transition-colors disabled:opacity-50"
+            >
+              Retry
+            </button>
+          ) : (
+            <div className="text-xs text-[#6B6B6B]">
+              Will retry automatically on the next poster run.
+            </div>
+          )}
+        </div>
+      )}
+    </span>
   );
 }

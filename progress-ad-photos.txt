@@ -213,3 +213,44 @@
   - US-007 (failure popover) can rely on lastError now being exact and on
     screenshotPath being absent for preflight failures (no browser = no
     screenshot).
+## Iteration 7 - US-007: Posting failure detail popover
+- PostingChips: failed chips are now buttons that toggle a per-chip popover
+  (new FailedChip subcomponent owning open state + document-level
+  mousedown/Escape listeners while open). Popover shows the full lastError
+  (max-h-40 scrollable pre, pre-wrap), "Attempts: N of 3", a "View
+  screenshot" link to `/api/files/${screenshotPath}` when set, and — at
+  attempts >= 3 — the Retry button (same retry() as before: refetch task,
+  reset that posting to queued/0, PATCH, fire run-poster). Below 3 attempts
+  the popover shows "Will retry automatically on the next poster run."
+  instead of Retry (preserves the old gate). The title tooltip and the
+  beside-the-chip Retry button are gone; queued/posting/posted chips are
+  byte-identical to before.
+- Files changed:
+  - dashboard/components/PostingChips.tsx
+  - specs/ad-photos.md (checked off US-007)
+- Verified: `npx tsc --noEmit` clean; headless Playwright run (24 checks,
+  all pass) against the already-running `next dev -p 3001`: popover
+  open/close (outside click + Escape), full error text, attempts line,
+  screenshot href correct AND the PNG actually served (200 image/png via
+  /api/files), Retry inside popover only, retry reset queued/0 + exactly one
+  run-poster call + chip flipped to Queued, second failed chip (attempts 1)
+  shows no Retry/no link, posted chip still a plain listing link, posting
+  chip inert. Popover screenshot inspected — matches dark-minimalism rules.
+- Learnings for future iterations:
+  - screenshotPath is stored project-root-relative ("workers/workspace/...")
+    and /api/files accepts paths with the "workers/" prefix and serves PNGs
+    with image/png — `/api/files/${encodeURI(screenshotPath)}` just works.
+  - PostingChips display names load via a client fetch AFTER first paint;
+    Playwright hasText is case-insensitive, so "Landmodo: Failed" matches the
+    pre-fetch raw "landmodo: ..." text but "Land.com: Failed" doesn't match
+    "land_com: ..." — waitFor() the renamed chip before counting, or first
+    assertions flake.
+  - Retry-click testing creates a genuinely queued posting in the shared
+    tasks.json: hold the poster lock (`flock -n /tmp/command-center-poster.lock
+    -c 'sleep 120' &`), route-fulfill run-poster in the page, PATCH the
+    posting back to failed/3 right after asserting, DELETE the task last.
+  - Chips live OUTSIDE the row's expand button in TaskCard, so chip clicks
+    don't toggle expansion — no stopPropagation needed.
+  - US-008 (banner) can reuse: failed+attempts>=3 is the "permanent" filter,
+    MAX_ATTEMPTS=3 currently lives as a const in PostingChips.tsx.
+---

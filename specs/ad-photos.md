@@ -94,12 +94,12 @@ This feature adds photo upload to the Ad Builder page (`dashboard/app/ad-builder
 **Description:** As a reviewer, I want to click a failed posting chip and see the full error, attempt count, and proof screenshot, so I can diagnose the failure instead of squinting at a truncated tooltip.
 
 **Acceptance Criteria:**
-- [ ] In `PostingChips.tsx`, clicking a `Failed` chip opens a popover (closes on outside click / Escape) instead of relying on the title tooltip
-- [ ] Popover shows: full `lastError` text (scrollable if long), `attempts` of 3, and a link to the screenshot via the existing `/api/files` route when `screenshotPath` is set
-- [ ] The existing Retry button moves into the popover and keeps its current behavior (reset to `queued`, `attempts: 0`, fire `POST /api/run-poster`)
-- [ ] Queued/Posting/Posted chips are unchanged
-- [ ] Typecheck passes
-- [ ] Verify changes work in browser
+- [x] In `PostingChips.tsx`, clicking a `Failed` chip opens a popover (closes on outside click / Escape) instead of relying on the title tooltip
+- [x] Popover shows: full `lastError` text (scrollable if long), `attempts` of 3, and a link to the screenshot via the existing `/api/files` route when `screenshotPath` is set
+- [x] The existing Retry button moves into the popover and keeps its current behavior (reset to `queued`, `attempts: 0`, fire `POST /api/run-poster`)
+- [x] Queued/Posting/Posted chips are unchanged
+- [x] Typecheck passes
+- [x] Verify changes work in browser
 
 ### US-008: Permanently-failed postings banner on the tasks page
 **Description:** As an operator, I want the tasks page to tell me when any ad has given up posting, so failures don't sit unnoticed inside a collapsed card.
