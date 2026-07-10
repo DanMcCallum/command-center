@@ -1,11 +1,12 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
-import type { CronConfig, Task, Todo } from './types';
+import type { CronConfig, Task, Todo, WorkerState } from './types';
 import { generateTaskId, nowIso } from './utils';
 
 const DATA_DIR = path.join(process.cwd(), 'data');
 const TASKS_FILE = path.join(DATA_DIR, 'tasks.json');
 const CRON_FILE = path.join(DATA_DIR, 'cron-config.json');
+const WORKER_STATE_FILE = path.join(DATA_DIR, 'worker-state.json');
 const TODOS_FILE = path.join(DATA_DIR, 'todos.json');
 
 let writeChain: Promise<unknown> = Promise.resolve();
@@ -125,17 +126,29 @@ export async function deleteTask(id: string): Promise<boolean> {
 }
 
 export async function getCronConfig(): Promise<CronConfig> {
-  return readJson<CronConfig>(CRON_FILE, {
+  const cfg = await readJson<CronConfig>(CRON_FILE, {
     enabled: false,
     intervalMinutes: 10,
-    lastRun: null,
-    lastTaskId: null,
   });
+  return { enabled: cfg.enabled, intervalMinutes: cfg.intervalMinutes };
 }
 
 export async function saveCronConfig(config: CronConfig): Promise<void> {
   return serialize(async () => {
     await writeJson(CRON_FILE, config);
+  });
+}
+
+export async function getWorkerState(): Promise<WorkerState> {
+  return readJson<WorkerState>(WORKER_STATE_FILE, {
+    lastRun: null,
+    lastTaskId: null,
+  });
+}
+
+export async function saveWorkerState(state: WorkerState): Promise<void> {
+  return serialize(async () => {
+    await writeJson(WORKER_STATE_FILE, state);
   });
 }
 

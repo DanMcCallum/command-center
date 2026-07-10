@@ -61,6 +61,9 @@ export interface Task {
 export interface CronConfig {
   enabled: boolean;
   intervalMinutes: number;
+}
+
+export interface WorkerState {
   lastRun: string | null;
   lastTaskId: string | null;
 }

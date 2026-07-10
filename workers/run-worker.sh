@@ -78,8 +78,8 @@ log "Worker starting. project=$PROJECT_ROOT dashboard=$DASHBOARD_URL"
 # --- Step 3: Dependencies ----------------------------------------------------
 for cmd in curl jq claude timeout; do require_cmd "$cmd"; done
 
-# --- Helper: update cron-config last-run regardless of outcome ---------------
-update_cron_config() {
+# --- Helper: update worker-state last-run regardless of outcome --------------
+update_worker_state() {
   local task_id="${1:-}"
   local body
   if [[ -n "$task_id" ]]; then
@@ -88,14 +88,14 @@ update_cron_config() {
   else
     body=$(jq -n --arg ts "$(date -Iseconds)" '{lastRun: $ts}')
   fi
-  curl -sS --max-time 10 -X PUT "${DASHBOARD_URL}/api/cron-config" \
+  curl -sS --max-time 10 -X PUT "${DASHBOARD_URL}/api/worker-state" \
     -H 'Content-Type: application/json' -d "$body" >/dev/null || true
 }
 
 # --- Step 4: Fetch tasks -----------------------------------------------------
 if ! TASKS_RESPONSE=$(api_get "${DASHBOARD_URL}/api/tasks"); then
   log "ERROR: dashboard not reachable at ${DASHBOARD_URL}/api/tasks"
-  update_cron_config ""
+  update_worker_state ""
   exit 0
 fi
 
@@ -119,7 +119,7 @@ TASK_JSON=$(echo "$TASKS_RESPONSE" | jq -c --argjson blocked "$BLOCKED_PARENTS" 
 
 if [[ -z "$TASK_JSON" || "$TASK_JSON" == "null" ]]; then
   log "No eligible pending tasks. Exiting."
-  update_cron_config ""
+  update_worker_state ""
   exit 0
 fi
 
@@ -256,7 +256,7 @@ if [[ $CLAUDE_EXIT -ne 0 ]]; then
   fi
   api_patch "$TASK_ID" "$(jq -n --arg note "$ERROR_NOTE" \
     '{status: "pending", claudeNotes: $note}')" >/dev/null
-  update_cron_config "$TASK_ID"
+  update_worker_state "$TASK_ID"
   exit 0
 fi
 
@@ -323,6 +323,6 @@ api_patch "$TASK_ID" "$UPDATE_BODY" >/dev/null
 log "SUCCESS: task $TASK_ID -> $FINAL_STATUS"
 
 # --- Step 12: Update cron config ---------------------------------------------
-update_cron_config "$TASK_ID"
+update_worker_state "$TASK_ID"
 
 log "Worker finished cleanly."

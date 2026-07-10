@@ -22,8 +22,6 @@ export async function PUT(request: Request) {
   const next: CronConfig = {
     enabled: body.enabled ?? current.enabled,
     intervalMinutes: body.intervalMinutes ?? current.intervalMinutes,
-    lastRun: body.lastRun !== undefined ? body.lastRun : current.lastRun,
-    lastTaskId: body.lastTaskId !== undefined ? body.lastTaskId : current.lastTaskId,
   };
 
   if (

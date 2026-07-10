@@ -1,14 +1,14 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { SUPPORTED_INTERVALS, type CronConfig } from '@/lib/types';
+import { SUPPORTED_INTERVALS, type CronConfig, type WorkerState } from '@/lib/types';
 import { formatRelative } from '@/lib/utils';
 
 const INTERVAL_OPTIONS = SUPPORTED_INTERVALS;
 
-interface WorkerStatus extends CronConfig {
+type WorkerStatus = CronConfig & WorkerState & {
   crontabInstalled: boolean;
-}
+};
 
 export default function CronConfigPanel() {
   const [status, setStatus] = useState<WorkerStatus | null>(null);
