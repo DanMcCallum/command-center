@@ -37,13 +37,13 @@ This feature adds photo upload to the Ad Builder page (`dashboard/app/ad-builder
 **Description:** As a user creating an ad, I want to attach photos on the request form so my listing can include images.
 
 **Acceptance Criteria:**
-- [ ] New client component `dashboard/components/PhotoPicker.tsx` rendered in the Ad Builder form between the existing fields and the submit button
-- [ ] "Add photos" control opens a file dialog (`accept="image/jpeg,image/png,image/webp,image/gif"`, `multiple`); selected files render as a thumbnail grid using object URLs (revoked on removal/unmount)
-- [ ] Each thumbnail shows the filename and a remove (×) button
-- [ ] Files with a disallowed extension or over 15 MB are rejected at selection time with an inline message naming the file and the reason
-- [ ] Submit is disabled with a visible "At least 1 photo is required" hint until one or more photos are attached
-- [ ] Typecheck passes
-- [ ] Verify changes work in browser
+- [x] New client component `dashboard/components/PhotoPicker.tsx` rendered in the Ad Builder form between the existing fields and the submit button
+- [x] "Add photos" control opens a file dialog (`accept="image/jpeg,image/png,image/webp,image/gif"`, `multiple`); selected files render as a thumbnail grid using object URLs (revoked on removal/unmount)
+- [x] Each thumbnail shows the filename and a remove (×) button
+- [x] Files with a disallowed extension or over 15 MB are rejected at selection time with an inline message naming the file and the reason
+- [x] Submit is disabled with a visible "At least 1 photo is required" hint until one or more photos are attached
+- [x] Typecheck passes
+- [x] Verify changes work in browser
 
 ### US-003: Drag-and-drop ordering and primary star
 **Description:** As a user, I want to control photo order and pick the primary image, because the first photo becomes the listing's cover on the marketplaces.

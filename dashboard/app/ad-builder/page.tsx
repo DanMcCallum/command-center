@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import PhotoPicker, { type PickedPhoto } from '@/components/PhotoPicker';
 import type { Task } from '@/lib/types';
 
 const PLATFORMS = [
@@ -71,6 +72,7 @@ export default function AdBuilderPage() {
   const [platforms, setPlatforms] = useState<Record<string, boolean>>(
     Object.fromEntries(PLATFORMS.map(p => [p.key, true])),
   );
+  const [photos, setPhotos] = useState<PickedPhoto[]>([]);
 
   function togglePlatform(key: string) {
     setPlatforms(prev => ({ ...prev, [key]: !prev[key] }));
@@ -88,6 +90,7 @@ export default function AdBuilderPage() {
     if (!priceUsd.trim() || isNaN(Number(priceUsd))) return setError('Price must be a number.');
     const selectedPlatforms = PLATFORMS.filter(p => platforms[p.key]).map(p => p.key);
     if (selectedPlatforms.length === 0) return setError('Pick at least one platform.');
+    if (photos.length === 0) return setError('At least 1 photo is required.');
 
     const metadata = {
       kind: 'ad-builder',
@@ -318,12 +321,21 @@ export default function AdBuilderPage() {
           </div>
         </Field>
 
+        {/* Plain div, not <Field>: a wrapping <label> would forward clicks anywhere
+            in the section to the picker's buttons. */}
+        <div>
+          <div className="text-xs font-medium text-[#9B9B9B] mb-1">
+            Photos<span className="text-[#FF4D4D] ml-1">*</span>
+          </div>
+          <PhotoPicker onChange={setPhotos} />
+        </div>
+
         {error && <div className="text-xs text-[#FF4D4D]">{error}</div>}
 
         <div className="flex items-center gap-2 pt-2">
           <button
             type="submit"
-            disabled={submitting}
+            disabled={submitting || photos.length === 0}
             className="px-4 py-2 text-sm font-medium rounded bg-[#4DAB9A] text-[#191919] hover:bg-[#5BC0AE] transition-colors disabled:opacity-50"
           >
             {submitting ? 'Submitting…' : 'Generate ad'}

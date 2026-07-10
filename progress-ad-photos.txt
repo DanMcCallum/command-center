@@ -28,3 +28,40 @@
   - US-002/003 (PhotoPicker) should generate the `NN_` prefix client-side at
     submit time; the API only validates it.
 ---
+
+## Iteration 2 - US-002: Photo picker on the Ad Builder form
+- Implemented `dashboard/components/PhotoPicker.tsx`: hidden file input
+  (accept jpeg/png/webp/gif, multiple) behind an "Add photos" button,
+  thumbnail grid from object URLs (revoked on remove + unmount), filename +
+  × button per thumbnail, selection-time rejection messages (bad extension,
+  >15 MB) naming file and reason, amber "At least 1 photo is required." hint
+  when empty. Component owns state, reports `PickedPhoto[]` ({id, file, url})
+  to the parent via onChange.
+- Ad Builder page: renders the picker between Platforms and the submit row,
+  disables submit while `photos.length === 0` (plus a belt-and-suspenders
+  check in submit()). No upload logic yet — that's US-004.
+- Files changed:
+  - dashboard/components/PhotoPicker.tsx (new)
+  - dashboard/app/ad-builder/page.tsx
+  - specs/ad-photos.md (checked off US-002)
+- Verified: `npx tsc --noEmit` clean; browser verification via a headless
+  Playwright script (chromium from workers/posting/node_modules) driving
+  `npx next dev -p 3001` — 15 checks incl. initial disabled state, mixed
+  valid/bad/oversize selection, remove, re-add-same-file, no page errors.
+  Screenshot inspected: matches the dark-minimalism design.
+- Learnings for future iterations:
+  - Browser verification pattern: write a temp .mjs INSIDE workers/posting/
+    (ESM resolves 'playwright' relative to the script file, not cwd), launch
+    chromium headless, drive localhost:3001, delete the script after.
+    setInputFiles bypasses the accept filter — good for testing rejection.
+  - First Playwright run right after dev-server start can flake on the
+    route's first compile; re-run before diagnosing a real failure.
+  - Don't wrap PhotoPicker in the page's <Field> helper — it's a <label>,
+    which would forward clicks anywhere in the section to the picker's
+    buttons (and nest labels invalidly). Used a plain div with the same
+    header styling.
+  - Reset input.value after handling selection so re-picking the same file
+    fires change again.
+  - PickedPhoto has a stable per-item `id` — use it as the drag key for
+    US-003 instead of array index.
+---
