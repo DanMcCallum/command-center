@@ -1,0 +1,40 @@
+# Progress — DREAMS Review Loop in Ad Generation (specs/dreams-validation.md)
+
+## Iteration 1 - US-001: DREAMS audit step in the generate-ad workflow
+- What was implemented:
+  - Added input item 9 to `~/.claude/commands/generate-ad.md`: the DREAMS rubric at
+    `/home/mazer/claude/command-center/.claude/skills/dreams-ad-review/SKILL.md`, read
+    directly as a rubric file (headless — explicit "never invoke as a skill" instruction),
+    to be read in full before step 6.
+  - Added `### Step 6 — DREAMS audit` after Step 5 (voice check), before `## Output`:
+    audits every platform variant's headline + description sales-copy portion (nickname
+    tag explicitly exempt, same as steps 4/5) against all six DREAMS categories; one
+    scorecard pass per cycle covering all platforms (no per-variant sub-loops, per the
+    PRD's timeout-budget consideration).
+  - Specified audit output format: per platform, per category, verdict `Pass | Weak | Missing`
+    plus a 1–2 sentence coaching note for every non-Pass verdict; each cycle's full audit
+    appended to `notes.md` with cycle number, per-platform scorecard table, and coaching notes.
+- Files changed:
+  - `~/.claude/commands/generate-ad.md` (OUTSIDE the repo — not git-tracked!)
+  - `specs/dreams-validation.md` (checked off US-001 criteria)
+  - Backup taken first: `workers/workspace/notes/generate-ad.md.bak-2026-07-10`
+    (pre-edit copy of the workflow file, per PRD Technical Considerations)
+- Verification: `npx tsc --noEmit` from `dashboard/` PASSED; grep confirmed all required
+  sections/phrases are present in the workflow file.
+- Learnings for future iterations:
+  - The workflow file lives at `~/.claude/commands/generate-ad.md`, outside the repo.
+    The pre-edit backup already exists at `workers/workspace/notes/generate-ad.md.bak-2026-07-10`
+    — do NOT overwrite it on later iterations; it should stay the pristine pre-feature copy.
+  - Step numbering after the edit: Step 4a/4b (headline-craft + anti-slop), Step 5 (voice),
+    Step 6 (DREAMS audit, currently audit+logging only). US-002 extends Step 6 with the
+    revise→re-audit loop, termination (3 cycles), and precedence rules, and must update
+    step 4b's "exactly once ... After one pass, the variant is final" wording, plus step 3's
+    "only append the tag as the literal last thing ... after every rewrite pass" already
+    reads compatibly (tag after ALL passes) but re-check it when adding the loop.
+  - notes.md requirements in the `## Output` section were deliberately NOT touched —
+    that's US-003's criterion ("notes.md requirements updated to include the per-cycle
+    audit logs"). The logging requirement currently lives inside Step 6 itself.
+  - Repo working tree has unrelated dirty files from the ad-posting branch work
+    (dashboard/.next-start.log, data/tasks.json, progress.txt, specs/ad-posting.md,
+    specs/readme.md, specs/specs.md untracked-modified). Stage only your own files.
+---
