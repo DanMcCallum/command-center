@@ -1,0 +1,30 @@
+# Progress — ad-photos feature (specs/ad-photos.md)
+
+## Iteration 1 - US-001: Photo upload API endpoint
+- Implemented `POST /api/tasks/[id]/photos`: multipart upload of one photo into
+  `workers/workspace/outputs/<taskId>/photos/`, with 404 for unknown tasks and
+  400 for bad filename pattern, traversal, disallowed extension, and >15 MB.
+- Files changed:
+  - dashboard/app/api/tasks/[id]/photos/route.ts (new)
+  - specs/ad-photos.md (checked off US-001)
+- Verified with curl against `npx next dev -p 3001` (temp task created and
+  DELETEd afterwards): valid upload → 200 + file on disk; bad ext / oversize /
+  traversal / bad pattern → 400; unknown task → 404. `npx tsc --noEmit` clean.
+- Learnings for future iterations:
+  - Path resolution pattern for reaching workers/ from dashboard route
+    handlers: `path.resolve(process.cwd(), '..')` (same as files/[...path] and
+    posting-auth routes). config/paths.json is NOT read by the dashboard.
+  - Filename policy chosen: REJECT (400) anything containing `/`, `\`, or `..`
+    rather than silently basename-sanitizing — the spec's curl checklist
+    expects an error status for traversal filenames. Note `00_..jpg` also gets
+    rejected (contains `..`) even though it matches the regex.
+  - App Router route handlers have no body-size limit config; `request.formData()`
+    handled the 15 MB+ test file fine — no route config needed.
+  - Dev-server workflow: start `npx next dev -p 3001` in background with pid
+    file, poll `/api/tasks` until up (~10 s), kill by pid when done. Port 3000
+    serves stale production code — never verify against it.
+  - The `file` form part arrives as a web `File`; write with
+    `Buffer.from(await file.arrayBuffer())`.
+  - US-002/003 (PhotoPicker) should generate the `NN_` prefix client-side at
+    submit time; the API only validates it.
+---
