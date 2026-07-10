@@ -147,3 +147,36 @@
   - Both typechecks still pass clean (posting exit 0, dashboard tsc exit 0); report
     is markdown-only so it's a no-regression gate.
 ---
+
+## Iteration 5 - US-005: Evaluate the remaining options
+- Filled §5 (Other Options) of report.md: (a) browser-extension cookie export,
+  (b) Apify, (c) self-hosted neko/noVNC/CDP screencast, (d) credential vault.
+  Each on the identical rubric (UX flow / build effort / reliability-fragility /
+  security posture / cost) with an explicit verdict line, plus a summary verdict
+  table at the end. Cross-referenced §3's invisible-reCAPTCHA finding into (a),
+  (c), and (d) so the fragility claims are grounded, not guessed.
+- Verdicts: (a) viable fallback/break-glass; (b) rejected for scale (solves worker
+  hosting we already have, no better capture UX than (a)); (c) viable fallback but
+  deferred (1-2 wk + ops vs 1-2 days for identical UX); (d) REJECTED on the
+  no-password-custody constraint (required by AC), noted it'd also be most fragile
+  vs Landmodo's invisible reCAPTCHA.
+- Files changed: research/auth-capture-spike/report.md (§5 filled),
+  specs/auth-research.md (US-005 checked), this file.
+- Learnings for future iterations:
+  - Live-verified Apify pricing via WebFetch on apify.com/pricing (works clean, not
+    JS-blocked like the §4 vendor marketing pages): Free $0/$5cr, Starter $29/$29cr,
+    Scale $199, Business $999; CU $0.20 (Scale $0.16/Business $0.13); residential
+    proxy $8/GB. Seeded research's Apify figures ($29 Starter, ~$0.20/CU, $8/GB) all
+    still current — no drift, unlike Steel.dev in §4.
+  - US-006 (comparison matrix) can now pull every option's verdict + $/mo straight
+    from the §5 summary table and §4's per-vendor cost table — no new research
+    needed, it's a synthesis story. Recommendation should be: land_com -> LandFeed
+    API (§2, pending eligibility); landmodo -> hosted live-view Browserbase (§4);
+    fallbacks -> extension export (5a) or self-host neko (5c); reject vault (5d) +
+    Apify (5b).
+  - Rubric-per-option + explicit verdict line + a closing summary table is a clean
+    pattern for these "evaluate N alternatives" sections; US-006 mirrors it at the
+    cross-option level.
+  - Both typechecks still pass clean (posting exit 0, dashboard tsc exit 0); report
+    is markdown-only so it's a no-regression gate.
+---

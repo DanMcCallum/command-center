@@ -505,8 +505,183 @@ of `https://hyperbrowser.ai/docs/pricing`).
 
 ## 5. Other Options
 
-*(US-005 — to be completed: browser-extension cookie export, Apify, self-hosted
-streamed browser, credential vault — same rubric each, explicit verdict lines.)*
+Four alternatives to the hosted live-view path (§4) round out the field. Each is
+scored on the same rubric — **UX flow, build effort, reliability/fragility,
+security posture, cost** — and judged against the decided constraints: **single
+user now, the user always logs in themselves, and the app never stores marketplace
+passwords.** Each ends with an explicit verdict line. None of these was built or
+purchased; this is a paper evaluation grounded in the seeded research plus the
+first-hand Landmodo recon in §3 and the live Apify pricing check below.
+
+### (a) Browser-extension cookie export (PhantomBuster-style)
+
+A small browser extension reads the session cookies from the user's own
+logged-in browser and hands them to the app, which converts them into a Playwright
+`storageState` JSON. PhantomBuster is the canonical productized version (its
+extension auto-detects the LinkedIn `li_at` cookie + user agent and fills the
+session field on a "Connect" click); Apify documents the manual equivalent (log in
+normally, export cookies with an EditThisCookie-class extension as a JSON array,
+paste into the actor's *Initial cookies* input).
+
+- **UX flow:** install the extension once → log in to Landmodo normally in your own
+  browser → click **Connect** in the dashboard → the extension POSTs the
+  landmodo.com cookies (and, via a content script, any localStorage the auth needs)
+  to a dashboard endpoint, which writes `workers/posting/auth/landmodo.json`. Good
+  UX *after* install; the one-time install (and, for true external users, a Chrome
+  Web Store listing or an "unpacked" sideload) is the friction.
+- **Build effort:** moderate — **~2–4 days** for a minimal MV3 extension (`cookies`
+  permission scoped to landmodo.com + land.com, one popup, one authenticated fetch
+  to the endpoint) plus the receiving route and the cookie-array → storageState
+  conversion (trivial). Publishing to the Chrome Web Store adds review latency;
+  sideloading unpacked is fine for one operator but ugly to distribute.
+- **Reliability/fragility:** the weak spot. The session is minted on the **user's**
+  browser fingerprint and IP; replaying it from the worker's datacenter IP changes
+  both, which is exactly the signal Landmodo's invisible reCAPTCHA (§3) and any
+  future device-binding would score against. It works today for a small site but is
+  the mismatch most likely to shorten session life or trip a silent re-auth.
+  `HttpOnly` cookies are readable via the `chrome.cookies` API (no gap there);
+  localStorage-based auth needs a content script. Refresh story is "click Connect
+  again," which the extension keeps cheap.
+- **Security posture:** cookies transit our API, so we hold session material in
+  flight and at rest — better than passwords (revocable, no credential-reuse blast
+  radius) but worse than the live-view path where state never leaves the vendor.
+  Mitigate with TLS, short-lived signed upload tokens, and encryption at rest.
+  **Honors the no-password-custody constraint** (the app never sees the password).
+- **Cost:** **~$0** (a one-time $5 Chrome developer account if published).
+- **Verdict: viable fallback / break-glass.** Constraint-compliant and cheap, but
+  the browser-extension install is friction the live-view path doesn't have, and
+  the user-IP-to-server-IP replay mismatch makes its sessions more fragile than a
+  vendor profile minted and replayed on the same IP class. Keep it as a
+  no-vendor-dependency backup, not the primary.
+
+### (b) Apify (managed actors + session store)
+
+Apify is a scraping/automation cloud. Relevant pieces: its **"Log in by
+transferring cookies" tutorial** (the same extension/manual-export pattern as
+option (a) — Apify ships no first-party capture extension, it recommends
+EditThisCookie-class tools); community actors `pocesar/login-session` (logs in with
+username/password *inside* an actor and stores a named session — that's the
+option (d) credential-vault pattern, not capture), `Cookie & Session Manager`, and
+`Session/Login Extractor`; **SessionPool** (Crawlee) for per-session
+cookie/proxy/fingerprint persistence and rotation; and the option to run **our
+Playwright poster as an actor** (containerize `post.ts`, invoke via API with
+`{ listing, storageState }`).
+
+- **UX flow:** for *capture*, identical to option (a) — extension or manual cookie
+  paste. Apify does not improve the login-capture step; it replaces the **worker
+  infrastructure**, not the capture problem.
+- **Build effort:** small port to run the poster as an actor (a Dockerfile + input
+  schema), but this **adds a vendor to solve a problem we don't have** — a working
+  self-hosted poster already exists (`workers/run-poster.sh` + `workers/posting/`).
+- **Reliability/fragility:** same cookie-replay fragility as (a) for capture;
+  Apify's managed residential proxies and Crawlee fingerprinting can *mitigate* the
+  IP mismatch if we route posts through them, which is a genuine (if paid) edge over
+  a bare extension.
+- **Security posture:** cookies/sessions now live in a third-party cloud in addition
+  to transiting our API — a strictly larger surface than option (a) for the same
+  capture UX. Still **no password custody** (unless one uses the
+  `login-session` actor, which is option (d) and rejected). 
+- **Cost (live-verified `apify.com/pricing`, fetched 2026-07-10):** **Free** $0/mo
+  ($5 platform credit); **Starter $29/mo** ($29 credit); **Scale $199/mo** ($199
+  credit); **Business $999/mo**; Enterprise custom. Compute is **$0.20/CU** on
+  Free/Starter (1 CU = 1 GB-RAM-hour), $0.16 on Scale, $0.13 on Business;
+  residential proxies **$8/GB** (Free/Starter). A 3-minute Playwright post at 2–4 GB
+  ≈ 0.1–0.2 CU ≈ **$0.02–0.04/post** — trivial. (Seeded figures confirmed still
+  current: Starter $29, ~$0.20/CU, $8/GB.) So ~$29/mo + a few cents/post if a paid
+  plan is needed for concurrency; the Free tier's $5 credit covers our 1-user
+  volume outright.
+- **Verdict: rejected for our scale (not on constraint grounds).** Apify solves
+  *worker hosting and proxy rotation*, which we already have in-house cheaply, and
+  does **nothing** for the capture UX that (a) doesn't already do. It only becomes
+  attractive if we later want managed compute + proxies + scheduling as a bundle —
+  not our problem at 1–20 users posting a few listings each.
+
+### (c) Self-hosted streamed browser (neko / noVNC / CDP screencast)
+
+Build the live-view experience ourselves instead of renting it: (a) **neko**
+(`m1k1o/neko`) — Dockerized Chromium + WebRTC, explicitly pitched as an
+open-source Hyperbeam alternative, iframe-embeddable, sub-300 ms latency; (b)
+**Xvfb + x11vnc + noVNC** wrapped around the existing headed Playwright script; or
+(c) raw CDP `Page.startScreencast` + synthesized input over a WebSocket (what the
+§4 vendors build internally).
+
+- **UX flow:** can match the hosted live-view path (§4) exactly once built — the
+  operator logs in to Landmodo inside an embedded stream in the dashboard, never
+  sees a terminal, never installs anything.
+- **Build effort:** the catch, and it's large. neko yields a *viewable* browser in
+  ~a day, but a production capture flow still needs per-user container
+  orchestration, profile persistence + extraction to `storageState`, session
+  lifecycle, a TURN server for WebRTC through NATs, auth around the stream, and TLS
+  — realistically **1–2 weeks to solid**, plus ongoing ops. CDP screencast from
+  scratch is **2–4 weeks**. This is 5–10× the ~1–2 days of a hosted vendor for the
+  same result.
+- **Reliability/fragility:** sessions originate from our **own server IP** and stay
+  consistent thereafter (good for longevity — better than the extension's
+  user→server mismatch), but there is **no vendor stealth or CAPTCHA assistance** —
+  against Landmodo's invisible reCAPTCHA (§3) a human-driven login still passes
+  fine, but we own every Chromium/driver update and every breakage.
+- **Security posture:** best data sovereignty — nothing leaves our infrastructure,
+  no vendor to assess. The flip side is we own all of it, and a leaked neko/noVNC
+  stream URL grants full browser control, so the stream needs the same short-lived,
+  authenticated guarding the vendors provide out of the box. **No password
+  custody** — the user logs in themselves.
+- **Cost:** a **$10–40/mo VPS** plus our time (the dominant cost).
+- **Verdict: viable fallback, deferred.** Constraint-compliant and the only option
+  with zero vendor dependency, but the effort and ops burden are unjustified at
+  this scale when a hosted vendor gives the identical UX in ~1–2 days for $0–20/mo.
+  Reach for it only if vendor dependency ever becomes a hard constraint (e.g. a
+  compliance requirement that state never leave our infra).
+
+### (d) Credential vault (store username/password, headless login)
+
+The user types their Landmodo email + password into an app form once; the app
+stores them encrypted and **logs in headlessly on their behalf** whenever a session
+is needed. This is what the `pocesar/login-session` Apify actor automates.
+
+- **UX flow:** simplest possible — one form, and **self-healing**: when a session
+  expires the worker silently re-logs-in with no user involvement. On paper the best
+  UX of any option.
+- **Build effort:** low — a login script plus encrypted-at-rest secret storage
+  (libsodium sealed box / KMS). **~1–2 days.**
+- **Reliability/fragility:** the worst fit for Landmodo specifically. §3 confirmed
+  the login is guarded by an **invisible Google reCAPTCHA** that scores requests in
+  the background — a headless, datacenter-IP scripted login is the textbook trigger
+  for exactly that defense, so this is the option most likely to **silently start
+  failing at any time**. It also breaks outright if Landmodo ever adds MFA (the
+  recon found none today, but a scripted flow can't answer an emailed/SMS code
+  without extra plumbing). Automated login with stored credentials is also the
+  pattern marketplace ToS most explicitly prohibit.
+- **Security posture:** the disqualifier. The app would hold **reusable,
+  password-equivalent credentials for accounts it does not own**. Users reuse
+  passwords across sites, so a breach of the vault is a breach of their accounts
+  everywhere — a liability and a trust ask ("give this app your password") that
+  every other option avoids.
+- **Cost:** **~$0.**
+- **Verdict: rejected — violates the no-password-custody constraint.** The operator
+  decided the app never sees or stores marketplace passwords; a credential vault is
+  *defined* by storing them, so it is out regardless of its UX appeal. Documented
+  here only for completeness. (Even setting the constraint aside, §3's invisible
+  reCAPTCHA would make headless login the most fragile choice on the board.)
+
+### Summary of §5 verdicts
+
+| Option | Constraint-compliant? | Verdict |
+|---|---|---|
+| (a) Extension cookie export | Yes (no password custody) | **Viable fallback / break-glass** — cheap and compliant, but install friction + user-IP→server-IP replay make sessions more fragile than a vendor profile. |
+| (b) Apify | Yes | **Rejected for scale** — solves worker hosting we already have; no better capture UX than (a). |
+| (c) Self-hosted neko/noVNC | Yes | **Viable fallback, deferred** — identical UX to §4 but 1–2 weeks + ops vs. 1–2 days; only if vendor dependency becomes unacceptable. |
+| (d) Credential vault | **No** — stores passwords | **Rejected** on the no-password-custody constraint (and would be the most fragile against Landmodo's invisible reCAPTCHA anyway). |
+
+**Sources** (all fetched 2026-07-10): live Apify pricing `https://apify.com/pricing`
+(Starter $29/mo, $0.20/CU, $8/GB residential — seeded figures confirmed current);
+Apify cookie-transfer tutorial
+`https://docs.apify.com/platform/tutorials/log-in-by-transferring-cookies`; Apify
+session management `https://docs.apify.com/sdk/js/docs/guides/session-management`;
+`pocesar/apify-login-session` `https://github.com/pocesar/apify-login-session`;
+PhantomBuster extension onboarding
+`https://support.phantombuster.com/hc/en-us/articles/24572365472786`; neko
+`https://github.com/m1k1o/neko`. Landmodo reCAPTCHA / MFA findings are first-hand
+from §3 (`workers/posting/recon-landmodo.ts`, 2026-07-10).
 
 ---
 

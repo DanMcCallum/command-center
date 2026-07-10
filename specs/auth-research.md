@@ -94,11 +94,11 @@ explicitly ruled in or out against my constraints, so the recommendation is
 defensible.
 
 **Acceptance Criteria:**
-- [ ] Other Options section of `report.md` covers: (a) browser-extension cookie export from the user's own browser (PhantomBuster-style), (b) Apify (cookie-transfer tutorial, SessionPool, running the poster as an actor, current pricing from apify.com/pricing), (c) self-hosted streamed browser (neko / noVNC / CDP screencast), (d) credential vault with headless login
-- [ ] Each option gets the same rubric: UX flow, build effort, reliability/fragility, security posture, cost
-- [ ] Each option ends with an explicit verdict line ("Recommended / viable fallback / rejected because …") judged against the decided constraints: single user now, user logs in themselves, app never stores marketplace passwords
-- [ ] Credential vault is marked rejected on the no-password-custody constraint (kept in the doc for completeness)
-- [ ] Typecheck passes
+- [x] Other Options section of `report.md` covers: (a) browser-extension cookie export from the user's own browser (PhantomBuster-style), (b) Apify (cookie-transfer tutorial, SessionPool, running the poster as an actor, current pricing from apify.com/pricing), (c) self-hosted streamed browser (neko / noVNC / CDP screencast), (d) credential vault with headless login
+- [x] Each option gets the same rubric: UX flow, build effort, reliability/fragility, security posture, cost
+- [x] Each option ends with an explicit verdict line ("Recommended / viable fallback / rejected because …") judged against the decided constraints: single user now, user logs in themselves, app never stores marketplace passwords
+- [x] Credential vault is marked rejected on the no-password-custody constraint (kept in the doc for completeness)
+- [x] Typecheck passes
 
 ### US-006: Comparison matrix and recommendation
 **Description:** As the operator, I want a one-page comparison and a clear
