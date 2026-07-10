@@ -1,5 +1,7 @@
 # PRD: Marketplace Auth Capture — Research Spike
 
+**Status:** Implemented (2026-07-10)
+
 ## Introduction
 
 Capturing marketplace logins today is cumbersome: the operator must open a

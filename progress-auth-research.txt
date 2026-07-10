@@ -289,3 +289,20 @@
     + flip header to Implemented (2026-07-10)), per the Ralph instructions.
   - Both typechecks pass (posting exit 0 incl. render-pdf.ts, dashboard tsc exit 0).
 ---
+
+## Iteration 9 - SHIP: auth-research spike feature log + readme
+- All 8 US ([x]); this was the Ship step per specs/specs.md.
+- Added "Marketplace auth-capture — research spike" summary to specs/specs.md
+  (deliverables under research/auth-capture-spike/, the two reusable
+  workers/posting scripts recon-landmodo.ts + render-pdf.ts, verified findings
+  for LandFeed API + Landmodo invisible reCAPTCHA, the Browserbase/cookie-export
+  recommendation, and the §7 follow-up PRD stories US-101..104 / US-201..203).
+- Added a research/ entry to the readme.md repo map (only readme change — a
+  research spike changed no system behavior, so no non-goal/architecture/data-flow
+  claim became false).
+- Flipped specs/auth-research.md header to "**Status:** Implemented (2026-07-10)"
+  (the PRD had no Status line at all — added one rather than editing "Draft").
+- Files changed: specs/specs.md, specs/readme.md, specs/auth-research.md, this file.
+- Learnings: FEATURE COMPLETE. Nothing left in this PRD. The spike's payload for a
+  future builder is entirely in the specs.md summary + report.md §7.
+---

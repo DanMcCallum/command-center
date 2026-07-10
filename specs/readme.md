@@ -314,6 +314,8 @@ command-center/
     paths.json          External directory roots
     ad-platforms.json   Per-platform caps + buyer profiles
     posting-platforms.json  Posting targets: enabled flags + login/new-listing URLs
+  research/
+    auth-capture-spike/ Auth-capture proposal: report.md + PDF + recon artifacts (specs.md -> Marketplace auth-capture)
   specs/
     readme.md           This document (core system)
     specs.md            Feature log: one summary per shipped feature + spec process

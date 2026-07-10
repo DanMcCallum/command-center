@@ -15,6 +15,32 @@ One summary per shipped feature. Read this **and** [readme.md](readme.md) (the c
 
 ---
 
+## Marketplace auth-capture — research spike (proposal, no implementation)
+
+**PRD:** [auth-research.md](auth-research.md) · **Shipped:** 2026-07-10 · **Type:** research spike (deliverable is a proposal, not a code change to the running system)
+
+A decision-ready proposal for replacing the terminal-only `capture-login` flow (see Ad posting) with an app-friendly, no-password-custody login capture for the two enabled platforms. **No system behavior changed** — no dashboard UI, API routes, `capture-login.ts`, or poster scripts were touched. The output is a document plus two throwaway research scripts.
+
+**Deliverables (all under `research/auth-capture-spike/`):** `report.md` is the source of truth; `auth-capture-proposal.pdf` is the shareable render; `artifacts/landmodo-login.png` is the recon screenshot; `initial-research.md` is the seeded desk research the spike verified. Regenerate the PDF after editing the report with `cd workers/posting && npx tsx render-pdf.ts`.
+
+**Scripts added to `workers/posting/`** (both are in-package so they stay in `npm run typecheck`; ESM resolves `playwright` relative to the script file, so any future Playwright helper must also live here):
+- `recon-landmodo.ts` — headless, default-fingerprint Chromium recon: loads a page, full-page screenshots it, scans HTML for bot-wall/CAPTCHA vendor signatures, dumps form fields. Recon only (never submits). Reusable pattern for vetting any marketplace login.
+- `render-pdf.ts` — markdown → PDF via the existing Playwright/Chromium (`page.setContent` → `page.pdf`, Letter, `printBackground`). Exports `mdToHtml` + `CSS` (guarded behind `require.main === module`) so a verifier can screenshot the HTML. The hand-rolled `mdToHtml` covers h1–h6, GFM pipe tables, ul/ol, blockquotes, hr, inline bold/`code`/links — no external markdown dep (a bare `marked` import would break the typecheck). Single-`*` italic is intentionally unhandled.
+
+**Key verified findings (2026-07-10, each cited in the report):**
+- **Land.com has a working LandFeed XML API** (`land.com/LandFeed/`, spec v2.1 via Wayback; XSD + states endpoints live). Credentials travel *inside* the XML (`loa_account_id` + `loa_account_email` + `loa_shared_key`); the shared key is issued by Land.com staff and requires an active Corporate Account. The feed is authoritative — omitting a listing DELETES it, so send the full set every time; a test mode exists. Latency 5 min–6 hr. $0 beyond an existing plan. **Gated on the operator emailing Land.com for a shared key** (draft email is in the report).
+- **Landmodo has no posting API/bulk import** and its login carries an *invisible* Google reCAPTCHA (no hCaptcha/Turnstile/DataDome, no MFA); the page loads fine for a headless datacenter browser. This makes any scripted/credential-vault login the fragile path and a human-in-the-loop capture the clean one.
+- **Recommendation:** land_com → LandFeed API (fallback: hosted live-view); landmodo → **Browserbase** hosted live-view ($20/mo Developer tier, bundles CAPTCHA solving), user logs in inside a dashboard iframe, state returned to workers via **CDP cookie export to `auth/<platform>.json`** (keeps `post.ts` unchanged — the low-risk path). Fallbacks: browser-extension cookie export, then self-hosted neko. Rejected: credential vault (violates no-password-custody), Apify (no better capture UX). Note Steel.dev dropped its cheap recurring tier since the seeded research — pricing drift is real; every claim in the report is dated.
+
+**Follow-up implementation PRD is drafted inside the report (§7):** Ralph-sized stories US-101–104 (LandFeed path) and US-201–203 (Browserbase live-view path), plus operator-task prerequisites (email Land.com; create a Browserbase account; decide public photo hosting) called out as *not* Ralph stories. That section is the ready-to-run spec if the proposal is accepted — it is not yet its own `specs/` PRD.
+
+**Invariants / gotchas:**
+- The report embeds **no** session data or `auth/*.json` contents — file paths only (those files are secrets, per Ad posting).
+- No vendor accounts, payments, or logins were made; every price/capability claim carries a source URL + fetch date because vendor pricing drifts.
+- Verification tooling on this box: no pandoc/pdfinfo/wkhtmltopdf — Playwright print-to-PDF is the only local render path, and PDF page count is counted from the `/Kids` page tree, not `pdfinfo`. WebFetch cannot reach `web.archive.org` (use `curl` + tag-strip) and returns only `<title>` on JS-heavy marketing pages (fetch the static docs page or WebSearch instead).
+
+**Extending:** accepting the proposal means promoting §7 into a real `specs/<feature>.md` PRD and building it; `recon-landmodo.ts` generalizes to recon any new marketplace, and `render-pdf.ts` renders any repo markdown to a shareable PDF.
+
 ## Ad photos — upload, ordering, and submission-failure UX
 
 **PRD:** [ad-photos.md](ad-photos.md) · **Shipped:** 2026-07-10
