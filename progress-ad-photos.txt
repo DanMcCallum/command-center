@@ -254,3 +254,69 @@
   - US-008 (banner) can reuse: failed+attempts>=3 is the "permanent" filter,
     MAX_ATTEMPTS=3 currently lives as a const in PostingChips.tsx.
 ---
+## Iteration 8 - US-008: Permanently-failed postings banner on the tasks page
+- New dashboard/components/PostingFailureBanner.tsx, mounted in
+  app/tasks/page.tsx between the header and the filter tabs, fed the same
+  `tasks` state the 30s poll refreshes. Shows an amber (#D4A04D tinted
+  border/bg) banner when any posting is failed with attempts >= 3:
+  "N posting(s) need attention" (singular/plural handled) + one underlined
+  task-title link per affected task (/tasks?focus=<id>). Dismiss (×) stores
+  every currently-failed `taskId:platform` key in sessionStorage
+  ('dismissed-posting-failures'); the banner renders only when some failed
+  key is NOT in that set, so a NEW permanent failure reappears it while
+  already-dismissed ones stay quiet. Resolved failures drop their keys from
+  the computed set, so the banner disappears on the normal refresh cycle.
+- Files changed:
+  - dashboard/components/PostingFailureBanner.tsx (new)
+  - dashboard/app/tasks/page.tsx
+  - specs/ad-photos.md (checked off US-008)
+- Verified: `npx tsc --noEmit` clean; headless Playwright run (15 checks,
+  all pass) against the already-running `next dev -p 3001`, with
+  page.route('**/api/tasks') fulfilling fake task fixtures so NO real
+  tasks.json data was touched: no banner for failed/1+posted; banner
+  appeared via a real 30s interval tick (no reload) with correct singular
+  text + focus link; plural count across 2 tasks; dismiss -> hidden + 3
+  keys in sessionStorage; dismissal survived reload; new failure (task-c)
+  reappeared banner with updated count; all-resolved -> no banner.
+  Screenshot inspected — matches dark-minimalism rules.
+- Learnings for future iterations:
+  - `?focus=<id>` is NOT actually consumed anywhere in the dashboard (no
+    useSearchParams in app/ or components/) — readme.md claims deep-link
+    support but it's aspirational; links with that href are still the right
+    contract.
+  - Fully faking GET /api/tasks with page.route is the cleanest verification
+    isolation yet: zero shared-state risk from cron/worker/poster, and you
+    can flip the response object between phases to drive the UI. Route
+    handlers persist across page.reload().
+  - sessionStorage must be read in useEffect (not a useState initializer) in
+    client components — they still SSR-render once and sessionStorage is
+    undefined server-side; a `loaded` flag avoids a flash-then-hide.
+  - Dismissal semantics that satisfy "reappears on NEW failure": store the
+    set of dismissed posting keys, show when any current key is missing from
+    it — no timestamps or counters needed.
+  - This was the last story: next iteration is the Ship step (feature-log
+    summary in specs/specs.md, readme.md fixes, Status -> Implemented).
+---
+## Iteration 9 - Ship: feature log + readme updates
+- Added the "Ad photos" summary to specs/specs.md (data model, upload API
+  contract, submit flow, poster preflight, UI surfaces, invariants,
+  extension points), inserted before the Ad posting entry.
+- specs/readme.md fixes: photo-upload step added to the §4 data-flow
+  diagram; /ad-builder row now documents the required photo picker and the
+  upload-then-fire-worker submit flow; /tasks row mentions the
+  permanently-failed-postings banner; API table gained
+  POST /api/tasks/{id}/photos; repo-map components list gained PhotoPicker,
+  PostingChips, PostingFailureBanner; specs/ map lists ad-photos.md.
+- specs/ad-photos.md header: Draft -> Implemented (2026-07-10).
+- Files changed:
+  - specs/specs.md
+  - specs/readme.md
+  - specs/ad-photos.md
+  - progress-ad-photos.txt
+- Learnings for future iterations:
+  - Working tree carries unrelated modified files from the other loop
+    (progress.txt, specs/ad-posting.md, dashboard/data/tasks.json,
+    dashboard/.next-start.log, workers/workspace/notes/*.bak) — always
+    git add ship files by explicit path, never `git add -A`.
+  - Feature complete: all criteria [x] and Status is Implemented.
+---

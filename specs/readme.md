@@ -85,6 +85,8 @@ Three moving parts plus three supporting corpora:
 Operator fills Ad Builder form
   -> POST /api/tasks  (type: Content, priority: 1, model: opus,
                        slashCommand: generate-ad, metadata: full property form)
+  -> POST /api/tasks/{id}/photos  (one call per photo, order-prefixed
+                       filenames; worker fires only after all succeed)
   -> POST /api/run-worker  (spawns run-worker.sh detached)
   -> Worker claims task (status: in_progress)
   -> Worker builds prompt: system-prompt.md + generate-ad workflow
@@ -163,8 +165,8 @@ completed    -> pending        (operator reopens)
 | Route | Purpose |
 |---|---|
 | `/` | Redirects to `/tasks`. |
-| `/tasks` | Primary view. Task list polling every 30 s; filter tabs (All / Pending / In progress / Needs review / Completed) with counts; inline create form; expandable task rows showing priority dot, status badge, Claude's notes, links to output files. Actions per task: approve, request revision, delete, edit output files in a modal (`FileEditorModal`), and **Save to knowledge base** (`SaveToKbModal`). Supports `?focus={id}` deep links. |
-| `/ad-builder` | Structured property form: location, acreage, price, access (paved / dirt-year-round / dirt-seasonal / none), utilities (power/water/septic/internet as yes/no/unknown), terrain, zoning, comps, must-include notes, buyer hint (retiree / off-gridder / investor / builder / hunter / remote-worker), and target platforms. Submit creates a priority-1 opus `generate-ad` task with the form as `metadata`, fires the worker immediately, and routes to `/tasks?focus={id}`. |
+| `/tasks` | Primary view. Task list polling every 30 s; filter tabs (All / Pending / In progress / Needs review / Completed) with counts; inline create form; expandable task rows showing priority dot, status badge, Claude's notes, links to output files. Actions per task: approve, request revision, delete, edit output files in a modal (`FileEditorModal`), and **Save to knowledge base** (`SaveToKbModal`). A dismissible banner surfaces permanently failed marketplace postings (specs.md → Ad photos). Supports `?focus={id}` deep links. |
+| `/ad-builder` | Structured property form: location, acreage, price, access (paved / dirt-year-round / dirt-seasonal / none), utilities (power/water/septic/internet as yes/no/unknown), terrain, zoning, comps, must-include notes, buyer hint (retiree / off-gridder / investor / builder / hunter / remote-worker), target platforms, and photos (at least 1 required; drag-and-drop ordering with one starred primary). Submit creates a priority-1 opus `generate-ad` task with the form as `metadata`, uploads the photos into the task's outputs dir, then fires the worker and routes to `/tasks?focus={id}` (specs.md → Ad photos). |
 | `/roadmap` | Read-only list of future-work items from `data/todos.json`; each is a ready-to-run prompt brief. |
 | `/settings` | Worker scheduling via `CronConfigPanel`: on/off toggle, interval picker (over the cron-config/worker-status APIs), and a status card (last run, last task, crontab installed). |
 
@@ -177,6 +179,7 @@ All routes are `force-dynamic`; the worker script consumes the same API over `cu
 | GET | `/api/tasks` | All tasks, sorted by priority asc then recency. |
 | POST | `/api/tasks` | Create task (requires `title`; server fills id, timestamps, defaults). |
 | GET / PATCH / DELETE | `/api/tasks/{id}` | Read / partial-update / delete one task. PATCH auto-stamps `completedAt` on `status: completed` and protects `id`/`createdAt`. |
+| POST | `/api/tasks/{id}/photos` | Multipart photo upload into `workers/workspace/outputs/{id}/photos/` — one file per call, order-prefixed filename required (specs.md → Ad photos). |
 | GET | `/api/todos` | Roadmap items. |
 | GET / PUT | `/api/cron-config` | Read / update worker schedule. PUT installs or removes the actual crontab entry (marker: `# COMMAND-CENTER-WORKER`). |
 | GET | `/api/worker-status` | Cron config + whether the crontab entry is actually installed. |
@@ -284,7 +287,8 @@ command-center/
   dashboard/            Next.js app (UI + API + JSON data files)
     app/                Routes: /, /tasks, /ad-builder, /roadmap, /settings, /api/*
     components/         TaskCard, TaskForm, SaveToKbModal, FileEditorModal,
-                        CronConfigPanel, Nav, StatusBadge, PriorityIndicator
+                        CronConfigPanel, Nav, StatusBadge, PriorityIndicator,
+                        PhotoPicker, PostingChips, PostingFailureBanner
     lib/                types.ts, data.ts (JSON I/O), cron.ts, utils.ts
     data/               tasks.json, todos.json, cron-config.json
     start.sh            Production start (called from @reboot cron)
@@ -314,5 +318,6 @@ command-center/
     readme.md           This document (core system)
     specs.md            Feature log: one summary per shipped feature + spec process
     ad-posting.md       Feature PRD: auto-post approved ads (implemented)
+    ad-photos.md        Feature PRD: photo upload/ordering + failure UX (implemented)
   *.md                  Original design docs (Blueprint, TLDR, Worker System Spec)
 ```

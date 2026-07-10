@@ -1,6 +1,6 @@
 # PRD: Ad Photos — Upload, Ordering, and Submission-Failure UX
 
-**Status:** Draft
+**Status:** Implemented (2026-07-10)
 
 ## Introduction
 

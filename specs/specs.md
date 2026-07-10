@@ -15,6 +15,32 @@ One summary per shipped feature. Read this **and** [readme.md](readme.md) (the c
 
 ---
 
+## Ad photos — upload, ordering, and submission-failure UX
+
+**PRD:** [ad-photos.md](ad-photos.md) · **Shipped:** 2026-07-10
+
+The Ad Builder form now requires at least one photo per ad request. Users attach images (jpg/jpeg/png/webp/gif, ≤15 MB each), reorder them by drag-and-drop, and star one as primary; on submit the photos are uploaded into `workers/workspace/outputs/<taskId>/photos/` **before** the worker is fired. Order and primary choice are encoded entirely in filenames — primary gets prefix `00_`, the rest `01_`, `02_`… in gallery order — because the poster's `listPhotos()` sorts by name and uploads in array order. Zero changes to the platform posting scripts' upload mechanics.
+
+**Data model:** no new `Task` fields. `task.metadata` gains `photoCount: number` and `primaryPhoto: string` (display/debugging only — filenames are the ordering source of truth; never add a parallel ordering field).
+
+**API additions:** `POST /api/tasks/[id]/photos` — `multipart/form-data`, one `file` per request plus a `filename` field that must already match `/^[0-9]{2}_[\w.-]+$/` (the client generates the prefix and sanitizes the name). 404 for unknown task; 400 for traversal (`/`, `\`, `..`), disallowed extension, >15 MB, or bad pattern. Writes only inside `outputs/<taskId>/photos/`; returns `{filename, size}`. App Router `request.formData()` handles 15 MB bodies with no route config.
+
+**Submit flow (Ad Builder):** `POST /api/tasks` → sequential photo uploads → `POST /api/run-worker` → redirect to `/tasks?focus=<id>`, with worker + redirect gated on every upload succeeding. On failure: per-thumbnail error state, uploads continue past failures, "Retry failed uploads" re-sends only failed files against the **same** taskId (flaky uploads can never create duplicate tasks), or the user removes failed photos and continues with ≥1 uploaded. Task-create failure shows an inline error and attempts zero uploads.
+
+**Poster preflight:** `requirePhotos()` in `workers/posting/post-common.ts`, called from `post.ts` before `parseAdOutput` and any browser launch — a photo-less task fails in ~2 s with `lastError` exactly `No photos found in outputs/<taskId>/photos — upload photos and Retry` (and no `screenshotPath`, since no browser ran).
+
+**UI:** `dashboard/components/PhotoPicker.tsx` (thumbnail grid, HTML5 drag-and-drop, primary star, per-file errors); `PostingChips.tsx` — failed chips open a popover (full `lastError`, attempts of 3, screenshot link via `/api/files`, Retry inside the popover at 3 attempts; `MAX_ATTEMPTS` const lives here); `PostingFailureBanner.tsx` on `/tasks` — dismissible amber banner when any posting is `failed` with `attempts >= 3`, dismissal in `sessionStorage` as a set of `taskId:platform` keys so a NEW permanent failure reappears it.
+
+**Invariants / gotchas:**
+- The `NN_` filename prefix is the entire ordering mechanism; gaps in the sequence are fine (`listPhotos()` only sorts). Already-uploaded names are frozen — retry/removal never recomputes them.
+- Photo uploads use the dedicated route, not `files/[...path]` (that stays GET/PUT-text only).
+- `run-poster.sh` joins the last 3 stderr lines into `lastError` — operator-facing errors must be one line to survive verbatim.
+- v1 is create-time only: no photo add/remove/reorder after submit; the workaround is editing `outputs/<taskId>/photos/` on disk.
+- Verification: port 3000 serves stale production code — always use `npx next dev -p 3001`. Playwright verification scripts must live inside `workers/posting/` (ESM resolves `playwright` relative to the script file). Faking `GET /api/tasks` with `page.route` fixtures is the cleanest isolation from the shared `tasks.json` that cron/worker/poster also touch.
+- `?focus=<id>` is not actually consumed anywhere in the dashboard yet (readme's deep-link claim is aspirational) — links with that href remain the contract.
+
+**Extending:** per-platform photo rules belong in submit-time validation plus the upload route; post-submit photo management needs a new UI surface but can reuse the same route and filename contract.
+
 ## Ad posting — auto-post approved ads to marketplaces
 
 **PRD:** [ad-posting.md](ad-posting.md) · **Shipped:** 2026-07-10 · **v1 platforms:** Landmodo, Land.com
