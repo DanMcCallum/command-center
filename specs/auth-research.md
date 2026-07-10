@@ -57,11 +57,11 @@ actually available to my account tier, because it would remove login capture for
 Land.com entirely.
 
 **Acceptance Criteria:**
-- [ ] Attempt to fetch `https://www.landsofamerica.com/LandFeed/Docs/` (and a web-archive copy if the live page errors); record HTTP status and whatever schema/auth details are obtainable
-- [ ] Land.com section of `report.md` filled in: what the feed does, auth model (account ID + shared key), known schema fields, posting latency, and cost
-- [ ] Section contains an explicit "Open questions for Land.com support" list (at minimum: is feed access available on our advertiser tier, and how are credentials issued) plus a ready-to-send draft email requesting feed access
-- [ ] Section states the fallback if feed access is denied (keep current Playwright poster; capture via the approach chosen for Landmodo)
-- [ ] Typecheck passes
+- [x] Attempt to fetch `https://www.landsofamerica.com/LandFeed/Docs/` (and a web-archive copy if the live page errors); record HTTP status and whatever schema/auth details are obtainable
+- [x] Land.com section of `report.md` filled in: what the feed does, auth model (account ID + shared key), known schema fields, posting latency, and cost
+- [x] Section contains an explicit "Open questions for Land.com support" list (at minimum: is feed access available on our advertiser tier, and how are credentials issued) plus a ready-to-send draft email requesting feed access
+- [x] Section states the fallback if feed access is denied (keep current Playwright poster; capture via the approach chosen for Landmodo)
+- [x] Typecheck passes
 
 ### US-003: Recon the Landmodo login flow
 **Description:** As the operator, I want first-hand evidence of what Landmodo's

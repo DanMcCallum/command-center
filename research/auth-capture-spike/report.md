@@ -76,9 +76,177 @@ auth files gitignored and excluded from the file-browsing API as secrets.
 
 ## 2. Land.com — LandFeed XML API
 
-*(US-002 — to be completed: verify the LandFeed docs, auth model, schema,
-latency, cost; open questions for Land.com support; draft access-request email;
-fallback statement.)*
+**Verdict: sanctioned, browser-free path for Land.com — recommended, pending one
+eligibility check with Land.com support (see open questions).** The seeded
+research's headline claim holds up: Land.com publishes an official **LandFeed XML
+API** that adds, updates, and deletes listings via a single authenticated HTTPS
+POST, with no cookies, no browser session, and nothing to expire. If our account
+qualifies, this deletes the Land.com half of the auth-capture problem at its root.
+
+### How the doc fetch went (US-002 evidence)
+
+| URL | Fetched | Status | Note |
+|---|---|---|---|
+| `https://www.landsofamerica.com/LandFeed/Docs/` | 2026-07-10 | **HTTP 500** | Still errors live, exactly as the seeded research reported. |
+| `http://web.archive.org/web/20240423062829/https://www.landsofamerica.com/LandFeed/Docs/` | 2026-07-10 | **HTTP 200** | Full spec recovered here — **LandFeed API Specification, Version 2.1 (September 21, 2022)**. All details below come from this snapshot. |
+| `https://www.land.com/LandFeed/Docs/` | 2026-07-10 | **HTTP 200** | The `land.com` host (vs. `landsofamerica.com`) serves the same docs page live; the 500 is host-specific, so the spec is not gone, just flaky on one hostname. |
+| `https://www.land.com/LandFeed/schemas/LandFeedSchema1.0.xsd` | 2026-07-10 | **HTTP 200** | The XSD the feed is validated against is live and fetchable — real, current schema. |
+| `https://www.land.com/LandFeed/states/` | 2026-07-10 | **HTTP 200** | The canonical county/city name list (names must match exactly) is live. |
+| `https://www.land.com/LandFeed/` | 2026-07-10 | **HTTP 200** | The POST target endpoint responds. |
+
+So the earlier "couldn't verify firsthand" caveat is now resolved: the full v2.1
+spec, its XSD, and the supporting reference lists were all read directly.
+
+### What the feed does
+
+Customers "automatically add, update, and delete land listings by securely
+uploading XML data to Land.com via HTTPS." One POST carries the operator's **entire**
+active inventory each time; Land.com diffs it against what it already has by the
+customer's own unique listing ID:
+
+- **INSERT** — the listing ID is not yet in Land.com's system.
+- **UPDATE** — the listing ID already exists; its data is overwritten.
+- **DELETE** — a listing ID previously sent is **absent** from the new feed.
+  *Gotcha:* this makes the feed authoritative — you must send **all** listings and
+  **all** photos every time, or anything you omit is deleted. A `mode` of `test`
+  runs full validation without touching live listings or images.
+
+Processing runs 365 days/year; successfully posted data is live "within minutes."
+
+### Auth model
+
+Credentials travel **inside the XML body** (not headers), in the `<channel>`
+element — there is no OAuth, no cookie, no session:
+
+- `channel.loa_account_id` (integer) — the Land.com account ID (parent account for
+  a corporate account). Retrievable from the Land.com Admin area.
+- `channel.loa_account_email` — the email on the parent account.
+- `channel.loa_shared_key` — a **secret shared key issued by Land.com technical
+  staff** when LandFeed is enabled for the account. This is the credential we do
+  not yet have.
+- `channel.loa_account_password` — present in the schema but **deprecated**; not
+  the auth path.
+
+Transport requirements: HTTPS POST to `https://www.land.com/LandFeed/`, **TLS 1.2
+or higher**, `Content-Type: text/xml`, a valid `User-Agent` header, and a correct
+`Content-Length`. A prerequisite stated up front: an **active Land.com Corporate
+Account**, with named Primary and Alternate technical contacts (this is the
+eligibility question below — our account may be a plain advertiser, not corporate).
+
+For our stack this is a good fit: the shared key is a secret we'd store the same
+way `workers/posting/auth/*.json` are handled today (gitignored, `600`, never
+logged) — but unlike a browser session it never expires and never needs
+recapturing.
+
+### Schema (key fields)
+
+Data format is Google Base XML (an RSS 2.0 document with a `<channel>` and repeated
+`<item>` elements), validated against
+`https://www.land.com/LandFeed/schemas/LandFeedSchema1.0.xsd`. Fields most relevant
+to how we generate ads today (`config/ad-platforms.json` + Ad Builder metadata):
+
+| Field | XML element | Req? | Notes |
+|---|---|---|---|
+| Customer listing ID | `item.id` | yes | Our own unique key; drives INSERT/UPDATE/DELETE. `task.id` is a natural fit. |
+| Description | `item.description` | yes | CDATA. **No HTML, no URLs, no email addresses** — those listings are rejected outright. |
+| Custom listing title | `item.listing_title` | no | Up to 775 chars — the headline surface. |
+| Listing status | `item.listing_status` | yes | `Available` / `Contract Pending` / `Sold`. |
+| County | `item.county` | yes | Must match Land.com's county names exactly (list at `/LandFeed/states/`). |
+| State | `item.state` | yes | Full name or 2-char code. |
+| Closest city | `item.closest_city` | yes | |
+| Lot size | `item.lot_size` | yes | Acres, ≤2 decimals; residential/commercial must be ≥1 acre. |
+| Price | `item.price` | yes | Integer, no non-numeric characters. |
+| Property types | `item` attribute `propertytypes` | — | Bitwise sum (Recreational Land = 4, Undeveloped Land = 32, Hunting Land = 128, etc.), max 3 types; supersedes the legacy `property_type` tag. |
+| Main photo | `item.image_link` | no | One image URL (Land.com pulls it). |
+| Photo tour | `item.loa_photo_tour_images.image_link` | no | 0–200 image URLs. |
+| Lead routing email | `item.lead_routing_email` | no | Extra address to notify on a lead. |
+| Sales comps | `item.salesdata.*` | no | Only when `listing_status = Sold`; ties into our knowledge-base sold-ad loop. |
+
+Photos are referenced by **URL** — Land.com GETs them from links in the XML (JPEG/
+GIF/PNG/BMP, ≤2 MB each, min ~300px wide). This differs from the current poster,
+which uploads local files from `outputs/<taskId>/photos/`; a feed integration would
+need those photos reachable at a public URL.
+
+### Posting latency
+
+- **Listings:** live in **5 minutes to ~1 hour** (per the spec's FAQ).
+- **Images:** processed by a separate pass, typically **10 minutes to 6 hours**
+  depending on count.
+- Feed and image processing each email a success/warning/error report to the
+  account's technical contacts; per-listing errors don't halt the rest of the feed.
+  Results are verified by logging into the Property Control Center
+  (`propertycontrolcenter.com`) — the same admin surface the current Playwright
+  poster drives.
+
+### Cost
+
+**$0 beyond the Land.com listing plan the operator already pays for.** LandFeed is
+a feature of an account, not a metered API — the only stated prerequisite is an
+active Corporate Account and issuance of the shared key. No per-post fee, no vendor,
+no infrastructure.
+
+### Open questions for Land.com support
+
+1. **Eligibility:** Is LandFeed available on our current account tier, or does it
+   require a **Corporate Account** specifically? The spec lists "an active Land.com
+   Corporate Account" as a prerequisite — the single biggest unknown, since we may
+   be a standard advertiser.
+2. **Credential issuance:** How is the `loa_shared_key` issued, to whom, and how is
+   it rotated/revoked if leaked? (The spec says "Land.com staff will create a new
+   unique key.")
+3. **Account IDs:** Confirm our `loa_account_id` (and any child account IDs) from
+   the Admin area, and whether a corporate parent must be created first.
+4. **Cost:** Any fee or plan upgrade tied to enabling LandFeed?
+5. **Photo hosting:** Since photos are ingested by URL, is there any Land.com-hosted
+   upload path, or must we serve our `outputs/<taskId>/photos/` images at a public
+   HTTPS URL ourselves?
+6. **Schema currency:** Is `LandFeedSchema1.0.xsd` (v2.1, Sept 2022) still the
+   current schema, and is the `landsofamerica.com/LandFeed/Docs/` 500 a known issue?
+
+### Draft email to Land.com support (ready to send)
+
+> **To:** support@land.com (cc: sales@land.com)
+> **Subject:** LandFeed XML API access for my advertiser account
+>
+> Hello,
+>
+> I advertise land listings on Land.com and would like to enable the **LandFeed
+> XML API** so I can add, update, and delete my listings programmatically instead
+> of entering them by hand in the Property Control Center.
+>
+> Could you help me confirm a few things?
+>
+> 1. Is LandFeed available on my current account, or do I need a Corporate Account
+>    to use it? If I need one, what's involved in setting that up?
+> 2. How do I get my **shared key** (`loa_shared_key`) and confirm my
+>    **account ID** (`loa_account_id`)?
+> 3. Is there any cost or plan change associated with enabling LandFeed?
+> 4. Is `LandFeedSchema1.0.xsd` (spec version 2.1, September 2022) still the current
+>    schema? The docs page at `landsofamerica.com/LandFeed/Docs/` currently returns
+>    an HTTP 500 error, though `land.com/LandFeed/Docs/` loads.
+>
+> My account email is daniel@ownaloha.land. Happy to provide my account ID or set
+> up the required technical contacts.
+>
+> Thank you,
+> Dan
+
+### Fallback if feed access is denied
+
+If LandFeed turns out to be gated to broker/corporate tiers we can't reach, the
+fallback is to **keep the current Playwright poster for Land.com** and capture its
+login session using whatever approach we choose for Landmodo (the hosted live-view
+browser recommended in §4). Nothing about Land.com's posting *mechanics* changes in
+that case — only the login-capture UX improves alongside Landmodo's. This keeps
+Land.com functional regardless of the eligibility answer; the LandFeed API is a
+strict upgrade we adopt only if the account qualifies.
+
+**Sources** (all fetched 2026-07-10): LandFeed API Specification v2.1 via Wayback
+`web.archive.org/web/20240423062829/https://www.landsofamerica.com/LandFeed/Docs/`;
+live schema `https://www.land.com/LandFeed/schemas/LandFeedSchema1.0.xsd` (HTTP
+200); live endpoint `https://www.land.com/LandFeed/` (HTTP 200); live docs mirror
+`https://www.land.com/LandFeed/Docs/` (HTTP 200); `landsofamerica.com/LandFeed/Docs/`
+(HTTP 500).
 
 ---
 

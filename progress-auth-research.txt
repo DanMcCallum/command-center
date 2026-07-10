@@ -29,3 +29,38 @@
   - workers/posting/auth/*.json are secrets — never quote their contents in the
     report, paths only.
 ---
+
+## Iteration 2 - US-002: Verify the Land.com LandFeed API
+- Verified the LandFeed XML API firsthand and filled in §2 of report.md.
+- Fetch results (all 2026-07-10): landsofamerica.com/LandFeed/Docs/ = HTTP 500
+  (still broken, as seeded research said); land.com/LandFeed/Docs/ = 200 (same
+  page on the other host); Wayback snapshot 20240423062829 = 200 and returned the
+  FULL spec (LandFeed API Specification v2.1, Sept 21 2022); the XSD
+  land.com/LandFeed/schemas/LandFeedSchema1.0.xsd = 200; /LandFeed/states/ = 200;
+  POST endpoint land.com/LandFeed/ = 200.
+- Wrote: what the feed does (INSERT/UPDATE/DELETE by customer listing id; feed is
+  authoritative — omitting a listing DELETES it; send everything every time; test
+  mode exists), auth model (creds live IN the XML: loa_account_id +
+  loa_account_email + loa_shared_key, shared key issued by Land.com staff;
+  requires active Corporate Account; TLS 1.2+, Content-Type text/xml, User-Agent),
+  a key-fields schema table, latency (listings 5min-1hr, images 10min-6hr), cost
+  ($0 beyond existing plan), 6 open questions, a ready-to-send draft support
+  email, and the fallback (keep Playwright poster for land_com, capture via the
+  Landmodo approach in §4).
+- Files changed: research/auth-capture-spike/report.md (§2 filled),
+  specs/auth-research.md (US-002 checked), this file.
+- Learnings for future iterations:
+  - WebFetch CANNOT reach web.archive.org (returns "unable to fetch"). Use curl to
+    pull Wayback snapshots, then sed 's/<[^>]*>/ /g' to strip tags. The Wayback
+    availability API (archive.org/wayback/available?url=...) finds the closest
+    snapshot fast.
+  - WebFetch also refuses HTTP 500 pages (no body). curl -o file still saves
+    whatever the server returns; for a 500 there's no body, so pivot to archive.
+  - land.com and landsofamerica.com are the SAME site (CoStar Group); when one
+    host errors, try the other before giving up.
+  - For US-004 (vendor pricing) WebFetch should work on live vendor docs pages —
+    only archive.org and 500s are blocked. Record source URL + fetch date per the
+    PRD's "web is live and changes" rule.
+  - Both typechecks still pass clean (posting exit 0, dashboard tsc exit 0);
+    report is markdown-only so it's purely a no-regression gate.
+---
