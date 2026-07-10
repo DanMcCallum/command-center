@@ -18,6 +18,7 @@ import {
   PosterTask,
   PostResult,
   loadPlatformConfig,
+  requirePhotos,
 } from './post-common'
 import { postToLandCom } from './post-land_com'
 import { postToLandmodo } from './post-landmodo'
@@ -78,6 +79,7 @@ async function main(): Promise<void> {
 
   const task = await fetchTask(taskId)
   const outputDir = path.join(OUTPUTS_DIR, taskId)
+  requirePhotos(outputDir, taskId) // fail fast before any browser launch
   const adCopy = parseAdOutput(outputDir, platformKey)
 
   console.error(

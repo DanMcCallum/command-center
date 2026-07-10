@@ -129,3 +129,87 @@
     queued photos do NOT continue) and a failed run leaves the created task
     behind with partial photos — exactly the gap US-005 is scoped to fix
     (per-file error state, retry-only-failed, proceed-if-≥1-succeeded).
+---
+## Iteration 5 - US-005: Upload failure handling in the form
+- Reworked the Ad Builder submit flow around a frozen "upload plan"
+  (UploadEntry[]: photoId + file + filename + queued/uploaded/failed +
+  error). Uploads continue past failures; worker fire + redirect happen only
+  when every entry is uploaded and >=1 landed. Failure panel replaces the
+  submit button: "N of M photos failed to upload" + "Retry failed uploads"
+  (re-sends only failed entries against the SAME taskId — no duplicate task).
+  Removing a failed photo from the picker drops it from the retry set and the
+  panel flips to a "Continue" button (guarded on >=1 uploaded); on continue,
+  metadata.photoCount/primaryPhoto are PATCHed if they went stale. Task-create
+  failure shows an inline error and attempts zero uploads. PhotoPicker gained
+  an optional uploadErrors prop (photoId -> message): red border + message on
+  the failed tile (error border trumps primary teal, drag style trumps both).
+- Files changed:
+  - dashboard/app/ad-builder/page.tsx
+  - dashboard/components/PhotoPicker.tsx
+  - specs/ad-photos.md (checked off US-005)
+- Verified: `npx tsc --noEmit` clean; headless Playwright run (20 checks,
+  all pass) against `npx next dev -p 3001`: task-create 500 -> inline error +
+  0 uploads; route.abort('failed') on upload #2 -> red tile w/ "Network
+  error", summary text, no worker call, no redirect, photo #3 still
+  attempted; retry re-sent exactly 1 request and finished (disk 00_/01_/02_,
+  metadata intact); remove-failed -> Continue path left 00_+02_ on disk and
+  PATCHed metadata to photoCount=2. Failure-state screenshot inspected.
+- Learnings for future iterations:
+  - Freezing filenames in the plan at first submit is what makes retry safe:
+    already-uploaded NN_ names must never be recomputed after a removal, or
+    disk order reshuffles. Gaps in the NN_ sequence (e.g. 00_, 02_) are fine —
+    listPhotos() only sorts.
+  - taskId in state is the retry anchor: resubmit/retry with taskId set skips
+    POST /api/tasks entirely, so flaky uploads can't create duplicate tasks.
+  - route.abort('failed') in Playwright makes fetch throw — exercises the
+    catch branch ("Network error"), distinct from !res.ok API errors.
+  - Bracketed Tailwind classes can't be targeted with normal CSS selectors in
+    tests; `div[draggable="true"][class*="FF4D4D"]` works for "tile in error
+    state".
+  - getByPlaceholder('40') collides with the comps textarea placeholder — use
+    { exact: true }.
+  - US-007/008 (posting failure UX) are dashboard-only; US-006 is the next
+    story and lives in workers/posting (preflight photo check before browser
+    launch).
+---
+## Iteration 6 - US-006: Poster fails fast when photos are missing
+- Added requirePhotos(outputDir, taskId) to workers/posting/post-common.ts
+  (throws "No photos found in outputs/<taskId>/photos — upload photos and
+  Retry" when listPhotos() is empty; returns the list otherwise) and call it
+  in post.ts right after computing outputDir — BEFORE parseAdOutput and any
+  browser launch, so a photo-less task fails in ~2s with only that message on
+  stderr. Platform scripts untouched; with photos present the check is a pure
+  pass-through, so posting behavior is unchanged.
+- run-poster.sh: ERR_MSG capture now trims trailing whitespace (tr '\n' ' '
+  left a trailing space), so a one-line error lands in lastError byte-for-byte.
+- Files changed:
+  - workers/posting/post-common.ts (requirePhotos)
+  - workers/posting/post.ts (preflight call)
+  - workers/posting/post-common.test.ts (new test; 12/12 pass)
+  - workers/run-poster.sh (ERR_MSG trim)
+  - specs/ad-photos.md (checked off US-006)
+- Verified: `npm run typecheck` + `npm test` clean in workers/posting; then
+  end-to-end — created a temp task with a queued landmodo posting and no
+  photos, ran the real `bash workers/run-poster.sh` with
+  DASHBOARD_URL=http://localhost:3001, confirmed postings[0] became
+  {status: failed, attempts: 1} with lastError exactly equal to the expected
+  message (string-compared), task DELETEd after.
+- Learnings for future iterations:
+  - A dev server on 3001 may already be running from another session
+    (EADDRINUSE) — check `ss -tlnp | grep 3001` + /proc/<pid>/cwd; if it's
+    `next dev` in this repo it serves current source and can be reused (don't
+    kill a server you didn't start).
+  - The poster cron (*/5, # COMMAND-CENTER-POSTER) targets port 3000 against
+    the SAME tasks.json — a test task with a queued posting is visible to it.
+    Mitigations: run run-poster.sh with the DEFAULT lockfile (mutually
+    excludes the cron run), keep the window short, DELETE the task right away.
+    With the preflight in the working tree a stray pickup is browser-less.
+  - Put preflights in post.ts BEFORE parseAdOutput: a hand-made test task has
+    no ad output files either, so a later check would be masked by the
+    "cannot read <platform>.md" error.
+  - run-poster.sh error plumbing is `tail -n 3 stderr | tr '\n' ' ' | head -c
+    500` — multi-line errors get joined; keep operator-facing errors to one
+    line if they must survive verbatim.
+  - US-007 (failure popover) can rely on lastError now being exact and on
+    screenshotPath being absent for preflight failures (no browser = no
+    screenshot).

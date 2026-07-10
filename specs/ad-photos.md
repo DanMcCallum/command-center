@@ -85,10 +85,10 @@ This feature adds photo upload to the Ad Builder page (`dashboard/app/ad-builder
 **Description:** As the operator, I want a posting attempt on a task without photos to fail immediately with a clear message, so legacy or hand-edited tasks don't burn retries inside Playwright with a confusing site error.
 
 **Acceptance Criteria:**
-- [ ] `workers/posting/post.ts` (or `post-common.ts`) checks `listPhotos()` before launching the browser; if empty/missing, it exits non-zero with the message `No photos found in outputs/<taskId>/photos — upload photos and Retry`
-- [ ] That message flows through `run-poster.sh` into the posting's `lastError` unchanged (verify by running the poster against a photo-less test task)
-- [ ] Tasks with photos post exactly as before
-- [ ] Typecheck passes
+- [x] `workers/posting/post.ts` (or `post-common.ts`) checks `listPhotos()` before launching the browser; if empty/missing, it exits non-zero with the message `No photos found in outputs/<taskId>/photos — upload photos and Retry`
+- [x] That message flows through `run-poster.sh` into the posting's `lastError` unchanged (verify by running the poster against a photo-less test task)
+- [x] Tasks with photos post exactly as before
+- [x] Typecheck passes
 
 ### US-007: Posting failure detail popover
 **Description:** As a reviewer, I want to click a failed posting chip and see the full error, attempt count, and proof screenshot, so I can diagnose the failure instead of squinting at a truncated tooltip.

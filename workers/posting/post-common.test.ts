@@ -8,6 +8,7 @@ import {
   loadPlatformConfig,
   requireAuthState,
   requireListingFacts,
+  requirePhotos,
   splitLocation,
 } from './post-common'
 
@@ -58,6 +59,28 @@ test('listPhotos returns sorted image files and [] when photos/ is absent', () =
     assert.deepStrictEqual(
       listPhotos(dir).map((p) => path.basename(p)),
       ['a.png', 'b.JPG', 'c.webp']
+    )
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test('requirePhotos throws the upload-and-Retry error only when photos are missing', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'post-common-'))
+  try {
+    assert.throws(
+      () => requirePhotos(dir, 'task-abc'),
+      (err: Error) =>
+        err.message === 'No photos found in outputs/task-abc/photos — upload photos and Retry'
+    )
+    const photosDir = path.join(dir, 'photos')
+    fs.mkdirSync(photosDir)
+    fs.writeFileSync(path.join(photosDir, 'notes.txt'), '') // non-image only: still missing
+    assert.throws(() => requirePhotos(dir, 'task-abc'), /No photos found/)
+    fs.writeFileSync(path.join(photosDir, '00_a.png'), '')
+    assert.deepStrictEqual(
+      requirePhotos(dir, 'task-abc').map((p) => path.basename(p)),
+      ['00_a.png']
     )
   } finally {
     fs.rmSync(dir, { recursive: true, force: true })

@@ -106,6 +106,21 @@ export function listPhotos(outputDir: string): string[] {
     .map((f) => path.join(photosDir, f))
 }
 
+/**
+ * Preflight for post.ts: every marketplace requires at least one photo, so a
+ * photo-less task must fail before a browser is ever launched. The message is
+ * recorded verbatim as the posting's lastError — keep it operator-actionable.
+ */
+export function requirePhotos(outputDir: string, taskId: string): string[] {
+  const photos = listPhotos(outputDir)
+  if (photos.length === 0) {
+    throw new Error(
+      `No photos found in outputs/${taskId}/photos — upload photos and Retry`
+    )
+  }
+  return photos
+}
+
 export interface ParsedLocation {
   /** County name without the trailing " County" word, e.g. "Elko". */
   county: string

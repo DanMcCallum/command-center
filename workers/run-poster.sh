@@ -157,7 +157,7 @@ for TASK_ID in $TASK_IDS; do
     elif [[ $POST_EXIT -eq 124 ]]; then
       ERR_MSG="Posting timed out after ${POST_TIMEOUT_SECONDS}s"
     else
-      ERR_MSG=$(tail -n 3 "$STDERR_FILE" | tr '\n' ' ' | head -c 500)
+      ERR_MSG=$(tail -n 3 "$STDERR_FILE" | tr '\n' ' ' | head -c 500 | sed 's/[[:space:]]*$//')
       [[ -z "$ERR_MSG" ]] && ERR_MSG="Posting script failed with exit code $POST_EXIT and no error output"
     fi
     rm -f "$STDOUT_FILE" "$STDERR_FILE"
