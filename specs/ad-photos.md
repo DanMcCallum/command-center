@@ -73,13 +73,13 @@ This feature adds photo upload to the Ad Builder page (`dashboard/app/ad-builder
 **Description:** As a user, if a photo fails to upload I want to see which one failed and retry it, so a flaky upload doesn't strand my ad request in a half-built state.
 
 **Acceptance Criteria:**
-- [ ] A failed upload marks that thumbnail with an error state (red border + short error message); remaining queued photos still attempt
-- [ ] When any upload fails, the worker is NOT triggered and no redirect happens; the form shows a summary ("2 of 5 photos failed to upload") with a "Retry failed uploads" button that re-attempts only the failed files
-- [ ] User can alternatively remove a failed photo and proceed, as long as at least 1 photo uploaded successfully
-- [ ] If `POST /api/tasks` itself fails, an inline error is shown and no uploads are attempted
-- [ ] Network failure is simulated in verification (e.g. stop the dev server or block the route) to confirm the error and retry path render
-- [ ] Typecheck passes
-- [ ] Verify changes work in browser
+- [x] A failed upload marks that thumbnail with an error state (red border + short error message); remaining queued photos still attempt
+- [x] When any upload fails, the worker is NOT triggered and no redirect happens; the form shows a summary ("2 of 5 photos failed to upload") with a "Retry failed uploads" button that re-attempts only the failed files
+- [x] User can alternatively remove a failed photo and proceed, as long as at least 1 photo uploaded successfully
+- [x] If `POST /api/tasks` itself fails, an inline error is shown and no uploads are attempted
+- [x] Network failure is simulated in verification (e.g. stop the dev server or block the route) to confirm the error and retry path render
+- [x] Typecheck passes
+- [x] Verify changes work in browser
 
 ### US-006: Poster fails fast when photos are missing
 **Description:** As the operator, I want a posting attempt on a task without photos to fail immediately with a clear message, so legacy or hand-edited tasks don't burn retries inside Playwright with a confusing site error.

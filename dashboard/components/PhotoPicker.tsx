@@ -13,8 +13,12 @@ const MAX_SIZE_BYTES = 15 * 1024 * 1024;
 
 export default function PhotoPicker({
   onChange,
+  uploadErrors,
 }: {
   onChange: (photos: PickedPhoto[], primaryIndex: number) => void;
+  // photo id -> short error message; tiles listed here render in a red error
+  // state (set by the form when an upload fails).
+  uploadErrors?: Record<string, string>;
 }) {
   const [photos, setPhotos] = useState<PickedPhoto[]>([]);
   const [primaryId, setPrimaryId] = useState<string | null>(null);
@@ -125,6 +129,7 @@ export default function PhotoPicker({
           <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
             {photos.map(p => {
               const isPrimary = p.id === primaryId;
+              const uploadError = uploadErrors?.[p.id];
               return (
                 <div
                   key={p.id}
@@ -143,9 +148,11 @@ export default function PhotoPicker({
                     'relative rounded border bg-[#252525] overflow-hidden cursor-grab ' +
                     (dragId === p.id
                       ? 'opacity-50 border-[#4DAB9A]'
-                      : isPrimary
-                        ? 'border-[#4DAB9A]'
-                        : 'border-[#373737]')
+                      : uploadError
+                        ? 'border-[#FF4D4D]'
+                        : isPrimary
+                          ? 'border-[#4DAB9A]'
+                          : 'border-[#373737]')
                   }
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -183,6 +190,14 @@ export default function PhotoPicker({
                   <div className="px-1.5 py-1 text-xs text-[#9B9B9B] truncate" title={p.file.name}>
                     {p.file.name}
                   </div>
+                  {uploadError && (
+                    <div
+                      className="px-1.5 pb-1 text-[10px] text-[#FF4D4D] truncate"
+                      title={uploadError}
+                    >
+                      {uploadError}
+                    </div>
+                  )}
                 </div>
               );
             })}

@@ -51,6 +51,19 @@ const inputClass =
   'w-full bg-[#2F2F2F] text-white border border-[#373737] rounded px-3 py-2 text-sm outline-none transition-colors focus:border-[#4DAB9A]';
 const selectClass = inputClass + ' appearance-none pr-8';
 
+// One entry per photo the submission promised to upload. The filename is fixed
+// the moment the plan is built (it encodes order on disk), so retries re-send
+// the exact same name and never reshuffle files that already landed.
+interface UploadEntry {
+  photoId: string;
+  file: File;
+  filename: string;
+  status: 'queued' | 'uploaded' | 'failed';
+  error?: string;
+}
+
+type AdMetadata = Record<string, unknown> & { photoCount: number; primaryPhoto: string };
+
 export default function AdBuilderPage() {
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
@@ -77,12 +90,148 @@ export default function AdBuilderPage() {
   // Index into `photos` of the starred (cover) image; consumed by the upload
   // flow (US-004), which gives it the 00_ filename prefix.
   const [primaryIndex, setPrimaryIndex] = useState(-1);
+  // Set once the task is created; a retry after upload failures reuses it
+  // instead of creating a duplicate task.
+  const [taskId, setTaskId] = useState<string | null>(null);
+  const [taskMetadata, setTaskMetadata] = useState<AdMetadata | null>(null);
+  const [uploadPlan, setUploadPlan] = useState<UploadEntry[] | null>(null);
+
+  // Failed/queued entries only count while their photo is still in the picker
+  // (removing a failed photo drops it from the retry set); uploaded entries are
+  // on disk regardless of what the picker shows.
+  const activePlan =
+    uploadPlan === null
+      ? null
+      : uploadPlan.filter(
+          en => en.status === 'uploaded' || photos.some(p => p.id === en.photoId),
+        );
+  const failedEntries = activePlan?.filter(en => en.status === 'failed') ?? [];
+  const uploadedCount = activePlan?.filter(en => en.status === 'uploaded').length ?? 0;
+  const uploadErrors = Object.fromEntries(
+    failedEntries.map(en => [en.photoId, en.error ?? 'Upload failed']),
+  );
+  const showUploadPanel =
+    !submitting && activePlan !== null && (failedEntries.length > 0 || uploadedCount > 0);
 
   function togglePlatform(key: string) {
     setPlatforms(prev => ({ ...prev, [key]: !prev[key] }));
   }
   function setUtility(key: string, value: UtilityStatus) {
     setUtilities(prev => ({ ...prev, [key]: value }));
+  }
+
+  // Primary first (00_), then the rest in gallery order (01_, 02_, …) —
+  // listPhotos() in the poster sorts by filename, so the prefix IS the order.
+  function buildFreshPlan(): UploadEntry[] {
+    const pi = primaryIndex >= 0 && primaryIndex < photos.length ? primaryIndex : 0;
+    const ordered = [photos[pi], ...photos.filter((_, i) => i !== pi)];
+    return ordered.map((p, i) => ({
+      photoId: p.id,
+      file: p.file,
+      filename: `${String(i).padStart(2, '0')}_${sanitizeBasename(p.file.name)}`,
+      status: 'queued' as const,
+    }));
+  }
+
+  // After a partial failure the uploaded filenames are already on disk, so the
+  // plan is frozen: keep uploaded entries, drop failed/queued entries whose
+  // photo was removed from the picker, and append any photos added since with
+  // the next order prefixes.
+  function reconcilePlan(): UploadEntry[] {
+    const kept = (uploadPlan ?? []).filter(
+      en => en.status === 'uploaded' || photos.some(p => p.id === en.photoId),
+    );
+    if (kept.length === 0) return buildFreshPlan();
+    let next = Math.max(...kept.map(en => parseInt(en.filename.slice(0, 2), 10))) + 1;
+    const known = new Set(kept.map(en => en.photoId));
+    const additions = photos
+      .filter(p => !known.has(p.id))
+      .map(p => ({
+        photoId: p.id,
+        file: p.file,
+        filename: `${String(next++).padStart(2, '0')}_${sanitizeBasename(p.file.name)}`,
+        status: 'queued' as const,
+      }));
+    return [...kept, ...additions];
+  }
+
+  // Sequential upload of everything not yet uploaded. A failure marks that
+  // entry and moves on — remaining photos still attempt.
+  async function runUploads(id: string, plan: UploadEntry[]): Promise<UploadEntry[]> {
+    const entries = plan.map(en => ({ ...en }));
+    const todo = entries.filter(en => en.status !== 'uploaded');
+    for (let i = 0; i < todo.length; i++) {
+      const entry = todo[i];
+      setUploadProgress(`Uploading photo ${i + 1} of ${todo.length}…`);
+      try {
+        const fd = new FormData();
+        fd.append('file', entry.file);
+        fd.append('filename', entry.filename);
+        const up = await fetch(`/api/tasks/${id}/photos`, { method: 'POST', body: fd });
+        if (up.ok) {
+          entry.status = 'uploaded';
+          delete entry.error;
+        } else {
+          const data = await up.json().catch(() => ({}) as { error?: string });
+          entry.status = 'failed';
+          entry.error = data.error ?? `HTTP ${up.status}`;
+        }
+      } catch {
+        entry.status = 'failed';
+        entry.error = 'Network error';
+      }
+      setUploadPlan(entries.map(en => ({ ...en })));
+    }
+    setUploadProgress(null);
+    return entries;
+  }
+
+  async function finalize(id: string, entries: UploadEntry[]) {
+    const uploaded = entries
+      .filter(en => en.status === 'uploaded')
+      .map(en => en.filename)
+      .sort();
+    // If failed photos were dropped, the counts stamped at create time are stale.
+    if (
+      taskMetadata &&
+      (taskMetadata.photoCount !== uploaded.length || taskMetadata.primaryPhoto !== uploaded[0])
+    ) {
+      await fetch(`/api/tasks/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          metadata: { ...taskMetadata, photoCount: uploaded.length, primaryPhoto: uploaded[0] },
+        }),
+      }).catch(() => {});
+    }
+    // Fire the worker now. Don't await — worker runs detached.
+    fetch('/api/run-worker', { method: 'POST' }).catch(() => {});
+    router.push(`/tasks?focus=${id}`);
+  }
+
+  // Worker trigger + redirect happen only when nothing failed and at least one
+  // photo is on disk; otherwise the failure panel takes over.
+  async function uploadAndFinish(id: string, plan: UploadEntry[]) {
+    setUploadPlan(plan);
+    const result = await runUploads(id, plan);
+    if (result.some(en => en.status === 'failed')) return;
+    if (!result.some(en => en.status === 'uploaded')) {
+      setError('At least 1 photo must upload successfully.');
+      return;
+    }
+    await finalize(id, result);
+  }
+
+  async function retryUploads() {
+    if (!taskId) return;
+    setError(null);
+    setSubmitting(true);
+    try {
+      await uploadAndFinish(taskId, reconcilePlan());
+    } finally {
+      setSubmitting(false);
+      setUploadProgress(null);
+    }
   }
 
   async function submit(e: React.FormEvent) {
@@ -96,38 +245,37 @@ export default function AdBuilderPage() {
     if (selectedPlatforms.length === 0) return setError('Pick at least one platform.');
     if (photos.length === 0) return setError('At least 1 photo is required.');
 
-    // Primary first (00_), then the rest in gallery order (01_, 02_, …) —
-    // listPhotos() in the poster sorts by filename, so the prefix IS the order.
-    const pi = primaryIndex >= 0 && primaryIndex < photos.length ? primaryIndex : 0;
-    const ordered = [photos[pi], ...photos.filter((_, i) => i !== pi)];
-    const uploadNames = ordered.map(
-      (p, i) => `${String(i).padStart(2, '0')}_${sanitizeBasename(p.file.name)}`,
-    );
-
-    const metadata = {
-      kind: 'ad-builder',
-      location: location.trim(),
-      acreage: Number(acreage),
-      price_usd: Number(priceUsd),
-      access: access || null,
-      utilities: Object.entries(utilities).filter(([, v]) => v === 'yes').map(([k]) => k),
-      utilities_absent: Object.entries(utilities).filter(([, v]) => v === 'no').map(([k]) => k),
-      utilities_notes: utilitiesNotes.trim() || null,
-      terrain: terrain.trim() || null,
-      zoning: zoning.trim() || null,
-      comparable_sales: comps.trim() || null,
-      must_include: mustInclude.trim() || null,
-      buyer_hint: buyerHint || null,
-      platforms: selectedPlatforms,
-      photoCount: photos.length,
-      primaryPhoto: uploadNames[0],
-    };
-
-    const description = renderDescription(metadata);
-    const title = `Generate ad: ${metadata.acreage} ac · ${metadata.location} · $${metadata.price_usd.toLocaleString()}`;
-
     setSubmitting(true);
     try {
+      if (taskId) {
+        // The task already exists from a failed attempt — resume the uploads.
+        await uploadAndFinish(taskId, reconcilePlan());
+        return;
+      }
+
+      const plan = buildFreshPlan();
+      const metadata = {
+        kind: 'ad-builder',
+        location: location.trim(),
+        acreage: Number(acreage),
+        price_usd: Number(priceUsd),
+        access: access || null,
+        utilities: Object.entries(utilities).filter(([, v]) => v === 'yes').map(([k]) => k),
+        utilities_absent: Object.entries(utilities).filter(([, v]) => v === 'no').map(([k]) => k),
+        utilities_notes: utilitiesNotes.trim() || null,
+        terrain: terrain.trim() || null,
+        zoning: zoning.trim() || null,
+        comparable_sales: comps.trim() || null,
+        must_include: mustInclude.trim() || null,
+        buyer_hint: buyerHint || null,
+        platforms: selectedPlatforms,
+        photoCount: plan.length,
+        primaryPhoto: plan[0].filename,
+      };
+
+      const description = renderDescription(metadata);
+      const title = `Generate ad: ${metadata.acreage} ac · ${metadata.location} · $${metadata.price_usd.toLocaleString()}`;
+
       const res = await fetch('/api/tasks', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -143,34 +291,15 @@ export default function AdBuilderPage() {
         }),
       });
       if (!res.ok) {
+        // No uploads are attempted when task creation fails.
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.error ?? `HTTP ${res.status}`);
+        setError(`Task creation failed: ${data.error ?? `HTTP ${res.status}`}`);
+        return;
       }
       const task = (await res.json()) as Task;
-
-      // Upload sequentially; the worker only fires after every photo lands.
-      for (let i = 0; i < ordered.length; i++) {
-        setUploadProgress(`Uploading photo ${i + 1} of ${ordered.length}…`);
-        const fd = new FormData();
-        fd.append('file', ordered[i].file);
-        fd.append('filename', uploadNames[i]);
-        const up = await fetch(`/api/tasks/${task.id}/photos`, {
-          method: 'POST',
-          body: fd,
-        });
-        if (!up.ok) {
-          const data = await up.json().catch(() => ({}));
-          throw new Error(
-            `Upload failed for ${uploadNames[i]}: ${data.error ?? `HTTP ${up.status}`}`,
-          );
-        }
-      }
-      setUploadProgress(null);
-
-      // Fire the worker now. Don't await — worker runs detached.
-      fetch('/api/run-worker', { method: 'POST' }).catch(() => {});
-
-      router.push(`/tasks?focus=${task.id}`);
+      setTaskId(task.id);
+      setTaskMetadata(metadata);
+      await uploadAndFinish(task.id, plan);
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -362,6 +491,7 @@ export default function AdBuilderPage() {
             Photos<span className="text-[#FF4D4D] ml-1">*</span>
           </div>
           <PhotoPicker
+            uploadErrors={uploadErrors}
             onChange={(next, primary) => {
               setPhotos(next);
               setPrimaryIndex(primary);
@@ -372,18 +502,57 @@ export default function AdBuilderPage() {
         {uploadProgress && <div className="text-xs text-[#9B9B9B]">{uploadProgress}</div>}
         {error && <div className="text-xs text-[#FF4D4D]">{error}</div>}
 
-        <div className="flex items-center gap-2 pt-2">
-          <button
-            type="submit"
-            disabled={submitting || photos.length === 0}
-            className="px-4 py-2 text-sm font-medium rounded bg-[#4DAB9A] text-[#191919] hover:bg-[#5BC0AE] transition-colors disabled:opacity-50"
-          >
-            {submitting ? 'Submitting…' : 'Generate ad'}
-          </button>
-          <span className="text-xs text-[#6B6B6B]">
-            Submission queues a task and starts the worker immediately. Results appear on the Tasks page within ~1-3 minutes.
-          </span>
-        </div>
+        {activePlan !== null && showUploadPanel && (
+          <div className="rounded border border-[#373737] bg-[#252525] px-3 py-2.5 space-y-2">
+            {failedEntries.length > 0 ? (
+              <>
+                <div className="text-xs text-[#FF4D4D]">
+                  {failedEntries.length} of {activePlan.length} photos failed to upload.
+                </div>
+                <div className="text-xs text-[#6B6B6B]">
+                  The worker starts only once every photo is in. Retry the failed uploads, or
+                  remove the failed photos above to continue without them.
+                </div>
+                <button
+                  type="button"
+                  onClick={retryUploads}
+                  className="px-3 py-1.5 text-sm font-medium rounded bg-[#4DAB9A] text-[#191919] hover:bg-[#5BC0AE] transition-colors"
+                >
+                  Retry failed uploads
+                </button>
+              </>
+            ) : (
+              <>
+                <div className="text-xs text-[#9B9B9B]">
+                  {uploadedCount} photo{uploadedCount === 1 ? '' : 's'} uploaded. Continue to
+                  start the worker with what made it.
+                </div>
+                <button
+                  type="button"
+                  onClick={retryUploads}
+                  className="px-3 py-1.5 text-sm font-medium rounded bg-[#4DAB9A] text-[#191919] hover:bg-[#5BC0AE] transition-colors"
+                >
+                  Continue
+                </button>
+              </>
+            )}
+          </div>
+        )}
+
+        {!showUploadPanel && (
+          <div className="flex items-center gap-2 pt-2">
+            <button
+              type="submit"
+              disabled={submitting || photos.length === 0}
+              className="px-4 py-2 text-sm font-medium rounded bg-[#4DAB9A] text-[#191919] hover:bg-[#5BC0AE] transition-colors disabled:opacity-50"
+            >
+              {submitting ? 'Submitting…' : 'Generate ad'}
+            </button>
+            <span className="text-xs text-[#6B6B6B]">
+              Submission queues a task and starts the worker immediately. Results appear on the Tasks page within ~1-3 minutes.
+            </span>
+          </div>
+        )}
       </form>
     </div>
   );
