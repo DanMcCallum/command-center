@@ -252,9 +252,109 @@ live schema `https://www.land.com/LandFeed/schemas/LandFeedSchema1.0.xsd` (HTTP
 
 ## 3. Landmodo — login-flow recon
 
-*(US-003 — to be completed: headless login-page recon with screenshot evidence,
-CAPTCHA/bot-protection markers, form fields observed, API/bulk-import absence
-confirmation.)*
+**Verdict: Landmodo needs a browser session (no API), and its login is
+automation-friendly — a plain email/password form that loads normally for a
+headless datacenter browser, guarded only by an invisible Google reCAPTCHA with
+no visible challenge and no MFA.** This grounds the seeded research's guess ("no
+evidence of aggressive bot protection or MFA") in first-hand evidence and makes
+the hosted live-view approach in §4 a clean fit: a human logging in inside the
+page satisfies reCAPTCHA naturally, and the resulting session is what we persist.
+
+### How the recon was run (US-003 evidence)
+
+A one-off headless Playwright script,
+`workers/posting/recon-landmodo.ts`, drove the **same Chromium install the poster
+uses** — default fingerprint, headless, datacenter IP, no stealth. It loaded the
+login page, saved a full-page screenshot, and dumped bot-protection markers and
+form fields. **No credentials were entered and no form was submitted — recon
+only.** Re-runnable with `cd workers/posting && npx tsx recon-landmodo.ts`.
+
+Screenshot artifact: `research/auth-capture-spike/artifacts/landmodo-login.png`
+(fetched 2026-07-10) — shows a clean "Log Into Your Account" card with Email
+Address + Password fields and a "Login Now" button, and **no visible reCAPTCHA
+checkbox or challenge** on the login tab.
+
+| Page | Fetched | Status | Note |
+|---|---|---|---|
+| `https://www.landmodo.com/login` | 2026-07-10 | **HTTP 200** | Loads and renders fully for a headless datacenter browser — no Cloudflare interstitial, no bot wall, no block. |
+| `https://www.landmodo.com/seller-support` | 2026-07-10 | **HTTP 200** | Seller FAQ; describes manual listing creation only (see below). |
+| `https://www.landmodo.com/how-it-works` | 2026-07-10 | **HTTP 404** | No such page (guessed path). |
+| `https://www.landmodo.com/list-your-company` | 2026-07-10 | **HTTP 404** | No such page (guessed path). |
+
+### Page load for a headless datacenter-fingerprint browser
+
+The login page returned **HTTP 200** and rendered completely — title
+"Login Now - Landmodo", full form visible in the screenshot — under a plain
+headless Chromium with a datacenter IP and no fingerprint spoofing. There was no
+Cloudflare challenge, no "verify you are human" interstitial, and no redirect to a
+bot wall. In other words, Landmodo does **not** block automated browsers at page
+load; the only bot defense sits on the form submission (reCAPTCHA), which we never
+trip because recon stops before submit.
+
+### Bot-protection / CAPTCHA / MFA markers
+
+The recon scanned the rendered HTML for the known bot-wall / CAPTCHA / MFA vendor
+signatures (reCAPTCHA, hCaptcha, Cloudflare Turnstile/challenge, DataDome,
+PerimeterX, Arkose/FunCaptcha). Result:
+
+- **Google reCAPTCHA — present.** The page loads Google's reCAPTCHA
+  (`www.google.com/recaptcha`, `g-recaptcha`), carries a `g-recaptcha` container,
+  and the login form (`member_login_190`) posts a **hidden `recaptcha` input** the
+  script populates. Crucially, the screenshot shows **no visible checkbox or image
+  challenge** on the login tab — the reCAPTCHA is scored invisibly in the
+  background, so a human logging in normally sees nothing to solve.
+- **Nothing else.** No hCaptcha, no Cloudflare Turnstile or challenge platform, no
+  DataDome, no PerimeterX, no Arkose/FunCaptcha.
+- **No MFA / OTP.** No two-factor, OTP, verification-code, or authenticator
+  markers anywhere on the login page — login is single-factor email + password.
+
+Implication for our options: a **credential-vault / headless scripted login
+(§5d) is the riskiest** here — a datacenter-IP scripted login is exactly what an
+invisible reCAPTCHA scores down, and it can start silently failing at any time. A
+**human-driven login inside a hosted live-view browser (§4) sidesteps this
+entirely** — the person passes reCAPTCHA the way any real user does, and we
+persist the session that results.
+
+### Login form fields observed
+
+The `member_login_190` login form exposes:
+
+| Field | type | name | Notes |
+|---|---|---|---|
+| Email Address | `email` | `email` | required; placeholder `name@yoursite.com` |
+| Password | `password` | `pass` | required; placeholder `Enter Password` |
+| reCAPTCHA token | `hidden` | `recaptcha` | populated by the reCAPTCHA script on submit |
+| (submit) | `submit` | — | the "Login Now" button |
+
+plus hidden form-plumbing fields (`sized`, `form`, `formname`, `dowiz`, `save`,
+`url_origin_pars`, `action`). A separate "Register New Account" tab (`signup_free`)
+sits on the same page with its own email/confirm/password/consent fields — not
+relevant to session capture. The form is a conventional server-rendered
+POST — no SSO, no email-magic-link, no passkey.
+
+### No official posting API or bulk import (confirmed from landmodo.com)
+
+The seeded research's "no API found" holds up against the site's own pages. The
+seller FAQ at `landmodo.com/seller-support` (HTTP 200) answers **"How do I post a
+Property?"** with a purely manual, dashboard-driven process — *"After you login,
+you are taken to the dashboard … on the left side look for Properties and click
+that link, this is where you will manage your listings"* — and its plan answer
+confirms per-listing manual entry (Starter/free plan = 3 listings, then $19.95
+tiers). Nowhere in the FAQ's visible text do the words **api, bulk, csv, import,
+feed, xml, integration,** or **automation** appear; the only HTML hits for those
+strings were in generic page chrome (scripts/meta), and they showed up identically
+on Landmodo's 404 pages, confirming they are not feature references. There is no
+documented programmatic or bulk-upload path.
+
+**Action (operator task, not a Ralph story):** email Landmodo support to ask
+whether any bulk-import or feed option exists for sellers — a small site may do
+something ad hoc — but the proposal plans as if the answer is no, i.e. Landmodo
+requires browser automation with a persisted login session.
+
+**Sources** (all fetched 2026-07-10): live recon of
+`https://www.landmodo.com/login` (HTTP 200) via `workers/posting/recon-landmodo.ts`,
+screenshot at `research/auth-capture-spike/artifacts/landmodo-login.png`; seller
+FAQ `https://www.landmodo.com/seller-support` (HTTP 200).
 
 ---
 

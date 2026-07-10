@@ -69,11 +69,11 @@ login involves (CAPTCHA? MFA? bot walls?) so the reliability claims in the
 proposal are grounded, not guessed.
 
 **Acceptance Criteria:**
-- [ ] Using the existing Playwright install in `workers/posting/`, load `https://www.landmodo.com/login` headless and save a screenshot to `research/auth-capture-spike/artifacts/landmodo-login.png`
-- [ ] Record in the Landmodo section of `report.md`: presence/absence of CAPTCHA widgets or bot-protection markers in the page (e.g. reCAPTCHA/hCaptcha/Cloudflare scripts in the HTML), the login form fields observed, and whether the page loads normally for a headless datacenter-fingerprint browser
-- [ ] Landmodo section confirms (with search evidence from landmodo.com pages) that no official posting API or bulk-import exists, and notes the "email their support to ask" action
-- [ ] Do NOT log in or submit any form — recon only, no credentials used
-- [ ] Typecheck passes
+- [x] Using the existing Playwright install in `workers/posting/`, load `https://www.landmodo.com/login` headless and save a screenshot to `research/auth-capture-spike/artifacts/landmodo-login.png`
+- [x] Record in the Landmodo section of `report.md`: presence/absence of CAPTCHA widgets or bot-protection markers in the page (e.g. reCAPTCHA/hCaptcha/Cloudflare scripts in the HTML), the login form fields observed, and whether the page loads normally for a headless datacenter-fingerprint browser
+- [x] Landmodo section confirms (with search evidence from landmodo.com pages) that no official posting API or bulk-import exists, and notes the "email their support to ask" action
+- [x] Do NOT log in or submit any form — recon only, no credentials used
+- [x] Typecheck passes
 
 ### US-004: Evaluate hosted live-view browser vendors
 **Description:** As the operator, I want a verified comparison of Browserbase,

@@ -64,3 +64,45 @@
   - Both typechecks still pass clean (posting exit 0, dashboard tsc exit 0);
     report is markdown-only so it's purely a no-regression gate.
 ---
+
+## Iteration 3 - US-003: Recon the Landmodo login flow
+- Wrote workers/posting/recon-landmodo.ts (headless, default-fingerprint Chromium
+  = the poster's install). It loads landmodo.com/login, full-page screenshots to
+  research/auth-capture-spike/artifacts/landmodo-login.png, scans HTML for known
+  bot-wall/CAPTCHA vendor signatures, and dumps the login form fields. Recon only:
+  never types credentials, never submits.
+- Findings (all 2026-07-10): login HTTP 200, renders fully for a headless
+  datacenter browser (no Cloudflare/bot wall). Only bot defense = Google
+  reCAPTCHA (g-recaptcha container + hidden `recaptcha` input in form
+  member_login_190) rendered INVISIBLY — screenshot shows a plain email/password
+  card, no checkbox/challenge. No hCaptcha/Turnstile/DataDome/PerimeterX/Arkose.
+  No MFA/OTP markers. Login form: email (name=email), pass (name=pass), hidden
+  recaptcha token, "Login Now" submit + hidden plumbing fields.
+- API absence confirmed from landmodo.com/seller-support (HTTP 200): "How do I
+  post a Property?" = manual dashboard flow only; no api/bulk/csv/import/feed/xml
+  in visible text. how-it-works + list-your-company = 404. Noted the email-support
+  action as an operator task.
+- Filled §3 of report.md (verdict, evidence table, load analysis, bot markers,
+  form table, API-absence, sources). Implication recorded: credential-vault
+  scripted login is riskiest (invisible reCAPTCHA scores down datacenter logins);
+  hosted live-view (§4) is the clean fit (human passes reCAPTCHA, we persist).
+- Files changed: workers/posting/recon-landmodo.ts (new),
+  research/auth-capture-spike/report.md (§3), artifacts/landmodo-login.png (new),
+  specs/auth-research.md (US-003 checked), this file.
+- Learnings for future iterations:
+  - The recon script lives in workers/posting/ so tsconfig include ["*.ts"] pulls
+    it into `npm run typecheck` — it must stay type-clean (it does, exit 0).
+  - Playwright gotcha: waitUntil 'networkidle' TIMED OUT on landmodo.com/seller-support
+    (long-polling/analytics keep the network busy). Use waitUntil 'domcontentloaded'
+    + a short page.waitForTimeout(2500) for content pages; 'networkidle' was fine on
+    the lighter /login page. For the screenshot I used networkidle with a .catch()
+    fallback so a busy network never aborts the shot.
+  - Keyword-in-HTML is a false-positive trap: api/feed/xml/import all appeared in
+    raw HTML of 404 pages (script/meta chrome). Verify against body.innerText
+    (visible text) and cross-check that the same hit isn't on an unrelated 404.
+  - reCAPTCHA version was ambiguous from markers (a g-recaptcha div present but no
+    data-sitekey / grecaptcha.execute) — the honest, screenshot-grounded statement
+    is "present but renders no visible challenge on the login tab," which is what
+    matters for the proposal. Don't overclaim v2 vs v3.
+  - Both typechecks still pass clean (posting exit 0, dashboard tsc exit 0).
+---
