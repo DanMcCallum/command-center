@@ -687,9 +687,126 @@ from §3 (`workers/posting/recon-landmodo.ts`, 2026-07-10).
 
 ## 6. Comparison & Recommendation
 
-*(US-006 — to be completed: option × criteria matrix, per-platform
-recommendation with fallback, "what would change this decision" list, explicit
-UX/reliability gains over the current CLI flow.)*
+This section synthesizes §2–§5 into a single decision. The bottom line: **Land.com
+should move to the LandFeed XML API (§2) once support confirms eligibility, and
+Landmodo should use a hosted live-view browser — Browserbase (§4) — so the operator
+logs in inside the dashboard.** The rest of this section is the evidence for that
+call.
+
+### Comparison matrix
+
+Every evaluated option scored on the shared rubric. UX / effort / reliability /
+security are qualitative (▲ good · ● middling · ▼ poor for our constraints); costs
+are monthly at 1 user (~10 posts/mo) and at 20 users (~30 posts/mo each), from the
+§4 cost table and the §5 per-option costs. The current CLI flow (§1) is the
+baseline every alternative is judged against.
+
+| Option (§) | UX | Effort | Reliability | Security | $/mo now | $/mo @ 20 users |
+|---|---|---|---|---|---|---|
+| **Current CLI capture** (§1, baseline) | ▼ terminal on the worker box; read-only dashboard | — (exists) | ● session rots silently; first signal is a failed post | ▲ no password custody; `600` local files | $0 | $0 (but doesn't scale to non-technical users) |
+| **LandFeed XML API** — land_com (§2) | ▲ no login at all; feed replaces capture | ● build XML feed + photo hosting; **gated on eligibility** | ▲ no session to expire; official sanctioned path | ▲ shared key, no cookies, no passwords | $0 | $0 |
+| **Browserbase** — live-view (§4) | ▲ log in inside the dashboard iframe | ● ~1–2 days SDK + iframe + poll | ▲ same-IP-class replay; **CAPTCHA solving bundled** | ▲ state stays vendor-side; no password custody | $0 (Free, 15-min cap) | **$20** (Developer) |
+| **Steel.dev** — live-view (§4) | ▲ same as Browserbase | ● ~1–2 days | ▲ same-IP replay; CAPTCHA solving | ▲ vendor-side; no passwords | $0 (one-time $30 credits) | **$250** (no cheap tier) or self-host |
+| **Anchor** — live-view (§4) | ▲ same; one-time hand-off URL | ● ~1–2 days | ▲ same-IP replay | ▲ vendor-side; no passwords | $0 ($5/mo credits) | ~$8 PAYG (or $50 floor) |
+| **Hyperbrowser** — live-view (§4) | ▲ same as Browserbase | ● ~1–2 days | ▲ same-IP replay | ▲ vendor-side; no passwords | $0 (1,000 credits) | ~$30 (Startup) |
+| **Extension cookie export** (§5a) | ● good after a one-time install | ● ~2–4 days (MV3 ext + route) | ▼ user-IP→server-IP replay mismatch shortens sessions | ● cookies transit our API | ~$0 | ~$0 |
+| **Apify** (§5b) | ● capture no better than (a) | ● small actor port, but adds a vendor | ● (a)'s fragility, mitigable via paid proxies | ● cookies also live in a 3rd-party cloud | $0 (Free $5 cr) | ~$29 + cents/post |
+| **Self-hosted neko/noVNC** (§5c) | ▲ matches §4 once built | ▼ 1–2 weeks + ongoing ops | ● same-server IP, but we own every breakage | ▲ nothing leaves our infra | ~$10–40 VPS | ~$10–40 VPS |
+| **Credential vault** (§5d) | ▲ best on paper (self-healing) | ▲ ~1–2 days | ▼ headless login trips Landmodo's invisible reCAPTCHA | ▼ **stores passwords for accounts we don't own** | ~$0 | ~$0 |
+
+Reading the matrix: the LandFeed API dominates for land_com (it removes the problem
+rather than improving it), and among the browser-session options for Landmodo the
+four hosted live-view vendors are near-identical on everything except price at
+scale, where **Browserbase's $20/mo (with CAPTCHA solving bundled, which directly
+addresses Landmodo's invisible reCAPTCHA from §3) is the cheapest turnkey recurring
+option**. The credential vault is the only option that fails a hard constraint
+(password custody, ▼ security) and is separately the most fragile against Landmodo's
+reCAPTCHA; extension export and self-hosting are constraint-compliant but each trade
+away either reliability or effort for no offsetting gain over a hosted vendor.
+
+### Per-platform recommendation
+
+**Land.com → LandFeed XML API (§2). Fallback: hosted live-view capture (the
+Landmodo path below), keeping the current Playwright poster.**
+The LandFeed feed is Land.com's own sanctioned integration: one authenticated HTTPS
+POST adds/updates/deletes listings with a shared key that never expires and no
+browser session to capture, at $0 beyond the existing plan. It eliminates the
+Land.com auth-capture problem outright rather than merely improving its UX. The one
+open item is eligibility — the spec names a Corporate Account as a prerequisite, so
+the recommendation is contingent on the support answer to the §2 draft email; if
+feed access is denied, Land.com falls back to the same hosted live-view capture we
+recommend for Landmodo, with zero change to the existing poster mechanics.
+
+**Landmodo → hosted live-view browser, Browserbase (§4). Fallback: browser-extension
+cookie export (§5a), then self-hosted neko (§5c).**
+Landmodo has no API (§3) and its login is a plain email/password form guarded only
+by an invisible reCAPTCHA, so the right fit is a human logging in inside a live-view
+iframe in our own dashboard — the person passes reCAPTCHA naturally and we persist
+the resulting session. Browserbase is the pick: battle-tested, $0 at our current
+scale and $20/mo at 20 users, with CAPTCHA solving bundled, and it feeds state back
+to the poster via a documented CDP cookie export that leaves `post.ts` unchanged.
+The named fallback if we ever want zero vendor dependency is the extension cookie
+export (cheap, constraint-compliant, more fragile), and beyond that self-hosted neko
+for full data sovereignty at the cost of 1–2 weeks of build and ops.
+
+### What would change this decision
+
+- **LandFeed eligibility denied.** If Land.com support says the feed requires a
+  Corporate Account tier we can't or won't reach, land_com drops to the hosted
+  live-view fallback and the LandFeed recommendation is shelved (revisit if we later
+  upgrade the account).
+- **LandFeed photo hosting proves impractical.** The feed ingests photos by public
+  URL (§2); if we can't serve `outputs/<taskId>/photos/` at a public HTTPS URL
+  acceptably, that raises the feed's effort enough to reconsider live-view for
+  land_com too.
+- **Landmodo adds real bot protection or MFA.** §3 found only an invisible reCAPTCHA
+  and no MFA. If Landmodo later adds a visible challenge, device binding, or MFA, the
+  extension and credential-vault paths degrade further and the hosted live-view
+  vendors' CAPTCHA solving / human-in-the-loop becomes more valuable, not less —
+  reinforcing the recommendation rather than overturning it.
+- **Vendor pricing drift.** Pricing moved once already during this spike
+  (Steel.dev's cheap tier vanished, §4). If Browserbase's $20 Developer tier changes
+  or its Free tier's 15-min session cap starts truncating logins, re-rank against
+  Anchor (~$8 PAYG) and Hyperbrowser (~$30) using the §4 cost table before
+  committing.
+- **Scale or compliance shift.** If usage grows past ~20 users, or a compliance rule
+  requires that session state never leave our infrastructure, self-hosted neko (§5c)
+  moves from deferred fallback to primary.
+- **Landmodo ships an API.** If the support email (§3 operator task) reveals a
+  bulk-import or feed option, Landmodo could follow the same API-first path as
+  land_com and skip browser capture entirely.
+
+### UX and reliability gains over the current CLI flow
+
+Every recommended path is a strict improvement over the terminal ritual in §1.
+Concretely, the operator gains:
+
+- **No terminal.** Capture becomes an in-app **"Connect"** button in
+  `PostingAuthPanel.tsx` (or vanishes entirely for land_com under LandFeed) instead
+  of `npm run capture-login -- <platform>` on the command line.
+- **Capture from any device.** The live-view flow runs through the dashboard, which
+  is already reachable via the Cloudflare tunnel — an expired session can be fixed
+  from a phone or laptop away from the worker machine, which §1's headed-Chromium +
+  stdin ritual made impossible.
+- **In-app re-auth when a session expires.** The dashboard gains a real
+  "Re-connect" action and a login-success check, replacing today's read-only
+  file-exists/mtime panel.
+- **No silent expiry surprise.** §1's first signal of a dead session is a failed
+  posting discovered after approval. A live-view Connect flow lets the operator
+  refresh proactively; and for land_com, LandFeed removes the expiring session
+  altogether.
+- **Usable by non-technical users.** No npm, no repo layout, no terminal knowledge —
+  a second operator or assistant can self-serve a login refresh, lifting the §1 cap
+  of "one technical operator."
+- **Longer-lived sessions via same-IP replay.** A vendor profile is minted and
+  replayed from the same IP class (and, with Browserbase, backed by CAPTCHA
+  solving), so sessions survive longer than the §5a extension's user-IP→server-IP
+  mismatch — and LandFeed's shared key never expires at all.
+- **No two-context juggling.** The browser-window-plus-terminal-Enter dance of §1
+  collapses to a single in-dashboard interaction.
+- **Preserves what already works.** No password custody, secrets kept out of git and
+  the file API, and `600`-locked local state all carry forward — the recommended
+  paths improve the UX without giving up §1's security properties.
 
 ---
 

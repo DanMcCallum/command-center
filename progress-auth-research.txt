@@ -180,3 +180,35 @@
   - Both typechecks still pass clean (posting exit 0, dashboard tsc exit 0); report
     is markdown-only so it's a no-regression gate.
 ---
+
+## Iteration 6 - US-006: Comparison matrix and recommendation
+- Filled §6 (Comparison & Recommendation) of report.md by synthesizing §2-§5 — no
+  new research. A 10-row matrix (current-CLI baseline + LandFeed + 4 live-view
+  vendors + 4 other options) scored UX/effort/reliability/security with ▲/●/▼
+  glyphs plus $/mo now and $/mo @20 users pulled from §4's cost table and §5's
+  per-option costs. Then: per-platform recommendation (land_com -> LandFeed API
+  pending eligibility, fallback live-view; landmodo -> Browserbase live-view,
+  fallbacks extension export then self-hosted neko), a 6-item "what would change
+  this decision" list, and an 8-item explicit UX/reliability-gains-over-CLI list.
+- Files changed: research/auth-capture-spike/report.md (§6 filled),
+  specs/auth-research.md (US-006 checked), this file.
+- Learnings for future iterations:
+  - US-006 was pure synthesis — every number/verdict already existed in §2-§5, so
+    the matrix just cites section numbers (§N) rather than re-deriving. US-007
+    (draft the follow-up PRD) is likewise a synthesis story: it should turn the §6
+    recommendation into Ralph-sized US-XXX stories (config/schema -> backend -> UI),
+    flag operator-task prerequisites (the §2 Land.com support email + the §3
+    Landmodo support email are NOT Ralph stories), and require "Typecheck passes"
+    (+ browser verification for UI stories) on each.
+  - The recommended per-platform approaches US-007 must PRD out: (1) land_com
+    LandFeed XML feed builder + public photo hosting, gated on the operator getting
+    a shared key; (2) landmodo Browserbase live-view capture — new
+    POST /api/posting-auth/connect route + iframe in PostingAuthPanel.tsx + poll for
+    login success + CDP cookie export to auth/landmodo.json (the low-risk path that
+    keeps post.ts unchanged, per §4's integration sketch "files that would change").
+  - Matrix glyph legend (▲ good / ● middling / ▼ poor for our constraints) is
+    defined inline right before the table — keep any US-007/US-008 table that reuses
+    glyphs self-describing so the PDF render (US-008) is legible standalone.
+  - Both typechecks still pass clean (posting exit 0, dashboard tsc exit 0); report
+    is markdown-only so it's a no-regression gate.
+---

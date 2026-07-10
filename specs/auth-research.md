@@ -106,11 +106,11 @@ per-platform recommendation so the decision takes minutes, not a re-read of the
 whole report.
 
 **Acceptance Criteria:**
-- [ ] Comparison & Recommendation section contains a matrix table: every evaluated option × (UX, effort, reliability, security, $/mo now, $/mo at 20 users)
-- [ ] A per-platform recommendation is stated: one primary approach for land_com and one for landmodo, each with a 2–3 sentence rationale and a named fallback
-- [ ] A "what would change this decision" list (e.g. LandFeed access denied, Landmodo adds bot protection, vendor pricing changes)
-- [ ] All UX/reliability improvements over the current CLI flow are listed explicitly (no terminal, capture from any device, in-app re-auth when expired, works for non-technical users, session survives longer via same-IP replay, etc.)
-- [ ] Typecheck passes
+- [x] Comparison & Recommendation section contains a matrix table: every evaluated option × (UX, effort, reliability, security, $/mo now, $/mo at 20 users)
+- [x] A per-platform recommendation is stated: one primary approach for land_com and one for landmodo, each with a 2–3 sentence rationale and a named fallback
+- [x] A "what would change this decision" list (e.g. LandFeed access denied, Landmodo adds bot protection, vendor pricing changes)
+- [x] All UX/reliability improvements over the current CLI flow are listed explicitly (no terminal, capture from any device, in-app re-auth when expired, works for non-technical users, session survives longer via same-IP replay, etc.)
+- [x] Typecheck passes
 
 ### US-007: Draft the follow-up implementation PRD inside the proposal
 **Description:** As the operator, I want the proposal to end with a ready-to-run
