@@ -96,3 +96,23 @@
     update, PRD header to Implemented. Note specs/readme.md and specs/specs.md already
     have uncommitted modifications from the ad-posting branch work — stage carefully.
 ---
+## Iteration 4 - US-004: Ship docs per the spec process
+- What was implemented:
+  - Added "DREAMS review loop" feature-log entry to specs/specs.md (what it does,
+    files, output surface, invariants/precedence, how to extend).
+  - specs/readme.md section 5.5 updated: DREAMS rubric added to Inputs, new
+    "DREAMS review loop" bullet (inline, all variants, max 3 cycles, DREAMS-wins
+    precedence), Output bullet now lists dreams-review.md; repo map gained
+    .claude/skills/dreams-ad-review/.
+  - PRD header flipped to **Status:** Implemented (2026-07-10); US-004 criteria
+    checked off. File left at specs/dreams-validation.md (PRD notes the operator
+    may rename it to specs/dreams-ad-review.md).
+- Files changed: specs/specs.md, specs/readme.md, specs/dreams-validation.md,
+  progress-dreams-validation.txt
+- Verification: npx tsc --noEmit from dashboard/ PASSED.
+- Learnings for future iterations:
+  - specs/specs.md (untracked) and specs/readme.md carried uncommitted ad-posting
+    ship-doc edits from earlier work on this branch; they were committed together
+    with this ship commit since they are the same files on the same branch.
+  - Feature complete: all acceptance criteria [x], status Implemented.
+---

@@ -2,7 +2,8 @@
 
 **Version:** 1.1
 **Date:** 2026-07-05
-**Status:** Documents the system as built (reverse-engineered from the implementation and original design docs)
+**Status:** Documents the core system as built (reverse-engineered from the implementation and original design docs)
+**Scope:** Features shipped after v1.1 are summarized in [specs.md](specs.md) — read both before starting new work.
 
 ---
 
@@ -20,6 +21,8 @@ Operator creates a task (Ad Builder form, task form, or automated script)
   -> Claude does the work, writes deliverables to a workspace
   -> Task lands in "needs review"
   -> Operator reviews, approves, or sends back with feedback
+  -> On approve (ad tasks): poster auto-posts to enabled marketplaces
+     (specs.md -> Ad posting)
 ```
 
 ### Problem statement
@@ -51,7 +54,7 @@ Everything runs on one machine. No database, no auth, no cloud services, no queu
 ### Non-goals
 
 - Multi-user access or in-app authentication (single user; the dashboard binds to localhost, with remote access provided by a Cloudflare Access-protected tunnel at `dashboard.ownaloha.land` — auth happens at the edge, not in the app).
-- Direct API posting to ad platforms (ads are generated for manual posting; platform caps are enforced at generation time instead).
+- Direct API posting to ad platforms — enabled platforms are instead posted via Playwright browser automation on approval (see specs.md → Ad posting); the remaining platforms are manual. Platform caps are enforced at generation time either way.
 - A general project-management tool. The task queue exists to feed the Claude worker.
 - Parallel task execution (one worker at a time, by design — global lockfile).
 
@@ -205,12 +208,13 @@ All routes are `force-dynamic`; the worker script consumes the same API over `cu
 
 The `generate-ad` slash command (lives at `~/.claude/commands/generate-ad.md`, outside this repo) drives the core product loop:
 
-- **Inputs:** the Ad Builder form payload (task `metadata`), `config/ad-platforms.json`, `knowledge-base/ads/` + `headlines/`, `voice/clean/`, `skills/anti-slop.md`.
+- **Inputs:** the Ad Builder form payload (task `metadata`), `config/ad-platforms.json`, `knowledge-base/ads/` + `headlines/`, `voice/clean/`, `skills/anti-slop.md`, and the DREAMS rubric at `.claude/skills/dreams-ad-review/SKILL.md` (read by absolute path as a file — the headless worker never invokes skills).
 - **Corpus matching:** Claude reads every file in `ads/`, ranks by similarity to the new property (location, acreage, price tier, feature overlap), and uses the top 5 as primary patterns; shorter `days_to_sale` entries get more weight. `headlines/` is used for headline craft only. Backfilled entries whose HEADLINE is just an address are excluded from headline-craft learning.
 - **Platform constraints** (`config/ad-platforms.json`): per platform — display name, `headline_max` (60 for Landmodo, 100 elsewhere), `description_max` (1500), and a prose `buyer_profile` describing the marketplace audience and required angle. Generation targets 95–100% of each cap.
 - **Property nickname:** each property gets a unique two-word call-attribution nickname (registry: `knowledge-base/property-nicknames.md`), appended to every description as `(Property: Nickname)` so inbound phone calls can be attributed to a listing. The tag's length is carved out of `description_max`.
 - **Anti-slop pass:** after the first draft, the workflow loads `skills/anti-slop.md` and does one self-critique + rewrite to strip AI-tells and match the operator's voice.
-- **Output:** one markdown file per target platform (`landmodo.md`, `land_century.md`, `land_com.md`, `landflip.md`, `land_listings.md`, `landhub.md`) with char-counted HEADLINE/DESCRIPTION sections and a "why this angle" note, plus a `README.md` index.
+- **DREAMS review loop:** after the anti-slop and voice passes, every platform variant (headline + description sales copy; nickname tag exempt) is audited inline against the six DREAMS categories, non-Pass variants are revised in the operator's voice, and the loop repeats until all categories pass everywhere or 3 audit cycles are used. DREAMS coaching overrides style rules when they conflict; char caps, factual grounding, and nickname-tag rules are never overridden (specs.md → DREAMS review loop).
+- **Output:** one markdown file per target platform (`landmodo.md`, `land_century.md`, `land_com.md`, `landflip.md`, `land_listings.md`, `landhub.md`) with char-counted HEADLINE/DESCRIPTION sections and a "why this angle" note, plus a `README.md` index and a `dreams-review.md` scorecard (final per-platform DREAMS verdicts, cycles used, unresolved weaknesses).
 
 ### 5.6 Knowledge base feedback loop
 
@@ -243,7 +247,7 @@ Notion-inspired dark minimalism. The principle: **the UI is a document, not an a
 - **Runtime:** Node.js 20+, Linux (WSL-compatible). Dashboard on localhost (started via `start.sh` from an `@reboot` cron entry in production mode).
 - **Remote access:** a Cloudflare tunnel (`cloudflared`, also started `@reboot`) publishes the dashboard at `dashboard.ownaloha.land`, gated by Cloudflare Access. The app itself has no auth — the edge is the only gate.
 - **Worker deps:** `claude` CLI, `curl`, `jq`, `flock`, `timeout`, `fuser`.
-- **No database, no in-app auth, no external services** except the Dialpad API for transcript fetch and the Cloudflare tunnel for remote access. Ad platforms are manual-post targets.
+- **No database, no in-app auth, no external services** except the Dialpad API for transcript fetch and the Cloudflare tunnel for remote access. Ad platforms have no API integration — enabled ones are posted via browser automation, the rest manually (specs.md → Ad posting).
 - **Timeout budget:** 30 min per task; 35 min stale-lock threshold.
 - **Config:** `config/paths.json` (external directory roots — never hardcode paths) and `config/ad-platforms.json`.
 
@@ -286,6 +290,8 @@ command-center/
     start.sh            Production start (called from @reboot cron)
   workers/
     run-worker.sh       The execution engine (cron / on-demand entry point)
+    run-poster.sh       Marketplace posting orchestrator (specs.md -> Ad posting)
+    posting/            Playwright posting scripts; auth/ holds login sessions (secret)
     system-prompt.md    Claude worker operating rules
     workspace/          outputs/{task-id}/ and notes/{task-id}.md
     logs/               Per-run logs + cron.log
@@ -298,10 +304,15 @@ command-center/
     raw/  clean/        Original and cleaned call transcripts
   skills/
     anti-slop.md        Writing-quality enforcer loaded by generate-ad
+  .claude/skills/
+    dreams-ad-review/   DREAMS audit rubric read (as a file) by generate-ad
   config/
     paths.json          External directory roots
     ad-platforms.json   Per-platform caps + buyer profiles
+    posting-platforms.json  Posting targets: enabled flags + login/new-listing URLs
   specs/
-    readme.md           This document
+    readme.md           This document (core system)
+    specs.md            Feature log: one summary per shipped feature + spec process
+    ad-posting.md       Feature PRD: auto-post approved ads (implemented)
   *.md                  Original design docs (Blueprint, TLDR, Worker System Spec)
 ```

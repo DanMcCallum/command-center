@@ -1,6 +1,6 @@
 # PRD: DREAMS Review Loop in Ad Generation
 
-**Status:** Draft
+**Status:** Implemented (2026-07-10)
 **Date:** 2026-07-10
 
 ## Introduction
@@ -66,10 +66,10 @@ Edit `~/.claude/commands/generate-ad.md` Output section:
 **Description:** As a developer, I want the project docs to reflect the DREAMS loop so future features build on accurate context.
 
 **Acceptance Criteria:**
-- [ ] `specs/specs.md` gains a feature-log entry (shape per existing entries: what it does, files touched, invariants/gotchas, how to extend)
-- [ ] `specs/readme.md` §5.5 (Ad generation) updated to describe the DREAMS review loop (inline, all variants, max 3 cycles, DREAMS-wins precedence, `dreams-review.md` artifact)
-- [ ] This PRD's header updated to `**Status:** Implemented (<date>)` (operator moves the file to `specs/dreams-ad-review.md` on ship)
-- [ ] Typecheck passes
+- [x] `specs/specs.md` gains a feature-log entry (shape per existing entries: what it does, files touched, invariants/gotchas, how to extend)
+- [x] `specs/readme.md` §5.5 (Ad generation) updated to describe the DREAMS review loop (inline, all variants, max 3 cycles, DREAMS-wins precedence, `dreams-review.md` artifact)
+- [x] This PRD's header updated to `**Status:** Implemented (<date>)` (operator moves the file to `specs/dreams-ad-review.md` on ship)
+- [x] Typecheck passes
 
 ## Non-Goals
 
