@@ -42,13 +42,13 @@ Edit `~/.claude/commands/generate-ad.md`:
 Edit `~/.claude/commands/generate-ad.md`, extending Step 6:
 
 **Acceptance Criteria:**
-- [ ] Revision pass defined: rewrite only variants that have ≥1 non-Pass category, addressing each coaching note; revisions are written in the operator's voice (pattern-matched from `voice/clean/`), consistent with the skill's coach-don't-ghostwrite principle
-- [ ] Loop defined: audit → revise → re-audit; terminate when every category is Pass on every platform, or after 3 total audit cycles, whichever comes first
-- [ ] After 3 cycles with remaining non-Pass verdicts: keep the latest revision and log each unresolved category + why it couldn't be resolved in `notes.md`
-- [ ] Precedence stated explicitly in the workflow: DREAMS coaching overrides anti-slop, voice-check, and headline-craft **style** rules when they conflict; platform caps, the 90–100% length window, no-invented-facts, and all nickname-tag rules are absolute and never overridden — a DREAMS fix may never introduce a fact not in the task metadata
-- [ ] Char budgets re-verified after every revision (headline vs `headline_max`, sales copy vs `content_budget` from Step 3); nickname tag is still appended only once, after the final cycle
-- [ ] Existing "exactly once" anti-slop language in step 4b updated so it doesn't contradict the new loop (anti-slop still runs once; DREAMS cycles are a separate later loop)
-- [ ] Typecheck passes
+- [x] Revision pass defined: rewrite only variants that have ≥1 non-Pass category, addressing each coaching note; revisions are written in the operator's voice (pattern-matched from `voice/clean/`), consistent with the skill's coach-don't-ghostwrite principle
+- [x] Loop defined: audit → revise → re-audit; terminate when every category is Pass on every platform, or after 3 total audit cycles, whichever comes first
+- [x] After 3 cycles with remaining non-Pass verdicts: keep the latest revision and log each unresolved category + why it couldn't be resolved in `notes.md`
+- [x] Precedence stated explicitly in the workflow: DREAMS coaching overrides anti-slop, voice-check, and headline-craft **style** rules when they conflict; platform caps, the 90–100% length window, no-invented-facts, and all nickname-tag rules are absolute and never overridden — a DREAMS fix may never introduce a fact not in the task metadata
+- [x] Char budgets re-verified after every revision (headline vs `headline_max`, sales copy vs `content_budget` from Step 3); nickname tag is still appended only once, after the final cycle
+- [x] Existing "exactly once" anti-slop language in step 4b updated so it doesn't contradict the new loop (anti-slop still runs once; DREAMS cycles are a separate later loop)
+- [x] Typecheck passes
 
 ### US-003: DREAMS scorecard in the output deliverables
 **Description:** As the operator, I want the final DREAMS verdicts visible in the deliverables so I can judge ad quality at a glance during review.

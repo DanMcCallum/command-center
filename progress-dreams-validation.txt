@@ -38,3 +38,33 @@
     (dashboard/.next-start.log, data/tasks.json, progress.txt, specs/ad-posting.md,
     specs/readme.md, specs/specs.md untracked-modified). Stage only your own files.
 ---
+## Iteration 2 - US-002: Revise-and-repeat loop with termination and precedence rules
+- What was implemented (all in ~/.claude/commands/generate-ad.md):
+  - Extended Step 6 with four new blocks after the cycle-log format:
+    **Revision pass** (rewrite only non-Pass variants, address every coaching note,
+    operator's voice from voice/clean/, rubric-coaches-you-write), **Loop and termination**
+    (audit → revise → re-audit; stop when all Pass everywhere or after 3 total audit
+    cycles; cycle-3 audit is last, no revision after it), **If non-Pass verdicts remain
+    after cycle 3** (keep latest revision; log platform+category+verdict+why-unresolvable
+    in notes.md), **Precedence** (DREAMS wins over anti-slop/voice/headline-craft STYLE
+    rules; caps, 90–100% window, no-invented-facts, nickname-tag rules absolute), and
+    **Re-verify char budgets after every revision** (headline_max / content_budget;
+    tag appended exactly once after the final cycle).
+  - Step 4b "exactly once" wording updated: anti-slop still runs once; DREAMS cycles are
+    a separate later loop that never re-triggers it; variant not final until the loop ends.
+  - Step 3 tag-timing sentence updated from "steps 4 and 5" to "steps 4, 5, and 6".
+- Files changed:
+  - ~/.claude/commands/generate-ad.md (OUTSIDE the repo — not git-tracked)
+  - specs/dreams-validation.md (checked off US-002 criteria)
+- Verification: npx tsc --noEmit from dashboard/ PASSED; grep confirmed all required
+  phrases (revision pass, termination, 3-cycle cap, precedence, budget re-verify,
+  updated 4b/step-3 wording) are present.
+- Learnings for future iterations:
+  - Did NOT touch the pristine backup workers/workspace/notes/generate-ad.md.bak-2026-07-10.
+  - US-003 remains: Output section still has no dreams-review.md requirement, README
+    Variants table has no DREAMS column, per-platform template has no ## DREAMS section,
+    and the notes.md paragraph in ## Output still only lists step-1/2/2b/4 content —
+    it needs the per-cycle DREAMS audit logs added.
+  - The ## Output section starts at the "## Output" heading right after the new Step 6
+    blocks; Variants table currently has columns Platform | Headline chars | Description chars.
+---
