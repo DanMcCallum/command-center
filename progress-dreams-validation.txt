@@ -68,3 +68,31 @@
   - The ## Output section starts at the "## Output" heading right after the new Step 6
     blocks; Variants table currently has columns Platform | Headline chars | Description chars.
 ---
+## Iteration 3 - US-003: DREAMS scorecard in the output deliverables
+- What was implemented (all in ~/.claude/commands/generate-ad.md, ## Output section):
+  - New required deliverable `dreams-review.md` in OUTPUT_DIR with a full template:
+    `Cycles used: <N>/3`, a final platform x six-category verdict table (D/R/E/A/M/S
+    columns), and an `## Unresolved weaknesses` list ("None" when clean). Explicitly
+    final-verdicts-only; per-cycle history stays in notes.md.
+  - README.md Variants table gained a `DREAMS` column with example values (`Pass`,
+    `2 weak`) and a definition line (Pass when all six categories pass, otherwise a
+    count like "2 weak" / "1 missing").
+  - Per-platform file template gained a one-line `## DREAMS` section (final verdict
+    summary; example avoids em dashes since the template seeds real deliverables and
+    em dashes are banned by the hard constraints).
+  - notes.md paragraph in ## Output now also requires the per-cycle DREAMS audit logs
+    from step 6 (one `## DREAMS audit — cycle <N>` block per cycle + the
+    unresolved-categories list when the loop hits 3 cycles).
+- Files changed:
+  - ~/.claude/commands/generate-ad.md (OUTSIDE the repo — not git-tracked)
+  - specs/dreams-validation.md (checked off US-003 criteria)
+- Verification: npx tsc --noEmit from dashboard/ PASSED; grep confirmed dreams-review.md
+  requirement, DREAMS table column, ## DREAMS section, and notes.md audit-log wording.
+- Learnings for future iterations:
+  - Pristine backup workers/workspace/notes/generate-ad.md.bak-2026-07-10 untouched.
+  - Watch for em dashes in any example text added to the workflow templates — the hard
+    constraints ban them in deliverables, and template examples get copied verbatim.
+  - Only US-004 (Ship) remains: feature-log entry in specs/specs.md, readme.md §5.5
+    update, PRD header to Implemented. Note specs/readme.md and specs/specs.md already
+    have uncommitted modifications from the ad-posting branch work — stage carefully.
+---

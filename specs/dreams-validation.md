@@ -56,11 +56,11 @@ Edit `~/.claude/commands/generate-ad.md`, extending Step 6:
 Edit `~/.claude/commands/generate-ad.md` Output section:
 
 **Acceptance Criteria:**
-- [ ] Output section requires a new `dreams-review.md` file in `OUTPUT_DIR`: final per-platform scorecard table (platform × six DREAMS categories), number of cycles used, and a list of unresolved weaknesses (empty if clean)
-- [ ] `README.md` Variants table spec gains a `DREAMS` column (e.g. `Pass` or `2 weak`)
-- [ ] Per-platform file template gains a one-line `## DREAMS` section stating that platform's final verdict summary
-- [ ] `notes.md` requirements updated to include the per-cycle audit logs from US-001/US-002
-- [ ] Typecheck passes
+- [x] Output section requires a new `dreams-review.md` file in `OUTPUT_DIR`: final per-platform scorecard table (platform × six DREAMS categories), number of cycles used, and a list of unresolved weaknesses (empty if clean)
+- [x] `README.md` Variants table spec gains a `DREAMS` column (e.g. `Pass` or `2 weak`)
+- [x] Per-platform file template gains a one-line `## DREAMS` section stating that platform's final verdict summary
+- [x] `notes.md` requirements updated to include the per-cycle audit logs from US-001/US-002
+- [x] Typecheck passes
 
 ### US-004: Ship docs per the spec process
 **Description:** As a developer, I want the project docs to reflect the DREAMS loop so future features build on accurate context.
