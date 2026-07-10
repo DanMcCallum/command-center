@@ -61,13 +61,13 @@ This feature adds photo upload to the Ad Builder page (`dashboard/app/ad-builder
 **Description:** As a user, when I submit the ad request I want my photos uploaded automatically in my chosen order, so the poster can use them without any manual file copying.
 
 **Acceptance Criteria:**
-- [ ] Ad Builder submit flow becomes: create task via `POST /api/tasks` → upload photos sequentially via `POST /api/tasks/[id]/photos` → fire `POST /api/run-worker` → redirect to `/tasks?focus=<id>` (worker trigger and redirect happen only after every upload succeeds)
-- [ ] Upload filenames encode order: primary gets prefix `00_`, remaining photos `01_`, `02_`, … in gallery order, followed by the sanitized original filename
-- [ ] During upload the form shows progress ("Uploading photo 2 of 5…") and the submit button stays disabled
-- [ ] After submission, `workers/workspace/outputs/<taskId>/photos/` contains all files in prefix order with the starred photo as `00_*`
-- [ ] `task.metadata` gains `photoCount: number` and `primaryPhoto: string` (the saved filename) for display/debugging
-- [ ] Typecheck passes
-- [ ] Verify changes work in browser (submit a real request with 3+ photos, confirm files and order on disk)
+- [x] Ad Builder submit flow becomes: create task via `POST /api/tasks` → upload photos sequentially via `POST /api/tasks/[id]/photos` → fire `POST /api/run-worker` → redirect to `/tasks?focus=<id>` (worker trigger and redirect happen only after every upload succeeds)
+- [x] Upload filenames encode order: primary gets prefix `00_`, remaining photos `01_`, `02_`, … in gallery order, followed by the sanitized original filename
+- [x] During upload the form shows progress ("Uploading photo 2 of 5…") and the submit button stays disabled
+- [x] After submission, `workers/workspace/outputs/<taskId>/photos/` contains all files in prefix order with the starred photo as `00_*`
+- [x] `task.metadata` gains `photoCount: number` and `primaryPhoto: string` (the saved filename) for display/debugging
+- [x] Typecheck passes
+- [x] Verify changes work in browser (submit a real request with 3+ photos, confirm files and order on disk)
 
 ### US-005: Upload failure handling in the form
 **Description:** As a user, if a photo fails to upload I want to see which one failed and retry it, so a flaky upload doesn't strand my ad request in a half-built state.

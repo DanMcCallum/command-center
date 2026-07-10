@@ -65,3 +65,67 @@
   - PickedPhoto has a stable per-item `id` — use it as the drag key for
     US-003 instead of array index.
 ---
+## Iteration 3 - US-003: Drag-and-drop ordering and primary star
+- PhotoPicker: tiles are draggable; reorder happens on dragOver of another
+  tile (live feedback), dragId state drives a dimmed/teal-border style on the
+  dragged tile. Star button (☆/★ glyphs, top-left) sets primary; primary tile
+  gets teal border + tinted "Primary" pill. Single-primary invariant lives in
+  one place — update() falls back to next[0].id whenever the stored primaryId
+  is absent from the array, which covers both "remove primary" promotion and
+  "first added becomes primary" with no special cases.
+- onChange signature is now (photos: PickedPhoto[], primaryIndex: number)
+  (-1 when empty). Ad Builder page stores primaryIndex in state for US-004.
+- Files changed:
+  - dashboard/components/PhotoPicker.tsx
+  - dashboard/app/ad-builder/page.tsx
+  - specs/ad-photos.md (checked off US-003)
+- Verified: `npx tsc --noEmit` clean; headless Playwright script (17 checks):
+  default primary, star toggle, exactly-one-primary after every action,
+  dragTo reorder, primary survives reorder, remove-primary promotion,
+  empty-state hint, re-add. Screenshot inspected — matches design system.
+- Learnings for future iterations:
+  - Playwright `locator.dragTo()` drives the HTML5 dragstart/dragover
+    handlers fine — no manual event dispatching needed.
+  - Put `pointer-events-none` on the <img> inside a draggable tile, or the
+    browser drags the image itself instead of the tile.
+  - tsconfig has no noUnusedLocals, so the page can hold not-yet-consumed
+    state (primaryIndex) without failing typecheck.
+  - US-004: filenames should be `NN_` + sanitized original name; primary is
+    photos[primaryIndex] and gets 00_, the rest 01_, 02_… in array order
+    skipping the primary.
+---
+## Iteration 4 - US-004: Submission uploads photos in order
+- Ad Builder submit flow now: POST /api/tasks → sequential POST
+  /api/tasks/[id]/photos (primary as 00_<name>, rest 01_/02_… in gallery
+  order, original names sanitized to the API's /^[0-9]{2}_[\w.-]+$/ contract)
+  → fire run-worker → redirect, with worker/redirect gated on all uploads
+  succeeding. "Uploading photo N of M…" progress line; submit stays disabled
+  (submitting state spans the upload loop). metadata gains photoCount +
+  primaryPhoto at task-create time (no extra PATCH needed).
+- Files changed:
+  - dashboard/app/ad-builder/page.tsx
+  - specs/ad-photos.md (checked off US-004)
+- Verified: `npx tsc --noEmit` clean; headless Playwright run (10 checks) did
+  a REAL submit against `npx next dev -p 3001`: starred-2nd-photo became
+  00_creek_view.png (space sanitized to _), disk order 00_/01_/02_ correct,
+  metadata stamped, progress text + disabled submit observed, redirect OK.
+  Test task deleted + outputs dir removed afterwards.
+- Learnings for future iterations:
+  - REAL submits in verification are dangerous: cron runs run-worker.sh every
+    5 min against the SAME tasks.json the 3001 dev server writes. Mitigation
+    that worked: page.route-fulfill '**/api/run-worker' with a fake 200 (the
+    page fire-and-forgets it), then PATCH the test task to needs_review
+    immediately after redirect (worker only claims pending), DELETE at the end.
+  - To make the transient upload UI observable, page.route the photos POST
+    with `const r = await route.fetch(); await sleep(600); route.fulfill({response: r})`
+    — throttles each upload enough to assert progress text + disabled button.
+  - sanitizeBasename (page.tsx module level): strip dir components, replace
+    [^\w.-] with _, collapse '..' runs to '.' (API rejects any '..'). Reusable
+    for US-005 retry (same filenames must be regenerated identically).
+  - photoCount/primaryPhoto ride the initial POST metadata (metadata is a
+    known field — the "unknown fields dropped" rule applies to top-level Task
+    keys like postings, not metadata contents).
+  - US-005 note: upload loop currently throws on first failure (remaining
+    queued photos do NOT continue) and a failed run leaves the created task
+    behind with partial photos — exactly the gap US-005 is scoped to fix
+    (per-file error state, retry-only-failed, proceed-if-≥1-succeeded).

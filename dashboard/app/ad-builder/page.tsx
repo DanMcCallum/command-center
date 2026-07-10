@@ -54,6 +54,7 @@ const selectClass = inputClass + ' appearance-none pr-8';
 export default function AdBuilderPage() {
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const [location, setLocation] = useState('');
@@ -95,6 +96,14 @@ export default function AdBuilderPage() {
     if (selectedPlatforms.length === 0) return setError('Pick at least one platform.');
     if (photos.length === 0) return setError('At least 1 photo is required.');
 
+    // Primary first (00_), then the rest in gallery order (01_, 02_, …) —
+    // listPhotos() in the poster sorts by filename, so the prefix IS the order.
+    const pi = primaryIndex >= 0 && primaryIndex < photos.length ? primaryIndex : 0;
+    const ordered = [photos[pi], ...photos.filter((_, i) => i !== pi)];
+    const uploadNames = ordered.map(
+      (p, i) => `${String(i).padStart(2, '0')}_${sanitizeBasename(p.file.name)}`,
+    );
+
     const metadata = {
       kind: 'ad-builder',
       location: location.trim(),
@@ -110,6 +119,8 @@ export default function AdBuilderPage() {
       must_include: mustInclude.trim() || null,
       buyer_hint: buyerHint || null,
       platforms: selectedPlatforms,
+      photoCount: photos.length,
+      primaryPhoto: uploadNames[0],
     };
 
     const description = renderDescription(metadata);
@@ -137,6 +148,25 @@ export default function AdBuilderPage() {
       }
       const task = (await res.json()) as Task;
 
+      // Upload sequentially; the worker only fires after every photo lands.
+      for (let i = 0; i < ordered.length; i++) {
+        setUploadProgress(`Uploading photo ${i + 1} of ${ordered.length}…`);
+        const fd = new FormData();
+        fd.append('file', ordered[i].file);
+        fd.append('filename', uploadNames[i]);
+        const up = await fetch(`/api/tasks/${task.id}/photos`, {
+          method: 'POST',
+          body: fd,
+        });
+        if (!up.ok) {
+          const data = await up.json().catch(() => ({}));
+          throw new Error(
+            `Upload failed for ${uploadNames[i]}: ${data.error ?? `HTTP ${up.status}`}`,
+          );
+        }
+      }
+      setUploadProgress(null);
+
       // Fire the worker now. Don't await — worker runs detached.
       fetch('/api/run-worker', { method: 'POST' }).catch(() => {});
 
@@ -145,6 +175,7 @@ export default function AdBuilderPage() {
       setError((err as Error).message);
     } finally {
       setSubmitting(false);
+      setUploadProgress(null);
     }
   }
 
@@ -338,6 +369,7 @@ export default function AdBuilderPage() {
           />
         </div>
 
+        {uploadProgress && <div className="text-xs text-[#9B9B9B]">{uploadProgress}</div>}
         {error && <div className="text-xs text-[#FF4D4D]">{error}</div>}
 
         <div className="flex items-center gap-2 pt-2">
@@ -375,6 +407,15 @@ function Field({
       {children}
     </label>
   );
+}
+
+// The upload API only accepts /^[0-9]{2}_[\w.-]+$/ with no '..' anywhere; the
+// picker already guarantees an allowed extension, so keep it and neutralize
+// everything else.
+function sanitizeBasename(name: string): string {
+  const base = name.split(/[/\\]/).pop() ?? '';
+  const safe = base.replace(/[^\w.-]/g, '_').replace(/\.{2,}/g, '.');
+  return /[\w-]/.test(safe) ? safe : `photo${safe}`;
 }
 
 function renderDescription(m: {
