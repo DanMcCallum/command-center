@@ -1,0 +1,31 @@
+# Progress — auth-research spike (specs/auth-research.md)
+
+## Iteration 1 - US-001: Scaffold the report with the current-state section
+- Created research/auth-capture-spike/report.md: full section skeleton (Current
+  State, Land.com, Landmodo, Hosted Live-View Browsers, Other Options,
+  Comparison & Recommendation, Proposed Implementation PRD) with placeholder
+  notes naming which US fills each section.
+- Current State section walks workers/posting/capture-login.ts (headed chromium,
+  stdin Enter-prompt, storageState to workers/posting/auth/<platform>.json,
+  chmod 600) and dashboard/components/PostingAuthPanel.tsx (30s poll of
+  /api/posting-auth, display-only file-exists + mtime). Six pain points listed
+  (PRD required 4).
+- Files changed: research/auth-capture-spike/report.md (new),
+  specs/auth-research.md (checked US-001), this file (new).
+- Learnings for future iterations:
+  - Seeded desk research at research/auth-capture-spike/initial-research.md is
+    rich — it already has the vendor table, pricing, source URLs, and an initial
+    recommendation. US-002..US-005 should VERIFY and cite it, not re-research.
+    Its "unverified" items are enumerated near the bottom of that file.
+  - Both typechecks pass clean as of this iteration: `cd workers/posting && npm
+    run typecheck` and `cd dashboard && npx tsc --noEmit`. Report is
+    markdown-only, so typecheck is just a no-regression gate.
+  - US-008 wants a regeneration command noted at the top of report.md — don't
+    add it earlier, it's that story's criterion.
+  - Playwright/Chromium already installed in workers/posting — reuse for US-003
+    recon and US-008 PDF render. Note from feature log: Playwright scripts must
+    live INSIDE workers/posting/ (ESM resolves playwright relative to script
+    file).
+  - workers/posting/auth/*.json are secrets — never quote their contents in the
+    report, paths only.
+---
