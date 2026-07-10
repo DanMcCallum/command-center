@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import PostingFailureBanner from '@/components/PostingFailureBanner';
 import TaskCard from '@/components/TaskCard';
 import TaskForm from '@/components/TaskForm';
 import type { Task, TaskStatus } from '@/lib/types';
@@ -63,6 +64,8 @@ export default function TasksPage() {
           {showForm ? 'Close' : '+ New task'}
         </button>
       </header>
+
+      <PostingFailureBanner tasks={tasks} />
 
       {showForm && (
         <TaskForm

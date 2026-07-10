@@ -105,12 +105,12 @@ This feature adds photo upload to the Ad Builder page (`dashboard/app/ad-builder
 **Description:** As an operator, I want the tasks page to tell me when any ad has given up posting, so failures don't sit unnoticed inside a collapsed card.
 
 **Acceptance Criteria:**
-- [ ] The tasks page shows a dismissible amber banner when any task has a posting with `status === 'failed'` and `attempts >= 3`: "N posting(s) need attention" with the affected task titles as links (`/tasks?focus=<id>`)
-- [ ] Banner count updates with the existing task-list refresh cycle and disappears when no permanently failed postings remain
-- [ ] Dismissal lasts for the session (e.g. `sessionStorage`) and the banner reappears if a NEW posting permanently fails after dismissal
-- [ ] No banner when there are no failed postings
-- [ ] Typecheck passes
-- [ ] Verify changes work in browser
+- [x] The tasks page shows a dismissible amber banner when any task has a posting with `status === 'failed'` and `attempts >= 3`: "N posting(s) need attention" with the affected task titles as links (`/tasks?focus=<id>`)
+- [x] Banner count updates with the existing task-list refresh cycle and disappears when no permanently failed postings remain
+- [x] Dismissal lasts for the session (e.g. `sessionStorage`) and the banner reappears if a NEW posting permanently fails after dismissal
+- [x] No banner when there are no failed postings
+- [x] Typecheck passes
+- [x] Verify changes work in browser
 
 ## Non-Goals
 
