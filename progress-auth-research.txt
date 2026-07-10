@@ -250,3 +250,42 @@
   - Both typechecks still pass clean (posting exit 0, dashboard tsc exit 0); report
     is markdown-only so it's a no-regression gate.
 ---
+
+## Iteration 8 - US-008: Render the proposal as a PDF
+- Wrote workers/posting/render-pdf.ts: reads research/auth-capture-spike/report.md,
+  converts markdown -> HTML with a hand-rolled parser (no new dependency — keeps
+  the posting typecheck green since a bare `marked` import would be untyped), and
+  prints to research/auth-capture-spike/auth-capture-proposal.pdf via the existing
+  Playwright/Chromium (page.setContent -> page.pdf, Letter, printBackground). Added
+  a regeneration note (blockquote) to the TOP of report.md:
+  `cd workers/posting && npx tsx render-pdf.ts`.
+- Verified the PDF: starts with %PDF-1.4, 281 KB (>20 KB), 27 pages (page tree
+  /Kids = 8+8+8+3 leaf pages; MediaBox count = 27) >> the 5-page floor. Rendered
+  the comparison matrix + vendor pricing tables to PNGs and eyeballed them — glyphs
+  (▲/●/▼), bold, and inline code all legible; even-row striping + bordered cells.
+- Files changed: workers/posting/render-pdf.ts (new), report.md (regen note),
+  specs/auth-research.md (US-008 checked), auth-capture-proposal.pdf (new), this file.
+- Learnings for future iterations:
+  - The hand-rolled mdToHtml covers exactly what report.md uses: h1-h6, GFM pipe
+    tables (header + `|---|` separator), ul/ol, blockquotes, hr, paragraphs, and
+    inline bold/`code`/[links]. No code fences or images in the report. Inline code
+    is protected BEFORE html-escaping so `<`/`&` inside backticks survive; bold and
+    links run after escape. Single-`*` italic is intentionally NOT handled (the
+    matrix glyphs and `*` in prose would get mangled) — add it only if a future
+    report needs it.
+  - render-pdf.ts guards main() behind `if (require.main === module)` and EXPORTS
+    mdToHtml + CSS, so a verification script can import them and screenshot the HTML
+    without re-rendering the PDF. Same ESM gotcha as the posting scripts: any such
+    helper MUST live inside workers/posting or `playwright`/`./render-pdf` won't
+    resolve (I hit MODULE_NOT_FOUND running it from /tmp).
+  - Chromium's native PDF viewer will NOT screenshot from a `data:application/pdf`
+    URL in headless (navigation errors). To verify table legibility, screenshot the
+    rendered HTML (locator('table').screenshot()) instead — same content, reliable.
+  - No pandoc / pdfinfo / wkhtmltopdf on this box; Playwright print-to-PDF is the
+    only local render path. Page count without pdfinfo: grep the page-tree /Kids
+    arrays or count MediaBox occurrences.
+  - ALL ACs in auth-research.md are now [x] but the header still says Draft, so the
+    NEXT iteration is the SHIP step (specs.md feature-log summary + readme.md fixes
+    + flip header to Implemented (2026-07-10)), per the Ralph instructions.
+  - Both typechecks pass (posting exit 0 incl. render-pdf.ts, dashboard tsc exit 0).
+---

@@ -129,11 +129,11 @@ implementation.
 read it away from the repo and share it.
 
 **Acceptance Criteria:**
-- [ ] `report.md` converted to `research/auth-capture-spike/auth-capture-proposal.pdf` using a local tool (e.g. pandoc, or Playwright/Chromium print-to-PDF via the existing install in workers/posting — no new paid services)
-- [ ] PDF is valid: file starts with `%PDF`, is larger than 20 KB, and page count is at least 5 (verifiable via `pdfinfo` or equivalent)
-- [ ] Tables (vendor pricing, comparison matrix) render legibly in the PDF — verify by converting a page to an image or opening it in a browser
-- [ ] `report.md` remains the source of truth; a regeneration command is noted at the top of the report
-- [ ] Typecheck passes
+- [x] `report.md` converted to `research/auth-capture-spike/auth-capture-proposal.pdf` using a local tool (e.g. pandoc, or Playwright/Chromium print-to-PDF via the existing install in workers/posting — no new paid services)
+- [x] PDF is valid: file starts with `%PDF`, is larger than 20 KB, and page count is at least 5 (verifiable via `pdfinfo` or equivalent)
+- [x] Tables (vendor pricing, comparison matrix) render legibly in the PDF — verify by converting a page to an image or opening it in a browser
+- [x] `report.md` remains the source of truth; a regeneration command is noted at the top of the report
+- [x] Typecheck passes
 
 ## Non-Goals
 

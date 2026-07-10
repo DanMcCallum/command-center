@@ -4,6 +4,10 @@
 **Scope:** Landmodo and Land.com only (the two posting platforms enabled in `config/posting-platforms.json`)
 **Constraints (decided):** single user for now; the user always logs in themselves; the app never sees or stores marketplace passwords.
 
+> **This markdown file is the source of truth.** Regenerate the shareable PDF
+> (`auth-capture-proposal.pdf`) after any edit with:
+> `cd workers/posting && npx tsx render-pdf.ts`
+
 This proposal compares app-friendly alternatives to the current CLI-based login
 capture, verifies the claims in the seeded desk research
 (`research/auth-capture-spike/initial-research.md`), and ends with a drafted
