@@ -49,13 +49,13 @@ This feature adds photo upload to the Ad Builder page (`dashboard/app/ad-builder
 **Description:** As a user, I want to control photo order and pick the primary image, because the first photo becomes the listing's cover on the marketplaces.
 
 **Acceptance Criteria:**
-- [ ] Thumbnails in `PhotoPicker` can be reordered by drag-and-drop (HTML5 drag events; no new dependency)
-- [ ] Each thumbnail has a star toggle; exactly one photo is primary at all times, defaulting to the first added
-- [ ] The primary thumbnail is visually distinct (filled star + "Primary" badge)
-- [ ] Removing the primary photo promotes the first remaining photo to primary
-- [ ] Ordering state and primary choice are exposed to the form (ordered `File[]` with a primary index)
-- [ ] Typecheck passes
-- [ ] Verify changes work in browser
+- [x] Thumbnails in `PhotoPicker` can be reordered by drag-and-drop (HTML5 drag events; no new dependency)
+- [x] Each thumbnail has a star toggle; exactly one photo is primary at all times, defaulting to the first added
+- [x] The primary thumbnail is visually distinct (filled star + "Primary" badge)
+- [x] Removing the primary photo promotes the first remaining photo to primary
+- [x] Ordering state and primary choice are exposed to the form (ordered `File[]` with a primary index)
+- [x] Typecheck passes
+- [x] Verify changes work in browser
 
 ### US-004: Submission uploads photos in order
 **Description:** As a user, when I submit the ad request I want my photos uploaded automatically in my chosen order, so the poster can use them without any manual file copying.

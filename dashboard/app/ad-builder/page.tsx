@@ -73,6 +73,9 @@ export default function AdBuilderPage() {
     Object.fromEntries(PLATFORMS.map(p => [p.key, true])),
   );
   const [photos, setPhotos] = useState<PickedPhoto[]>([]);
+  // Index into `photos` of the starred (cover) image; consumed by the upload
+  // flow (US-004), which gives it the 00_ filename prefix.
+  const [primaryIndex, setPrimaryIndex] = useState(-1);
 
   function togglePlatform(key: string) {
     setPlatforms(prev => ({ ...prev, [key]: !prev[key] }));
@@ -327,7 +330,12 @@ export default function AdBuilderPage() {
           <div className="text-xs font-medium text-[#9B9B9B] mb-1">
             Photos<span className="text-[#FF4D4D] ml-1">*</span>
           </div>
-          <PhotoPicker onChange={setPhotos} />
+          <PhotoPicker
+            onChange={(next, primary) => {
+              setPhotos(next);
+              setPrimaryIndex(primary);
+            }}
+          />
         </div>
 
         {error && <div className="text-xs text-[#FF4D4D]">{error}</div>}
