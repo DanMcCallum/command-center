@@ -106,3 +106,44 @@
     matters for the proposal. Don't overclaim v2 vs v3.
   - Both typechecks still pass clean (posting exit 0, dashboard tsc exit 0).
 ---
+
+## Iteration 4 - US-004: Evaluate hosted live-view browser vendors
+- Filled §4 of report.md with verified 2026-07-10 data for Browserbase, Steel.dev,
+  Anchor Browser, Hyperbrowser: pricing + free tiers, live-view iframe embed
+  mechanics, profile/context persistence, and how state returns to our workers
+  (connectOverCDP vs CDP Network.getAllCookies cookie export to storageState).
+  Added cost projections at 1 user (~0.6 br-hr/mo) and 20 users (~31 br-hr/mo)
+  from the PRD's 2-min-capture / 3-min-post assumptions, a per-vendor cost table,
+  an integration sketch (Connect button -> POST /api/posting-auth/connect ->
+  persistent session -> iframe -> poll for login -> persist), and the exact list
+  of files a follow-up PRD would touch.
+- Files changed: research/auth-capture-spike/report.md (§4 filled),
+  specs/auth-research.md (US-004 checked), this file.
+- Learnings for future iterations:
+  - PRICING DRIFT is real and material: Steel.dev's cheap ~$29/mo tier from the
+    seeded research is GONE. steel.dev/pricing now shows Launch (free, $30 ONE-TIME
+    credits) then a $250/mo Scale tier - no cheap recurring plan. The seeded
+    research's recommendation leaned on Steel as the "value/open-source pick"; that
+    now means self-host or pay $250/mo. US-006 recommendation must reflect this:
+    Browserbase Developer $20/mo is now the cheapest turnkey recurring option at
+    20 users (and bundles CAPTCHA solving, which matters given Landmodo's invisible
+    reCAPTCHA from §3). Flag this drift explicitly in the comparison.
+  - WebFetch on JS-rendered marketing pages returns ONLY the <title> (Hyperbrowser
+    /pricing and steel had partial issues). Fallbacks that worked: (a) WebSearch
+    the pricing (Hyperbrowser credit model surfaced cleanly: 1 credit=$0.001, 1
+    br-hr=100 credits=$0.10, free 1000 credits/1 concurrent, Startup $30/mo); (b)
+    fetch the DOCS pricing page instead of the marketing one (docs.* pages are
+    static markdown and fetch clean - Browserbase/Anchor/Steel docs all worked).
+  - Redirect handling: docs.hyperbrowser.ai 308-redirects to hyperbrowser.ai/docs/*.
+    WebFetch returns the redirect target rather than following it - just re-call
+    with the given URL.
+  - None of the four vendors expose a reliable "user logged in" event - the
+    integration must POLL session state (auth cookie / redirect off /login) to
+    detect login success. Recorded this as a design constraint for US-007's PRD.
+  - Cookie-export-to-storageState (CDP Network.getAllCookies -> auth/<platform>.json)
+    is the LOW-RISK integration path: post.ts and the poster pipeline stay
+    unchanged. connectOverCDP-against-vendor-profile is the alternative but rewrites
+    the poster's auth load. US-007 should default to the cookie-export path.
+  - Both typechecks still pass clean (posting exit 0, dashboard tsc exit 0); report
+    is markdown-only so it's a no-regression gate.
+---

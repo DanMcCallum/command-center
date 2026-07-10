@@ -360,9 +360,146 @@ FAQ `https://www.landmodo.com/seller-support` (HTTP 200).
 
 ## 4. Hosted Live-View Browsers
 
-*(US-004 — to be completed: verified pricing and live-view/persistence docs for
-Browserbase, Steel.dev, Anchor Browser, and Hyperbrowser; cost projections at 1
-and 20 users; integration sketch for PostingAuthPanel.)*
+**Verdict: this is the purpose-built answer for Landmodo — the operator logs in to
+the real site inside an iframe in our own dashboard, the session persists in a
+vendor-side profile, and the poster reuses it. All four vendors ship the exact
+"log in inside the app, persist for automation" primitive. Browserbase is the
+best-value battle-tested pick at $20/mo for the 20-user case; every vendor is
+effectively $0 at 1 user.** One material change since the seeded research:
+**Steel.dev's cheap ~$29/mo recurring tier is gone** — its paid plan now starts at
+$250/mo (details below), which reshuffles the value ranking.
+
+The flow is identical across vendors: the app creates a remote browser session
+bound to a **persistent profile/context**, gets a **live-view URL**, embeds it in
+an `<iframe>`; the operator logs in to Landmodo *inside the dashboard* (passing
+Landmodo's invisible reCAPTCHA naturally, per §3); the session ends; cookies and
+localStorage persist in the profile; the poster later either connects to that
+profile over CDP or exports its cookies into the existing
+`workers/posting/auth/<platform>.json` storageState files.
+
+### Per-vendor findings (verified 2026-07-10)
+
+#### Browserbase
+
+| | Detail |
+|---|---|
+| **Pricing** (`browserbase.com/pricing`, fetched 2026-07-10) | **Free** $0/mo: 1 browser-hour, 3 concurrent, **15-min session cap**, 7-day retention, no CAPTCHA solving. **Developer** $20/mo: 100 browser-hours then **$0.12/hr**, 25 concurrent, 1 GB proxies then $12/GB, **auto CAPTCHA solving included**. **Startup** $99/mo: 500 hrs then $0.10/hr, 100 concurrent, 5 GB proxies then $10/GB, 30-day retention. **Scale**: custom (250+ concurrent, HIPAA/BAA/DPA). |
+| **Live-view embed** (`docs.browserbase.com/features/session-live-view`, fetched 2026-07-10) | `bb.sessions.debug(sessionId)` returns `debuggerFullscreenUrl` (no chrome) and `debuggerUrl` (with borders). Embed in an `<iframe>` with `sandbox="allow-same-origin allow-scripts"` and `allow="clipboard-read; clipboard-write"`; add `style="pointer-events:none"` for read-only. `&navbar=false` maximizes the viewport. A `window` `message` event `browserbase-disconnected` signals session end. |
+| **Persistence** (`docs.browserbase.com/features/contexts`, fetched 2026-07-10) | **Contexts** store the entire Chromium user-data dir (cookies, localStorage, IndexedDB, Session Storage, Service Workers, preferences). Create a Context → start a session with `context: { id, persist: true }` → log in → close → reuse the same Context ID to be auto-signed-in. |
+| **State back to our workers** | Poster runs against the vendor browser via `connectOverCDP` reusing the Context ID; **or** pull cookies out with CDP `Network.getAllCookies` and write the existing `auth/<platform>.json`. A first-party "export storageState" endpoint is **not documented** — the generic CDP path is the reliable one. |
+
+#### Steel.dev
+
+| | Detail |
+|---|---|
+| **Pricing** (`steel.dev/pricing`, fetched 2026-07-10) | **CHANGED since seeded research.** **Launch** (free): $0/mo + usage, **$30 one-time credits**. **Scale** (popular): **$250/mo** + usage, $100 credits/mo, SSO, HIPAA-ready BAA. **Enterprise**: custom, 1,000+ concurrent. Built-in CAPTCHA solving + proxies included in credits; up to 24 h sessions; sub-1 s start. The page no longer publishes a per-hour rate or the old ~$29/mo tier; historical rate was ~$0.10/br-hr. **Self-hostable** (open-source `steel-browser`) — the escape from vendor pricing entirely. |
+| **Live-view embed** (`docs.steel.dev/overview/sessions-api/human-in-the-loop`, fetched 2026-07-10) | `<iframe src="${debugUrl}?interactive=true&showControls=true">`. `interactive=true` enables clicks/scroll/typing; `showControls=true` shows a URL/back/forward bar. Actions in the interactive session mutate the real session state. Login-completion detection is **not** a built-in event — poll session state (a cookie/URL check) externally. |
+| **Persistence** (`steel.dev/blog/profiles`, fetched 2026-07-10) | **Profiles** persist cookies, extensions, credentials, localStorage, auth tokens, and fingerprints. `sessions.create({ profileId })` resumes; `persistProfile: true` writes new state back (default false = read-only). |
+| **State back to our workers** | `connectOverCDP` using the session ID gives full programmatic access to the authenticated browser; or export cookies via CDP as above. Same two options as Browserbase. |
+
+#### Anchor Browser
+
+| | Detail |
+|---|---|
+| **Pricing** (`docs.anchorbrowser.io/pricing`, fetched 2026-07-10) | Pure usage: **$0.05/browser-hour** (billed to the minute), **$0.01/session** created, **$8/GB** proxy, $0.01/AI step. **Free** plan: **$5 credits/month**. **Starter** $50/mo, **Growth** $2,000/mo, Enterprise custom; paid-tier overage +$1.00/credit. |
+| **Live-view embed** (`docs.anchorbrowser.io/advanced/browser-live-view`, fetched 2026-07-10) | `live_view_url` returned at session creation; embed in `<iframe>` with `sandbox="allow-same-origin allow-scripts"` `allow="clipboard-read; clipboard-write"`; `pointer-events:none` for read-only. `one_time_url: true` (headful only) permanently invalidates the URL after the first viewer connects and disconnects — a strong fit for a single-use "Connect" hand-off. |
+| **Persistence** | Profiles / identity ("OmniConnect") per the seeded research; the live-view and pricing pages were re-verified firsthand, the profiles mechanism was not independently re-fetched this iteration (flagged). |
+| **State back to our workers** | CDP connect / cookie export, same as the others (Anchor exposes a standard CDP endpoint). |
+
+#### Hyperbrowser
+
+| | Detail |
+|---|---|
+| **Pricing** (`hyperbrowser.ai/docs/pricing`, via search, fetched 2026-07-10 — the marketing pricing page is JS-rendered and returned no data) | Credit model: **1 credit = $0.001**, **1 browser-hour = 100 credits = $0.10**. **Free**: **1,000 credits (10 br-hr) + 1 concurrent**, no card. **Startup** $30/mo (25 concurrent). **Scale** (100 concurrent). Purchased credits expire after 12 months; plan credits refresh on renewal. |
+| **Live-view embed** (`hyperbrowser.ai/docs/sessions/live-view`, fetched 2026-07-10) | `<iframe src="https://app.hyperbrowser.ai/live?token=<TOKEN>">`. The `liveUrl` token **expires after 12 h** — re-GET the session for a fresh `liveUrl`. `viewOnlyLiveView: true` at session creation makes it read-only. Docs warn the URL grants control — treat it as a secret. |
+| **Persistence** | Profiles (created via API/dashboard; fresh vs. resumed) per the seeded research; the live-view + pricing were re-verified, the profiles doc path 404'd this iteration (flagged). |
+| **State back to our workers** | CDP connect / cookie export, same as the others. |
+
+### Cost projections for our usage
+
+**Assumptions** (from the PRD): a login capture ≈ **2 min** of browser time; a
+posting run ≈ **3 min**. Sessions persist, so captures are occasional (session-rot
+re-auth, roughly 1–2/user/month). If Land.com moves to the LandFeed API (§2), only
+**Landmodo** posts through a hosted browser; if LandFeed is denied, double the
+posting minutes for the both-platforms case.
+
+- **1 user, ~10 posts/mo:** 10 posts × 3 min + ~2 captures × 2 min ≈ **0.6
+  browser-hours/mo**.
+- **20 users, ~30 posts/mo each:** 600 posts × 3 min + ~30 captures × 2 min ≈ **31
+  browser-hours/mo** (≈ 630 sessions).
+
+| Vendor | 1 user (~0.6 br-hr/mo) | 20 users (~31 br-hr/mo) |
+|---|---|---|
+| **Browserbase** | **$0** (Free: 1 br-hr/mo incl.). Caveat: 15-min session cap could truncate a slow login. | **$20/mo** Developer (100 br-hr + CAPTCHA solving + 25 concurrent, all within cap). Best value + most battle-tested. |
+| **Steel.dev** | **$0** (Launch one-time $30 credits ≈ 300 br-hr — depletes over time). | ~**$3/mo usage** on Launch after the one-time credits, **but no cheap recurring tier** — next formal plan is **$250/mo**. Or **self-host** for $0 vendor cost. |
+| **Anchor** | **$0** (Free $5/mo credits ≈ 100 br-hr at $0.05/hr; session fees trivial). | ~**$8/mo pay-as-you-go** (31 br-hr × $0.05 = $1.55 + ~630 sessions × $0.01 = $6.30), partly offset by $5/mo free credits; Starter $50/mo if a plan is required for support/concurrency. |
+| **Hyperbrowser** | **$0** (Free 1,000 credits = 10 br-hr/mo). | ~**$30/mo** Startup (usage ≈ 3,100 credits = $3.10, but 25-concurrent needs the Startup plan). |
+
+At **1 user, every vendor is free.** At **20 users, Browserbase Developer ($20/mo,
+CAPTCHA solving bundled) is the cheapest turnkey recurring option**; Anchor is
+cheaper on raw pay-as-you-go but adds per-session accounting and (for support/
+concurrency) a $50/mo floor; Hyperbrowser is $30/mo; Steel is now either self-host
+or $250/mo. These are near-noise costs at this scale regardless.
+
+### Integration sketch for our stack
+
+Today `dashboard/components/PostingAuthPanel.tsx` is display-only (§1). The change
+turns each platform row into an actionable **"Connect Landmodo"** control:
+
+1. **"Connect" button** in `PostingAuthPanel.tsx` calls a new dashboard route,
+   e.g. `POST /api/posting-auth/connect` with `{ platform }`.
+2. That route uses the chosen vendor's SDK to **create a session bound to a
+   persistent profile/context** (Browserbase Context `persist:true` / Steel
+   `profileId` + `persistProfile:true` / Anchor profile / Hyperbrowser profile),
+   navigates it to the platform `login_url` from `config/posting-platforms.json`,
+   and returns the **live-view URL** (+ session/profile IDs).
+3. The panel **embeds the live-view URL in an `<iframe>`** (interactive mode:
+   Steel `?interactive=true&showControls=true`; Browserbase `debuggerFullscreenUrl`
+   without `pointer-events:none`; Anchor `live_view_url`; Hyperbrowser `liveUrl`).
+   The operator logs in to Landmodo inside it — the app never sees the password.
+4. **Detect success by polling**, not a vendor event (none of the four expose a
+   reliable "logged in" hook): the connect route or a companion `GET` checks the
+   session for a post-login signal — a Landmodo auth cookie, or a redirect off
+   `/login` to the seller dashboard URL.
+5. **Persist**: on success, either store the profile/context ID for the poster to
+   `connectOverCDP` at run time, **or** export cookies via CDP `Network.getAllCookies`
+   and write the existing `workers/posting/auth/<platform>.json` (option B keeps
+   `post.ts` and the whole poster pipeline unchanged — the recommended low-risk path).
+
+**Files that would change** (for the follow-up implementation PRD, not now):
+
+- `dashboard/components/PostingAuthPanel.tsx` — add Connect/Re-connect button, the
+  live-view iframe, and login-success polling (currently a read-only status panel).
+- `dashboard/app/api/posting-auth/route.ts` — today serves file-exists + mtime;
+  gains (or spawns a sibling route) the **create-session / connect** action and a
+  **login-status poll**.
+- **New** `dashboard/app/api/posting-auth/connect/route.ts` (or similar) — vendor
+  SDK session creation + live-view URL issuance.
+- `config/posting-platforms.json` — per-platform capture config (e.g. a
+  `capture: "live-view"` flag and the post-login success signal to poll for).
+- `workers/posting/post.ts` — unchanged under option B (cookie export); under
+  option A it swaps `storageState` load for `connectOverCDP` against the profile.
+- `workers/posting/capture-login.ts` — superseded for enabled platforms; kept as a
+  local break-glass path.
+- **New dependency**: the vendor SDK in `dashboard/package.json` (and/or
+  `workers/posting/`), plus a vendor **API key** stored as a secret in `.env.local`
+  (same handling class as `workers/posting/auth/*.json`).
+
+**No vendor accounts were created and nothing was purchased** for this evaluation —
+all pricing and capability data is from public pricing/docs pages, each cited with
+its fetch date above.
+
+**Sources** (all fetched 2026-07-10): Browserbase pricing
+`https://www.browserbase.com/pricing`, live view
+`https://docs.browserbase.com/features/session-live-view`, contexts
+`https://docs.browserbase.com/features/contexts`; Steel pricing
+`https://steel.dev/pricing`, human-in-the-loop
+`https://docs.steel.dev/overview/sessions-api/human-in-the-loop`, profiles
+`https://steel.dev/blog/profiles`; Anchor pricing
+`https://docs.anchorbrowser.io/pricing`, live view
+`https://docs.anchorbrowser.io/advanced/browser-live-view`; Hyperbrowser live view
+`https://hyperbrowser.ai/docs/sessions/live-view`, pricing (JS-rendered; via search
+of `https://hyperbrowser.ai/docs/pricing`).
 
 ---
 

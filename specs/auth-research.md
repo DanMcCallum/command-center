@@ -81,12 +81,12 @@ Steel.dev, Anchor, and Hyperbrowser so I can pick the best "log in inside the
 dashboard" provider for Landmodo.
 
 **Acceptance Criteria:**
-- [ ] For each of Browserbase, Steel.dev, Anchor Browser, Hyperbrowser: fetch the vendor's live pricing page and live-view/persistence docs; record current prices and free-tier limits in the Hosted Live-View section of `report.md`, each with source URL and fetch date
-- [ ] Section documents, per vendor: how the live-view iframe is embedded, how session/profile persistence works, and how state gets back to our workers (connectOverCDP vs cookie export to storageState)
-- [ ] Section includes a projected monthly cost at two scales: 1 user (~10 posts/mo) and 20 users (~30 posts/mo each), using ~2 min per login capture and ~3 min per posting run
-- [ ] Section includes an integration sketch for our stack: "Connect Landmodo" button in PostingAuthPanel → create session with persistent context → embed live-view iframe → detect successful login → persist; lists which existing files would change
-- [ ] No vendor accounts are created and nothing is purchased
-- [ ] Typecheck passes
+- [x] For each of Browserbase, Steel.dev, Anchor Browser, Hyperbrowser: fetch the vendor's live pricing page and live-view/persistence docs; record current prices and free-tier limits in the Hosted Live-View section of `report.md`, each with source URL and fetch date
+- [x] Section documents, per vendor: how the live-view iframe is embedded, how session/profile persistence works, and how state gets back to our workers (connectOverCDP vs cookie export to storageState)
+- [x] Section includes a projected monthly cost at two scales: 1 user (~10 posts/mo) and 20 users (~30 posts/mo each), using ~2 min per login capture and ~3 min per posting run
+- [x] Section includes an integration sketch for our stack: "Connect Landmodo" button in PostingAuthPanel → create session with persistent context → embed live-view iframe → detect successful login → persist; lists which existing files would change
+- [x] No vendor accounts are created and nothing is purchased
+- [x] Typecheck passes
 
 ### US-005: Evaluate the remaining options (extension export, Apify, self-hosted streaming, credential vault)
 **Description:** As the operator, I want the alternatives fairly written up and
