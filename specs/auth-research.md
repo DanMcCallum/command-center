@@ -118,11 +118,11 @@ PRD for the recommended approach so accepting the proposal immediately unblocks
 implementation.
 
 **Acceptance Criteria:**
-- [ ] Proposed Implementation PRD section contains Introduction, Goals, Non-Goals, and US-XXX user stories for the recommended per-platform approaches
-- [ ] Every drafted story is Ralph-sized (describable in 2–3 sentences) and ordered by dependency (config/schema → backend → UI)
-- [ ] Every drafted story has verifiable acceptance criteria including "Typecheck passes" (and browser verification for UI stories)
-- [ ] Stories cover: any human prerequisite steps flagged separately (e.g. "email Land.com for feed credentials" is marked as an operator task, not a Ralph story)
-- [ ] Typecheck passes
+- [x] Proposed Implementation PRD section contains Introduction, Goals, Non-Goals, and US-XXX user stories for the recommended per-platform approaches
+- [x] Every drafted story is Ralph-sized (describable in 2–3 sentences) and ordered by dependency (config/schema → backend → UI)
+- [x] Every drafted story has verifiable acceptance criteria including "Typecheck passes" (and browser verification for UI stories)
+- [x] Stories cover: any human prerequisite steps flagged separately (e.g. "email Land.com for feed credentials" is marked as an operator task, not a Ralph story)
+- [x] Typecheck passes
 
 ### US-008: Render the proposal as a PDF
 **Description:** As the operator, I want the finished proposal as a PDF so I can

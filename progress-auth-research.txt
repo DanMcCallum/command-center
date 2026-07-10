@@ -212,3 +212,41 @@
   - Both typechecks still pass clean (posting exit 0, dashboard tsc exit 0); report
     is markdown-only so it's a no-regression gate.
 ---
+
+## Iteration 7 - US-007: Draft the follow-up implementation PRD inside the proposal
+- Filled §7 (Proposed Implementation PRD) of report.md — pure synthesis of §6's
+  per-platform recommendation, no new research. Wrote Introduction / Goals /
+  Non-Goals, then Ralph-sized US-XXX stories in config/schema -> backend -> UI order.
+  Land.com LandFeed path: US-101 (config + LOA_SHARED_KEY env), US-102 (build
+  schema-valid XML feed from tasks), US-103 (public photo URLs), US-104 (submit in
+  test mode + record via PATCH). Landmodo Browserbase path: US-201 (live-view
+  capture config), US-202 (POST /api/posting-auth/connect + status poll + CDP
+  cookie export to auth/landmodo.json), US-203 (Connect button + iframe in
+  PostingAuthPanel.tsx). Each story ends in "Typecheck passes"; the UI story
+  (US-203) also requires browser verification on port 3001.
+- Human prerequisites flagged separately as Operator Tasks (NOT Ralph stories):
+  OT-1 email Land.com for shared key (gates US-104 live submit), OT-2 create
+  Browserbase account + API key (gates US-202/203 live capture), OT-3 decide public
+  photo hosting (informs US-103). Added a story-sequencing block making the two
+  platforms independent with gates noted.
+- Files changed: research/auth-capture-spike/report.md (§7 filled),
+  specs/auth-research.md (US-007 checked), this file.
+- Learnings for future iterations:
+  - US-008 is the last story: render report.md -> auth-capture-proposal.pdf. Reuse
+    workers/posting Playwright/Chromium print-to-PDF (page.pdf) OR pandoc if
+    installed — NO new paid services. PDF must start with %PDF, be >20KB, >=5 pages
+    (verify with pdfinfo). Tables (§4 vendor pricing, §6 comparison matrix) must
+    render legibly — convert a page to image or open in browser to check. Note a
+    regeneration command at the TOP of report.md (that's a US-008 criterion — the
+    top of report.md currently has NO regen command, so add it in US-008).
+  - The report is now content-complete through §7; only the PDF render + the
+    top-of-file regen note remain. After US-008 all ACs are [x] and the SHIP step
+    kicks in (add specs.md feature-log summary, fix readme.md, flip header to
+    Implemented). Ship is a SEPARATE final iteration per the Ralph instructions.
+  - Playwright page.pdf needs headless chromium + a file:// or data URL of rendered
+    HTML. Markdown->HTML: either pandoc, or a tiny marked/markdown-it render inside
+    workers/posting (it already has npm deps). Keep any such script INSIDE
+    workers/posting so it stays in `npm run typecheck` and ESM resolves deps.
+  - Both typechecks still pass clean (posting exit 0, dashboard tsc exit 0); report
+    is markdown-only so it's a no-regression gate.
+---

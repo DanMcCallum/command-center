@@ -812,6 +812,178 @@ Concretely, the operator gains:
 
 ## 7. Proposed Implementation PRD
 
-*(US-007 — to be completed: Introduction / Goals / Non-Goals / Ralph-sized user
-stories for the recommended per-platform approaches, with operator-task
-prerequisites flagged separately.)*
+*This is a ready-to-run PRD for the approaches recommended in §6. If accepted as-is,
+it can be saved to `specs/auth-capture.md` with `**Status:** Draft` and handed to
+Ralph. It carries forward the two per-platform decisions — **Land.com → LandFeed XML
+API** and **Landmodo → Browserbase hosted live-view capture** — and sequences them
+config/schema → backend → UI. Vendor and marketplace onboarding are the operator's
+to do first; they are flagged as **Operator Tasks** below, not Ralph stories.*
+
+### Introduction
+
+Replace the terminal-only login-capture ritual (§1) with two in-app,
+constraint-compliant paths: post Land.com listings through its sanctioned **LandFeed
+XML API** (no browser session at all), and capture the **Landmodo** login inside the
+dashboard via a **Browserbase** hosted live-view iframe, persisting the resulting
+session back into the poster's existing `auth/landmodo.json` storageState. The app
+never sees or stores a marketplace password in either path.
+
+### Goals
+
+- Eliminate the CLI capture step for both enabled platforms: Land.com posts via feed,
+  Landmodo re-auth is an in-dashboard **Connect** button reachable from any device.
+- Keep the existing poster pipeline (`workers/run-poster.sh` → `post.ts`) working with
+  the smallest possible change — the Landmodo path exports cookies into the same
+  `auth/<platform>.json` file the poster already loads (§4 "low-risk path").
+- Preserve every §1 security property: no password custody, secrets gitignored and
+  `600`, never logged, never in the file API.
+- Make session expiry recoverable proactively (a real re-auth action) instead of
+  discovered by a failed post.
+
+### Non-Goals
+
+- **No multi-user identity/accounts** — single operator, as decided; the design may be
+  multi-user-friendly but building it out is out of scope.
+- **No credential vault / stored passwords** (§5d, rejected) — the user always logs in
+  themselves.
+- **No change to the other four platforms** (land_century, landflip, land_listings,
+  landhub) — they stay on manual/CLI capture.
+- **No ad-copy/generation changes** — this is purely auth capture + Land.com transport;
+  char caps and DREAMS stay where they are (`config/ad-platforms.json`, generate-ad).
+
+### Operator Tasks (prerequisites — NOT Ralph stories)
+
+These are human steps that must happen outside the code and gate specific stories.
+Ralph cannot do them; each blocked story notes the gate.
+
+- **OT-1 — Obtain LandFeed access.** Send the §2 draft email to Land.com support;
+  confirm LandFeed eligibility on the account (Corporate Account if required), obtain
+  the `loa_shared_key`, and confirm the `loa_account_id`. **Gates US-104's live
+  submission** (the feed builder and validation can be built and tested against the
+  XSD in `--test`/dry mode without it).
+- **OT-2 — Create a Browserbase account + API key.** Sign up, create an API key and a
+  reusable **Context** for Landmodo, and put the key in `.env.local` (same secret
+  class as `auth/*.json`). **Gates US-202/US-203 live capture** (the route and UI can
+  be built and typechecked with the key absent, failing closed with a clear message).
+- **OT-3 — Decide public photo hosting for LandFeed.** LandFeed ingests photos by
+  public HTTPS URL (§2); pick where `outputs/<taskId>/photos/` images are served
+  (e.g. an R2/S3 bucket or the Cloudflare tunnel). **Informs US-103.**
+
+---
+
+### Land.com — LandFeed XML API stories
+
+#### US-101: LandFeed config + secret plumbing
+**Description:** Add a `landfeed` config block to `config/posting-platforms.json`
+(feed endpoint `https://www.land.com/LandFeed/`, `mode: "test" | "live"`, and the
+non-secret `loa_account_id`), and read `LOA_SHARED_KEY` from the environment — never
+committed. A tiny loader validates the block and fails closed with a clear message
+when the key is absent.
+
+**Acceptance Criteria:**
+- [ ] `config/posting-platforms.json` `land_com` entry gains a `landfeed` object:
+  `{ endpoint, mode, account_id, account_email }`; `mode` defaults to `"test"`
+- [ ] A loader (e.g. `workers/posting/landfeed/config.ts`) reads the block + `LOA_SHARED_KEY` from env, throws a one-line "set LOA_SHARED_KEY" error when missing (mirrors the poster's "run capture-login" fail-fast)
+- [ ] The shared key is never written to config, logs, or the file API; `.env.local` handling matches existing secrets
+- [ ] Typecheck passes (`cd workers/posting && npm run typecheck`)
+
+#### US-102: Build a schema-valid LandFeed XML document from tasks
+**Description:** Write a builder that turns the operator's active Land.com inventory
+(approved ad tasks) into one LandFeed XML document — `<channel>` credentials plus one
+`<item>` per listing — mapping task/metadata fields to the §2 schema (id, description
+CDATA, listing_title, county/state/closest_city, lot_size, price, propertytypes
+bitmask, listing_status). It validates against the live XSD and refuses HTML/URLs/
+emails in `description`.
+
+**Acceptance Criteria:**
+- [ ] `workers/posting/landfeed/build-feed.ts` maps a list of tasks → a LandFeed XML string, credentials pulled from US-101's loader
+- [ ] Output validates against `https://www.land.com/LandFeed/schemas/LandFeedSchema1.0.xsd` (fetch once, validate locally, e.g. with `libxmljs`/`fast-xml-parser` + assertions); a unit check with one sample task passes
+- [ ] `description` is CDATA-wrapped and rejects HTML tags, URLs, and email addresses (per §2); `propertytypes` is the bitwise sum, max 3 types
+- [ ] **Feed-is-authoritative guard:** the builder emits the operator's *entire* active inventory (a comment/asserted invariant documents that an omitted id is a DELETE)
+- [ ] Typecheck passes
+
+#### US-103: Public photo URLs for feed items
+**Description:** LandFeed pulls photos by URL, but the app stores them locally at
+`outputs/<taskId>/photos/`. Add a resolver that maps each local photo to a public
+HTTPS URL (per OT-3's chosen host) and emits `image_link` + `loa_photo_tour_images`
+for each item, honoring the ≤2 MB / min-width rules.
+
+**Acceptance Criteria:**
+- [ ] A resolver (`workers/posting/landfeed/photo-urls.ts`) maps `outputs/<taskId>/photos/*` → public URLs using a configured base from OT-3; primary photo → `item.image_link`, rest → `loa_photo_tour_images.image_link` (0–200)
+- [ ] Photos exceeding 2 MB or below the min width are skipped with a logged warning rather than emitted (feed would reject them)
+- [ ] The base URL is config-driven (no hardcoded host), absent-config fails closed with a clear message
+- [ ] Typecheck passes
+
+#### US-104: Submit the feed (test mode first) and record results
+**Description:** POST the built XML to the LandFeed endpoint over HTTPS with the §2
+transport headers (`Content-Type: text/xml`, TLS 1.2+, `User-Agent`, `Content-Length`),
+defaulting to `mode: test` so nothing goes live until the operator flips it. Parse the
+response, and record per-task feed status on the task (reusing the `postings[]` shape).
+
+**Acceptance Criteria:**
+- [ ] `workers/posting/landfeed/submit.ts` POSTs the US-102 document with the correct headers; `mode` comes from config (default `test`)
+- [ ] In `test` mode it runs full validation without touching live listings (per §2) and logs the returned validation/warning/error report
+- [ ] Each task's `land_com` posting entry is PATCHed with the feed outcome (`posted`/`failed` + `lastError`) via the API, never by direct file write (matches the §"Ad posting" invariant)
+- [ ] **Live submission is gated on OT-1** (shared key); with the key absent it fails fast per US-101 and does not attempt a POST
+- [ ] Typecheck passes
+
+---
+
+### Landmodo — Browserbase live-view capture stories
+
+#### US-201: Live-view capture config
+**Description:** Add per-platform capture config to `config/posting-platforms.json` so
+the dashboard knows which platforms use hosted live-view and how to detect a
+successful login: a `capture` flag (`"live-view" | "cli"`) and a `login_success`
+signal (an auth cookie name and/or a post-login URL to detect a redirect off
+`/login`). Read the Browserbase API key from env.
+
+**Acceptance Criteria:**
+- [ ] `landmodo` entry gains `capture: "live-view"` and a `login_success` object (`{ cookie?, redirect_off?: "/login" }`); other platforms default to `"cli"`
+- [ ] `BROWSERBASE_API_KEY` (and the Landmodo Context ID) are read from env; absent key → clear fail-closed error (no crash)
+- [ ] `GET /api/posting-platforms` (existing) serves the new fields so the client can branch on `capture` without importing config directly (per AGENTS.md)
+- [ ] Typecheck passes (`cd dashboard && npx tsc --noEmit`)
+
+#### US-202: Connect + login-status API routes
+**Description:** Add `POST /api/posting-auth/connect` that creates a Browserbase
+session bound to the persistent Landmodo **Context** (`persist:true`), navigates it to
+Landmodo's `login_url`, and returns the live-view URL + session/context IDs; plus a
+`GET /api/posting-auth/status` that polls the session for the US-201 `login_success`
+signal. On success it exports cookies via CDP `Network.getAllCookies` and writes
+`workers/posting/auth/landmodo.json` — leaving `post.ts` unchanged.
+
+**Acceptance Criteria:**
+- [ ] `dashboard/app/api/posting-auth/connect/route.ts` creates a persistent-context Browserbase session, navigates to the `login_url` from config, returns `{ liveViewUrl, sessionId }`
+- [ ] `dashboard/app/api/posting-auth/status/route.ts` (or a `?poll=` action) checks the session for the configured post-login signal and reports `{ loggedIn: boolean }`
+- [ ] On detected login it writes `auth/landmodo.json` in Playwright storageState shape via CDP cookie export; the file is `600` and gitignored (matches existing secret handling); **poster and `post.ts` are unchanged**
+- [ ] Both routes fail closed with a clear message when `BROWSERBASE_API_KEY` is absent (OT-2 gate); no secret is logged or returned to the client
+- [ ] Typecheck passes
+
+#### US-203: "Connect" UI in PostingAuthPanel
+**Description:** Turn the read-only `PostingAuthPanel.tsx` (§1) into an actionable
+panel: for `capture: "live-view"` platforms, render a **Connect / Re-connect** button
+that calls US-202, embeds the returned live-view URL in an interactive `<iframe>`, and
+polls `status` until login is detected — then closes the iframe and shows the saved
+session (existing mtime display). CLI platforms keep today's read-only status.
+
+**Acceptance Criteria:**
+- [ ] `PostingAuthPanel.tsx` shows a Connect (or Re-connect, when a session exists) button only for `capture: "live-view"` platforms; CLI platforms are unchanged
+- [ ] Clicking Connect embeds the live-view URL in a sandboxed interactive `<iframe>` and polls `GET /api/posting-auth/status`; on `loggedIn: true` it tears down the iframe and refreshes the saved-session display
+- [ ] Error and timeout states are surfaced in-panel (session create failed / key missing / login not detected within N minutes), matching the app's existing status-chip styling — no new modal (per §6 UX rules)
+- [ ] **Browser verification:** with the dev server on port 3001 (per the Ad-photos verification gotcha), load `/settings`, confirm the Connect button renders for Landmodo and the iframe mounts on click (mock the connect route if OT-2's key is absent)
+- [ ] Typecheck passes (`cd dashboard && npx tsc --noEmit`)
+
+---
+
+### Story sequencing
+
+Dependency order is **config/schema → backend → UI**, per platform, and the two
+platforms are independent (either can ship first):
+
+- **Land.com:** OT-1 → US-101 → US-102 → US-103 → US-104 (US-104 live submit gated on OT-1).
+- **Landmodo:** OT-2 → US-201 → US-202 → US-203 (US-202/203 live capture gated on OT-2).
+
+Every Ralph story above is describable in 2–3 sentences, ends in "Typecheck passes,"
+and each UI story (US-203) additionally requires browser verification. The two
+operator prerequisites (OT-1, OT-2, plus the OT-3 hosting decision) are called out
+separately and are not Ralph work.
