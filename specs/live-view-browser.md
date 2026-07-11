@@ -137,11 +137,11 @@ capture-server, so the browser never talks to the capture-server directly and th
 success signal/secret handling stays server-side.
 
 **Acceptance Criteria:**
-- [ ] New `dashboard/app/api/posting-auth/connect/route.ts` handles `POST { platform }`, calls the capture-server `POST /capture/start` (base URL + token from env), and returns `{ liveViewUrl, sessionId }`
-- [ ] New `dashboard/app/api/posting-auth/status/route.ts` handles `GET ?sessionId=…`, proxies `/capture/status`, and returns `{ loggedIn }`
-- [ ] Both routes reject platforms whose config `capture` is not `"live-view"`, and fail closed with a clear (non-secret) message when the capture-server base URL or token env var is absent
-- [ ] The existing read-only `GET /api/posting-auth` (file-exists + mtime) is left working and unchanged
-- [ ] Typecheck passes (`cd dashboard && npx tsc --noEmit`)
+- [x] New `dashboard/app/api/posting-auth/connect/route.ts` handles `POST { platform }`, calls the capture-server `POST /capture/start` (base URL + token from env), and returns `{ liveViewUrl, sessionId }`
+- [x] New `dashboard/app/api/posting-auth/status/route.ts` handles `GET ?sessionId=…`, proxies `/capture/status`, and returns `{ loggedIn }`
+- [x] Both routes reject platforms whose config `capture` is not `"live-view"`, and fail closed with a clear (non-secret) message when the capture-server base URL or token env var is absent
+- [x] The existing read-only `GET /api/posting-auth` (file-exists + mtime) is left working and unchanged
+- [x] Typecheck passes (`cd dashboard && npx tsc --noEmit`)
 
 ### US-007: "Connect" UI in PostingAuthPanel
 **Description:** As an operator, I want a Connect button that opens the live-view login
