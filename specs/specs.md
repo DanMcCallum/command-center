@@ -15,6 +15,32 @@ One summary per shipped feature. Read this **and** [readme.md](readme.md) (the c
 
 ---
 
+## Self-hosted live-view login capture — in-dashboard marketplace login
+
+**PRD:** [live-view-browser.md](live-view-browser.md) · **Shipped:** 2026-07-11
+
+Replaces the terminal-only `capture-login` ritual with an in-dashboard **Connect** button (the auth-capture spike's §5c self-hosted option — no hosted-browser vendor). A headed Playwright Chromium on the worker box is streamed into a sandboxed dashboard iframe (Xvfb → x11vnc → websockify → noVNC); the operator logs in on the real site (no password custody; passes Landmodo's invisible reCAPTCHA naturally); on detected success the session is exported via `context.storageState()` to `workers/posting/auth/<platform>.json`, chmod 600 — so the poster pipeline (`run-poster.sh` → `post.ts`) is untouched. Capture and posting run on the same box, so sessions replay from the IP class they were minted on.
+
+**Config** (`config/posting-platforms.json`): each platform gains `capture: "live-view" | "cli"` (defaults `"cli"` when absent; all six platforms are `"live-view"` today) and, for live-view, `login_success: { cookie?: string, redirect_off?: string }` — signals are ANDed; detection compares `redirect_off` against the URL *pathname* only and fails closed on an empty signal. The CLI `capture-login` path still works for any platform.
+
+**Env / secrets:** `CAPTURE_STREAM_SECRET` (OT-3, same secret class as `auth/*.json`) both signs the 10-minute live-view URL token and derives the capture-server API bearer token as `HMAC-SHA256("capture-api", secret)` — that derivation is intentionally duplicated in `dashboard/lib/capture-server.ts` because the dashboard can't import workers modules. Also: `CAPTURE_PORT` (default 4750), `CAPTURE_WS_PORT` (default 6080), `NOVNC_ROOT`, and dashboard-side `CAPTURE_SERVER_URL` (e.g. `http://127.0.0.1:4750`). Both ends read `process.env` with fallback to the **project-root** `.env.local` (Next.js only auto-loads `dashboard/.env.local`; the root file is parsed directly — see AGENTS.md).
+
+**Worker surface** — `workers/posting/capture/` (inside the package typecheck; `npm run capture-server` starts the service):
+- `session.ts` — `startSession`/`getSession`/`closeSession` + `requireLiveViewPlatform`; headed Chromium on `process.env.DISPLAY`, in-memory session map keyed by random hex id.
+- `stream.ts` — Xvfb `:99` + x11vnc + websockify orchestration; single-active-session slot (second start fails closed with "capture already in progress"); missing OT-1 binaries produce a fail-closed error naming the dependency before anything spawns; teardown leaves no orphans and restores `DISPLAY`.
+- `detect.ts` — pure `isLoggedIn(signal, {cookies, url})` + `checkSession(sessionId)`; on success exports storageState, chmod 600, tears down session + stream. Unit tests in `detect.test.ts`; session/stream are imported lazily so the `/tmp` compiled test build never has to resolve `playwright`.
+- `server.ts` — HTTP on `CAPTURE_PORT`: `POST /capture/start {platform}`, `GET /capture/status?sessionId`, `POST /capture/cancel`; every request needs the derived Bearer token (timing-safe compare, 401 otherwise); 409 on concurrent start, 404 unknown session; exits at startup with the OT-3 message when the secret is absent.
+
+**Dashboard surface:** `POST /api/posting-auth/connect {platform}` → `{liveViewUrl, sessionId}` and `GET /api/posting-auth/status?sessionId[&platform]` → `{loggedIn}`, both proxying the capture-server via `dashboard/lib/capture-server.ts` (503 when env config is missing, 502 unreachable, 400 non-live-view platform; the read-only `GET /api/posting-auth` is unchanged). `PostingAuthPanel.tsx` shows Connect/Re-connect for live-view platforms (cli platforms keep the terminal-snippet text), mounts the iframe with `sandbox="allow-same-origin allow-scripts"`, polls status every 3 s with a 5-minute deadline, and refreshes the saved-session display on success; errors surface as inline chips, no modal.
+
+**Invariants / gotchas:**
+- The live-view URL grants full browser control — treat as a secret (short-lived signed token, TLS tunnel only, never logged). Cookie values and storageState contents are never logged anywhere in the chain.
+- One active capture session at a time, on fixed display `:99` and fixed ports — generalizing to concurrent sessions means parameterizing display/port allocation in `stream.ts`.
+- Operator tasks still pending at ship time: OT-1 (this box has Xvfb + websockify but **not** x11vnc or noVNC), OT-2 (tunnel ingress for the capture port), OT-3 (`CAPTURE_STREAM_SECRET` in `.env.local`). Every code path fails closed with a clear message until they're done.
+- Verification patterns that work: stub-binary-on-PATH (fake x11vnc/vnc.html + real Xvfb/websockify) for process orchestration; transient `_verify_stub` platform appended to config and restored in `finally`; Playwright must browse `http://localhost:3001`, never `127.0.0.1` (Next dev serves HTML that never hydrates cross-origin — in AGENTS.md).
+
+**Extending:** a new platform opts in with `enabled: true` + `capture: "live-view"` + a `login_success` signal in config — zero code. Swapping the transport (neko/WebRTC, raw CDP screencast) rewrites `stream.ts` and touches session/detect/server (PRD US-002…US-005).
+
 ## Marketplace auth-capture — research spike (proposal, no implementation)
 
 **PRD:** [auth-research.md](auth-research.md) · **Shipped:** 2026-07-10 · **Type:** research spike (deliverable is a proposal, not a code change to the running system)

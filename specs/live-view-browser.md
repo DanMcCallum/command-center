@@ -1,5 +1,7 @@
 # PRD: Self-Hosted Live-View Login Capture
 
+**Status:** Implemented (2026-07-11)
+
 ## Introduction
 
 The auth-capture research (`research/auth-capture-spike/report.md`) recommends renting

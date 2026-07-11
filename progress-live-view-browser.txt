@@ -292,3 +292,30 @@
     NEXT ITERATION IS THE SHIP STEP (specs.md summary, readme.md fixes,
     Status: Implemented (date), docs commit).
 ---
+## Iteration 8 - Ship: feature log + readme updates
+- What was implemented:
+  - specs/specs.md: added the "Self-hosted live-view login capture" summary
+    (newest-first, above the auth-capture spike entry): capture flow, config
+    fields (capture / login_success), env-and-secret surface
+    (CAPTURE_STREAM_SECRET dual use + duplicated HMAC derivation,
+    CAPTURE_PORT/WS_PORT/NOVNC_ROOT/CAPTURE_SERVER_URL, project-root
+    .env.local fallback), worker capture/ modules, dashboard proxy routes +
+    PostingAuthPanel, invariants (live-view URL is a secret, single session,
+    OT-1/2/3 still pending at ship), verification patterns, extension notes.
+  - specs/readme.md: /settings row now mentions PostingAuthPanel + Connect;
+    §7 worker deps gained the optional streaming deps (fail-closed); repo map
+    gained workers/posting/capture/, PostingAuthPanel, lib/capture-server.ts,
+    and specs/live-view-browser.md.
+  - specs/live-view-browser.md: PRD had NO status header at all (iteration 7
+    note said "Status: Draft" but the line didn't exist) — inserted
+    "**Status:** Implemented (2026-07-11)" after the H1.
+- Files changed: specs/specs.md, specs/readme.md, specs/live-view-browser.md,
+  progress-live-view-browser.txt
+- Learnings for future iterations:
+  - Both typechecks still pass (docs-only change, run as a sanity gate).
+  - Working tree carries unrelated dirty files (tasks.json, progress.txt,
+    specs/ad-posting.md, .next-start.log) — ship commit stages only the four
+    feature files, same as every prior iteration.
+  - Feature is code-complete but NOT operational until the operator does
+    OT-1 (install x11vnc + noVNC), OT-2 (tunnel ingress), OT-3 (secret).
+---

@@ -168,7 +168,7 @@ completed    -> pending        (operator reopens)
 | `/tasks` | Primary view. Task list polling every 30 s; filter tabs (All / Pending / In progress / Needs review / Completed) with counts; inline create form; expandable task rows showing priority dot, status badge, Claude's notes, links to output files. Actions per task: approve, request revision, delete, edit output files in a modal (`FileEditorModal`), and **Save to knowledge base** (`SaveToKbModal`). A dismissible banner surfaces permanently failed marketplace postings (specs.md → Ad photos). Supports `?focus={id}` deep links. |
 | `/ad-builder` | Structured property form: location, acreage, price, access (paved / dirt-year-round / dirt-seasonal / none), utilities (power/water/septic/internet as yes/no/unknown), terrain, zoning, comps, must-include notes, buyer hint (retiree / off-gridder / investor / builder / hunter / remote-worker), target platforms, and photos (at least 1 required; drag-and-drop ordering with one starred primary). Submit creates a priority-1 opus `generate-ad` task with the form as `metadata`, uploads the photos into the task's outputs dir, then fires the worker and routes to `/tasks?focus={id}` (specs.md → Ad photos). |
 | `/roadmap` | Read-only list of future-work items from `data/todos.json`; each is a ready-to-run prompt brief. |
-| `/settings` | Worker scheduling via `CronConfigPanel`: on/off toggle, interval picker (over the cron-config/worker-status APIs), and a status card (last run, last task, crontab installed). |
+| `/settings` | Worker scheduling via `CronConfigPanel`: on/off toggle, interval picker (over the cron-config/worker-status APIs), and a status card (last run, last task, crontab installed). Also marketplace login management via `PostingAuthPanel`: per-platform saved-session status plus an in-dashboard live-view **Connect** login flow (specs.md → Self-hosted live-view login capture). |
 
 ### 5.3 Dashboard API
 
@@ -249,7 +249,7 @@ Notion-inspired dark minimalism. The principle: **the UI is a document, not an a
 
 - **Runtime:** Node.js 20+, Linux (WSL-compatible). Dashboard on localhost (started via `start.sh` from an `@reboot` cron entry in production mode).
 - **Remote access:** a Cloudflare tunnel (`cloudflared`, also started `@reboot`) publishes the dashboard at `dashboard.ownaloha.land`, gated by Cloudflare Access. The app itself has no auth — the edge is the only gate.
-- **Worker deps:** `claude` CLI, `curl`, `jq`, `flock`, `timeout`, `fuser`.
+- **Worker deps:** `claude` CLI, `curl`, `jq`, `flock`, `timeout`, `fuser`. Optional (live-view login capture only, fail-closed when absent): `xvfb`, `x11vnc`, `websockify`, and the noVNC static client (specs.md → Self-hosted live-view login capture).
 - **No database, no in-app auth, no external services** except the Dialpad API for transcript fetch and the Cloudflare tunnel for remote access. Ad platforms have no API integration — enabled ones are posted via browser automation, the rest manually (specs.md → Ad posting).
 - **Timeout budget:** 30 min per task; 35 min stale-lock threshold.
 - **Config:** `config/paths.json` (external directory roots — never hardcode paths) and `config/ad-platforms.json`.
@@ -288,14 +288,18 @@ command-center/
     app/                Routes: /, /tasks, /ad-builder, /roadmap, /settings, /api/*
     components/         TaskCard, TaskForm, SaveToKbModal, FileEditorModal,
                         CronConfigPanel, Nav, StatusBadge, PriorityIndicator,
-                        PhotoPicker, PostingChips, PostingFailureBanner
-    lib/                types.ts, data.ts (JSON I/O), cron.ts, utils.ts
+                        PhotoPicker, PostingChips, PostingFailureBanner,
+                        PostingAuthPanel (saved sessions + live-view Connect)
+    lib/                types.ts, data.ts (JSON I/O), cron.ts, utils.ts,
+                        capture-server.ts (proxy to the worker capture-server)
     data/               tasks.json, todos.json, cron-config.json
     start.sh            Production start (called from @reboot cron)
   workers/
     run-worker.sh       The execution engine (cron / on-demand entry point)
     run-poster.sh       Marketplace posting orchestrator (specs.md -> Ad posting)
     posting/            Playwright posting scripts; auth/ holds login sessions (secret)
+      capture/          Live-view login capture: session/stream/detect/server
+                        (specs.md -> Self-hosted live-view login capture)
     system-prompt.md    Claude worker operating rules
     workspace/          outputs/{task-id}/ and notes/{task-id}.md
     logs/               Per-run logs + cron.log
@@ -321,5 +325,6 @@ command-center/
     specs.md            Feature log: one summary per shipped feature + spec process
     ad-posting.md       Feature PRD: auto-post approved ads (implemented)
     ad-photos.md        Feature PRD: photo upload/ordering + failure UX (implemented)
+    live-view-browser.md  Feature PRD: in-dashboard live-view login capture (implemented)
   *.md                  Original design docs (Blueprint, TLDR, Worker System Spec)
 ```
