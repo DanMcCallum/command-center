@@ -29,6 +29,9 @@ export default function PostingAuthPanel() {
   const [modes, setModes] = useState<Record<string, CaptureMode>>({});
   const [error, setError] = useState<string | null>(null);
   const [capture, setCapture] = useState<Capture>({ phase: 'idle' });
+  const [pasteText, setPasteText] = useState('');
+  const [pasteBusy, setPasteBusy] = useState(false);
+  const [pasteError, setPasteError] = useState<string | null>(null);
 
   async function load() {
     try {
@@ -96,6 +99,40 @@ export default function PostingAuthPanel() {
       clearInterval(t);
     };
   }, [capture]);
+
+  // Reset the paste box whenever the capture ends or restarts.
+  useEffect(() => {
+    if (capture.phase !== 'active') {
+      setPasteText('');
+      setPasteBusy(false);
+      setPasteError(null);
+    }
+  }, [capture.phase]);
+
+  // OS-clipboard paste can't cross into the sandboxed noVNC iframe, so this
+  // relays pasted text server-side and Playwright types it into whatever
+  // field is focused in the live view (US-008).
+  async function sendPaste() {
+    if (capture.phase !== 'active' || !pasteText || pasteBusy) return;
+    setPasteBusy(true);
+    setPasteError(null);
+    try {
+      const res = await fetch('/api/posting-auth/type', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId: capture.sessionId, text: pasteText }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || data?.typed !== true) {
+        throw new Error(data?.error ?? `HTTP ${res.status}`);
+      }
+      setPasteText('');
+    } catch (err) {
+      setPasteError((err as Error).message);
+    } finally {
+      setPasteBusy(false);
+    }
+  }
 
   async function connect(platform: string) {
     setCapture({ phase: 'connecting', platform });
@@ -214,6 +251,37 @@ export default function PostingAuthPanel() {
             title={`Live login for ${capture.platform}`}
             className="w-full h-[600px] rounded border border-[#2F2F2F] bg-black"
           />
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <input
+                type="password"
+                value={pasteText}
+                onChange={e => setPasteText(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') sendPaste();
+                }}
+                autoComplete="off"
+                placeholder="Paste text here, then Send…"
+                className="flex-1 px-2 py-1 text-sm rounded bg-[#2F2F2F] border border-[#373737] text-white placeholder-[#6B6B6B] focus:outline-none focus:border-[#4DA3D4]"
+              />
+              <button
+                type="button"
+                disabled={pasteBusy || !pasteText}
+                onClick={sendPaste}
+                className="px-3 py-1 text-xs font-medium rounded bg-[#2F2F2F] text-[#9B9B9B] hover:bg-[#373737] hover:text-white transition-colors disabled:opacity-50"
+              >
+                {pasteBusy ? 'Sending…' : 'Send'}
+              </button>
+            </div>
+            <p className="text-xs text-[#6B6B6B]">
+              Your clipboard can’t reach the embedded browser directly. Click
+              the target field above first, then paste here and press Enter —
+              it will be typed into that field. Nothing is stored or logged.
+            </p>
+            {pasteError && (
+              <div className="text-xs text-[#FF4D4D]">{pasteError}</div>
+            )}
+          </div>
         </div>
       )}
     </div>

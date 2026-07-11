@@ -157,6 +157,19 @@ a terminal.
 - [x] **Browser verification:** with the dashboard dev server running, load `/settings`, confirm the Connect button renders for `landmodo` and the iframe mounts on click (mock the connect route if OT-1/OT-2 are not yet done)
 - [x] Typecheck passes (`cd dashboard && npx tsc --noEmit`)
 
+### US-008: Paste relay into the live view
+**Description:** As an operator, I want to paste my password (from my OS clipboard /
+password manager) into the live-view login, so I don't have to hand-type long
+credentials. Browser sandboxing blocks the OS clipboard from reaching the noVNC
+canvas, so pasted text is relayed server-side and typed into the focused field.
+
+**Acceptance Criteria:**
+- [x] Capture-server `POST /capture/type { sessionId, text }` types the text into the focused field of the capture browser (most recently opened page, so SSO popups work) via Playwright `keyboard.type`, capped at 1024 chars; unknown sessions get 404
+- [x] The text is held in memory only for the duration of the request — never logged (only its length), never written to disk; the "no credential vault / stored passwords" non-goal stands
+- [x] New `dashboard/app/api/posting-auth/type/route.ts` proxies to `/capture/type` with the same derived-token auth as US-006
+- [x] While a capture is active, `PostingAuthPanel` shows a paste box (masked input) under the iframe: paste + Enter/Send types it into the field the operator clicked in the live view; errors surface in-panel
+- [x] Typecheck passes (both `cd workers/posting && npm run typecheck` and `cd dashboard && npx tsc --noEmit`)
+
 ## Non-Goals
 
 - **No hosted-browser vendor.** This PRD is the in-repo alternative to Browserbase/

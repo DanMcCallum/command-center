@@ -5,9 +5,10 @@
  * A small HTTP service on the worker machine that the dashboard drives
  * (over localhost / the Cloudflare tunnel) to run a live-view login:
  *
- *   POST /capture/start  { platform }   → { sessionId, liveViewUrl }
- *   GET  /capture/status ?sessionId=…   → { loggedIn }
- *   POST /capture/cancel { sessionId }  → { cancelled: true }
+ *   POST /capture/start  { platform }       → { sessionId, liveViewUrl }
+ *   GET  /capture/status ?sessionId=…       → { loggedIn }
+ *   POST /capture/type   { sessionId, text } → { typed: true }
+ *   POST /capture/cancel { sessionId }      → { cancelled: true }
  *
  * Every request must carry `Authorization: Bearer <token>` where the token
  * is deriveApiToken(CAPTURE_STREAM_SECRET) — HMAC-SHA256 of the string
@@ -167,6 +168,41 @@ async function handleStatus(url: URL, res: http.ServerResponse): Promise<void> {
   sendJson(res, 200, { loggedIn })
 }
 
+// OS-clipboard paste cannot cross into the noVNC canvas (browser sandbox),
+// so the dashboard relays pasted text here and Playwright types it into the
+// focused field. The text lives only in this request — never logged (US-008
+// keeps the "no stored passwords" non-goal intact), never written to disk.
+const MAX_TYPE_CHARS = 1024
+
+async function handleType(body: Record<string, unknown>, res: http.ServerResponse): Promise<void> {
+  const sessionId = body.sessionId
+  if (typeof sessionId !== 'string' || !sessionId) {
+    sendJson(res, 400, { error: 'Missing "sessionId" in request body' })
+    return
+  }
+  const text = body.text
+  if (typeof text !== 'string' || !text) {
+    sendJson(res, 400, { error: 'Missing "text" in request body' })
+    return
+  }
+  if (text.length > MAX_TYPE_CHARS) {
+    sendJson(res, 400, { error: `"text" exceeds ${MAX_TYPE_CHARS} characters` })
+    return
+  }
+  const session = getSession(sessionId)
+  if (!session) {
+    sendJson(res, 404, { error: `Unknown capture session "${sessionId}" — start a new capture` })
+    return
+  }
+  // Type into the most recently opened page: login flows that pop a window
+  // (SSO) put the operator's focused field there, not on the original page.
+  const pages = session.context.pages()
+  const page = pages[pages.length - 1] ?? session.page
+  await page.keyboard.type(text)
+  console.log(`typed ${text.length} chars into session ${sessionId}`)
+  sendJson(res, 200, { typed: true })
+}
+
 async function handleCancel(body: Record<string, unknown>, res: http.ServerResponse): Promise<void> {
   const sessionId = body.sessionId
   if (typeof sessionId !== 'string' || !sessionId) {
@@ -195,6 +231,9 @@ export function createCaptureServer(secret: string): http.Server {
           if (body) await handleStart(body, res)
         } else if (req.method === 'GET' && url.pathname === '/capture/status') {
           await handleStatus(url, res)
+        } else if (req.method === 'POST' && url.pathname === '/capture/type') {
+          const body = await readBodyOr400(req, res)
+          if (body) await handleType(body, res)
         } else if (req.method === 'POST' && url.pathname === '/capture/cancel') {
           const body = await readBodyOr400(req, res)
           if (body) await handleCancel(body, res)
