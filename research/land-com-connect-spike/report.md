@@ -532,8 +532,106 @@ platform depend on the operator's machine being up.
 
 ## LandFeed API
 
-*Pending US-006 — the sanctioned-API option re-anchored against the block; deep
-dive already verified in [research/auth-capture-spike/report.md](../auth-capture-spike/report.md) §2.*
+Land.com publishes an official **LandFeed XML API** — the sanctioned, no-browser
+way to manage listings. The prior spike verified it in depth
+([research/auth-capture-spike/report.md](../auth-capture-spike/report.md) §2, all
+sources fetched 2026-07-10); this section **summarizes** those findings and
+re-anchors them against the new Akamai block, rather than re-researching. The
+headline for this spike: **the block does not touch the feed** (see Block Scope
+above), so the one option here that needs no capture, no session, and no egress is
+the same option that survives the block intact.
+
+### What it is (summary of the prior spike's §2 findings)
+
+- **Auth model — no login, no session, no cookies.** Credentials travel *inside*
+  the XML body's `<channel>` element: `loa_account_id` (integer, from the Land.com
+  Admin area), `loa_account_email` (the parent-account email), and
+  `loa_shared_key` (a secret issued by Land.com technical staff when LandFeed is
+  enabled). There is no OAuth, no browser, no cookie to expire — the shared key is
+  stored the same way `workers/posting/auth/*.json` are today (gitignored, chmod
+  600, never logged) but, unlike a captured session, **never needs recapturing**.
+  `loa_account_password` exists in the schema but is deprecated.
+- **Full-inventory-diff gotcha.** One HTTPS POST to `https://www.land.com/LandFeed/`
+  carries the operator's *entire* active inventory each time. Land.com diffs it by
+  the operator's own listing ID (`item.id`; `task.id` is a natural fit): a new ID
+  INSERTs, an existing ID UPDATEs, and **any previously-sent ID that is absent from
+  the new feed is DELETED**. The feed is authoritative — omit a listing (or a
+  photo) and it disappears — so a feed integration must always send the complete
+  set, not a single new ad. A `mode=test` runs full validation without touching
+  live data. Listings go live in 5 min–1 hr; images in 10 min–6 hr.
+- **Photo-by-URL requirement.** Photos are referenced by **public URL** —
+  `item.image_link` (main) and `item.loa_photo_tour_images.image_link` (0–200 tour
+  images), JPEG/GIF/PNG/BMP, ≤2 MB each, which Land.com *pulls*. This is a real
+  divergence from the current poster, which uploads local files from
+  `outputs/<taskId>/photos/`; adopting LandFeed means those photos must be
+  reachable at a public HTTPS URL (a public photo-hosting decision the prior spike
+  already flagged as an operator task, not a Ralph story).
+- **Corporate Account prerequisite.** The spec lists "an active Land.com Corporate
+  Account" with named Primary/Alternate technical contacts as a prerequisite — the
+  single biggest unknown, since the operator's account may be a plain advertiser
+  tier. This is what OT-C's email resolves.
+- **Cost:** $0 beyond the existing Land.com plan — a feature of the account, not a
+  metered API.
+
+### The block does not change LandFeed's viability
+
+The US-002 probes settle the one question the block raised. From the worker box
+(the same Linode datacenter IP that gets `403 Access Denied` on every consumer
+page), on 2026-07-11 the LandFeed endpoints all returned **HTTP 200 with real
+content**:
+
+| LandFeed endpoint | Worker box (2026-07-11T05:58Z) |
+|---|---|
+| `https://www.land.com/LandFeed/` (POST target) | **200** · 30,894 B |
+| `https://www.land.com/LandFeed/Docs/` | **200** · 85,138 B |
+| `https://www.land.com/LandFeed/schemas/LandFeedSchema1.0.xsd` | **200** · 8,080 B (real `<xs:schema>`) |
+
+This matches the prior spike's 2026-07-10 result (all 200 from this same box, one
+day *before* the login block appeared), so the exemption is not a fluke of timing.
+**The `/LandFeed/` path is exempt from the Akamai block that kills
+`www.land.com`, `/login`, and the sister brands.** Concretely: if the operator
+gets a shared key, the worker box can POST the feed and manage Land.com listings
+**directly, with zero egress work** — no residential tunnel, no captured session,
+no run-locally split. The block that broke browser capture is simply irrelevant to
+the sanctioned path. That is the strongest single fact in this report for the
+land.com decision, and it is why the comparison matrix (US-008) ranks LandFeed
+first when eligibility allows.
+
+### OT-C — the shared-key email
+
+**The ask (OT-C):** send the ready-to-go shared-key request email in
+[research/auth-capture-spike/report.md](../auth-capture-spike/report.md) §2 ("Draft
+email to Land.com support") to `support@land.com` (cc `sales@land.com`). It asks
+four things: LandFeed eligibility on the current account tier (or whether a
+Corporate Account must be created), how the `loa_shared_key` and `loa_account_id`
+are issued, any cost, and schema currency.
+
+**Status:** *not yet reported by the operator* — no OT-C confirmation has landed as
+of this writing (2026-07-11). Until Land.com replies, feed access is **gated on
+eligibility**: the account may already qualify, or it may need a Corporate Account
+upgrade the operator has to decide on.
+
+**Fallback chain if feed access is denied.** If LandFeed turns out to be gated to a
+corporate tier the operator can't reach, land.com does *not* fall back to "nothing"
+— it falls back to browser posting, which is exactly what the rest of this report
+costs out:
+
+1. **Browser capture + residential egress** — capture the session in the operator's
+   own browser (Capture From the User's Browser §a), and route the poster through a
+   **Tailscale exit node** on a home device (Residential Egress §b, the recommended
+   egress). This keeps land_com posting server-side and automatic while making the
+   box's traffic egress residential, past the block.
+2. **Run the poster locally** — if no always-on home device exists for an exit node,
+   move land_com posting to the operator's own (residential) machine (Run Locally
+   §2), accepting the loss of server-side always-on posting.
+3. **Commercial residential proxy** — last resort, only if there is no usable home
+   device at all (Residential Egress §c), accepting the trust cost of routing an
+   authenticated session through a third party.
+
+LandFeed remains the **strict upgrade** the operator adopts the moment the account
+qualifies: it removes the login-capture problem *and* the egress problem in one
+move, at $0. The full head-to-head against the browser-posting pairings is the
+comparison matrix (US-008).
 
 ## Comparison & Recommendation
 

@@ -137,10 +137,10 @@ against the new reality, because if the feed endpoint is exempt from the block i
 likely remains the best long-term answer for land.com.
 
 **Acceptance Criteria:**
-- [ ] LandFeed section summarizes (not re-researches) the prior spike's verified findings — auth model, full-inventory-diff gotcha, photo-by-URL requirement, Corporate Account prerequisite — citing `research/auth-capture-spike/report.md` §2
-- [ ] Section incorporates the US-002 probe result for the LandFeed endpoints and states plainly whether the block changes the feed's viability
-- [ ] Section restates the OT-C ask (shared-key email) with the status the operator reports, and names the fallback chain if feed access is denied
-- [ ] Typecheck passes
+- [x] LandFeed section summarizes (not re-researches) the prior spike's verified findings — auth model, full-inventory-diff gotcha, photo-by-URL requirement, Corporate Account prerequisite — citing `research/auth-capture-spike/report.md` §2
+- [x] Section incorporates the US-002 probe result for the LandFeed endpoints and states plainly whether the block changes the feed's viability
+- [x] Section restates the OT-C ask (shared-key email) with the status the operator reports, and names the fallback chain if feed access is denied
+- [x] Typecheck passes
 
 ### US-007: Capture and validate a real land.com session (the spike's proof)
 **Description:** As the operator, I want my exported browser session converted

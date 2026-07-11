@@ -155,3 +155,32 @@
     posting-egress follow-up should default to it.
   - US-005 is doc-only — typecheck (cd workers/posting && npm run typecheck) is a
     clean no-op pass; it touches no .ts. Same holds for US-006/US-008.
+
+## Iteration 6 - US-006: Re-anchor the LandFeed API option
+- Replaced the "LandFeed API" stub with the full section. Summarizes (not
+  re-researches) the prior spike's §2 verified findings: auth model (creds inside
+  the XML <channel> — loa_account_id/email/shared_key, no OAuth/cookie/session,
+  never expires), full-inventory-diff gotcha (one POST carries the ENTIRE
+  inventory; absent listing ID = DELETE; mode=test validates without touching
+  live), photo-by-URL requirement (image_link/loa_photo_tour_images pulled from
+  public URLs ≤2MB — diverges from the local-file poster), and the Corporate
+  Account prerequisite. Incorporates the US-002 probe result (all three LandFeed
+  endpoints 200 from the box on 2026-07-11, matching 2026-07-10) and states
+  plainly: the block does NOT change feed viability — /LandFeed/ is exempt, so the
+  box can POST the feed with zero egress. Restates OT-C (shared-key email, target
+  support@land.com) with status "not yet reported by the operator" and names the
+  fallback chain if feed access is denied (browser-capture+Tailscale egress →
+  run-locally → commercial proxy).
+- Files changed: research/land-com-connect-spike/report.md,
+  specs/land-com-connect.md (US-006 checked off), progress-land-com-connect.txt
+- Learnings for future iterations:
+  - The load-bearing fact for US-008's matrix: LandFeed is the ONLY option that
+    fixes both capture and posting at $0 with no egress (endpoint exempt from the
+    block), but it's gated on OT-C eligibility. When eligible it dominates; when
+    denied the fallback is browser-posting + egress. US-008 should rank it first
+    with the eligibility caveat.
+  - OT-C status is still unreported — US-008's "what would change this decision"
+    list should include "LandFeed shared key granted" as the top entry.
+  - Doc-only story; typecheck (cd workers/posting && npm run typecheck) is a clean
+    no-op pass. Only US-007 remains as a code-touching story (the converter script).
+---
