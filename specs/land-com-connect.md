@@ -168,11 +168,11 @@ land.com page, so the recommended capture path is demonstrated, not theorized.
 land.com path in minutes.
 
 **Acceptance Criteria:**
-- [ ] Comparison & Recommendation section has a matrix: every evaluated option × (fixes capture?, fixes posting?, operator friction, build effort, ops burden, fragility, security, $/mo)
-- [ ] A primary recommendation is stated with a 2–3 sentence rationale and a named fallback chain, explicitly separating the login-capture answer (this spike) from the posting-egress follow-up it implies
-- [ ] A "what would change this decision" list (e.g. LandFeed key granted, LandFeed endpoints get blocked too, Akamai starts blocking the home IP, land.com adds MFA)
-- [ ] The `redirect_off` false-positive fix and the posting-egress work are listed as named follow-ups with one-line scope each
-- [ ] Typecheck passes
+- [x] Comparison & Recommendation section has a matrix: every evaluated option × (fixes capture?, fixes posting?, operator friction, build effort, ops burden, fragility, security, $/mo)
+- [x] A primary recommendation is stated with a 2–3 sentence rationale and a named fallback chain, explicitly separating the login-capture answer (this spike) from the posting-egress follow-up it implies
+- [x] A "what would change this decision" list (e.g. LandFeed key granted, LandFeed endpoints get blocked too, Akamai starts blocking the home IP, land.com adds MFA)
+- [x] The `redirect_off` false-positive fix and the posting-egress work are listed as named follow-ups with one-line scope each
+- [x] Typecheck passes
 
 ## Non-Goals
 

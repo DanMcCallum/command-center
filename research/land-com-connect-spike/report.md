@@ -1,6 +1,6 @@
 # Land.com Access — Research Spike Report
 
-**Spec:** [specs/land-com-connect.md](../../specs/land-com-connect.md) · **Started:** 2026-07-11 · **Status:** In progress
+**Spec:** [specs/land-com-connect.md](../../specs/land-com-connect.md) · **Started:** 2026-07-11 · **Status:** Complete (US-007 validation run pending OT-B)
 
 On 2026-07-11 the live-view login capture for `land_com` stopped working: Land.com's
 Akamai edge hard-blocks the worker box's Linode datacenter IP pre-auth. This report
@@ -682,5 +682,86 @@ sitting — see Block Scope.)
 
 ## Comparison & Recommendation
 
-*Pending US-008 — full option matrix, primary recommendation, fallback chain, and
-the "what would change this decision" list.*
+### The matrix
+
+Every option evaluated in this report, on one page. "Fixes capture?" = gets a
+working authenticated land.com session; "Fixes posting?" = lets the *poster*
+reach land.com past the block. Capture-only options must be **paired** with an
+egress row (the Replay caveat); LandFeed sidesteps both problems at once.
+
+| Option (section) | Fixes capture? | Fixes posting? | Operator friction | Build effort | Ops burden | Fragility | Security | $/mo |
+|---|---|---|---|---|---|---|---|---|
+| **LandFeed XML API** (LandFeed §) | **Yes — sidesteps it** (no login, no session; shared key never expires) | **Yes** (endpoint exempt from the block — POSTs work from the box today) | Lowest steady-state: none after OT-C; one-time email + possible account upgrade | Highest: new feed integration (full-inventory XML diff, public photo hosting) | Low — no browser, no tunnel, no session refresh | Lowest — no cookie expiry, no IP dependence; feed-is-authoritative gotcha is the one sharp edge | Best: one static secret, no session transits anything | **$0** (gated on eligibility) |
+| **Cookie export — manual extension** (§a) | Yes (`HttpOnly` covered via `chrome.cookies`) | **No — must pair with egress** | Copy-paste per session expiry | ~Done: converter built (US-007); needs only OT-B | None | Session expiry cadence unknown until US-007 validates | Good: cookies transit only operator→repo, deleted after conversion | $0 |
+| **Cookie export — MV3 extension** (§b) | Yes | **No — must pair with egress** | One click per refresh (best UX of the family) | 1–3 days (extension + dashboard receive route — production code) | Low | Same session-expiry exposure as §a | Good: TLS POST with signed upload token | $0 |
+| **Bookmarklet** (§c) | **No — rejected** (page JS cannot read `HttpOnly` session cookies) | No | — | — | — | — | — | — |
+| **Tailscale exit node** (Egress §b) | Yes (capture browser egresses residential) | **Yes** | None day-to-day | ~0 code: route-level, no browser change | Lowest of the tunnels: auto-reconnect, no inbound port | Low; failure mode is "home box offline" | Good: WireGuard e2e, ACL-scoped; trusts Tailscale control plane | **$0** (Personal tier) |
+| **SSH SOCKS / WireGuard tunnel** (Egress §a) | Yes | **Yes** | None day-to-day | Low code, moderate config (keys, routes, boot services) | Reconnect/dyn-DNS is the operator's job | Home-IP drift + tunnel drops without babysitting | OK: inbound path into home LAN to scope carefully | $0 |
+| **Commercial residential proxy** (Egress §c) | Yes | **Yes** | None day-to-day | ~0 code: Playwright `proxy` option | None (provider-owned) | Rotating IPs can be flagged or drop mid-session | **Weakest: authed session transits a third party** | ~$2–5 |
+| **Run capture locally** (Run Locally §1) | Yes (highest fidelity: `localStorage` + native fingerprint) | **No — must pair with egress** | Run a script + sync the file per refresh | Low (script exists in-family) | Sync step each refresh | Narrow niche: if egress is already up, §a is less friction | Good | $0 |
+| **Run whole poster locally** (Run Locally §2) | Yes | **Yes** (self-sufficient — most robust replay) | Machine must be on to post | Moderate: move poster + point it at the dashboard API remotely | Posting tied to the operator's machine uptime | Low for replay; high for the *system* (loses always-on server-side posting) | Good | $0 |
+
+### Recommendation
+
+**Primary: LandFeed XML API — send the OT-C email now.** It is the only option
+that fixes capture *and* posting at $0 with no egress work, because the feed
+endpoint is exempt from the very block that caused this spike; it replaces a
+perishable browser session with a never-expiring shared key. Its build cost is
+the highest in the matrix, but it is the sanctioned path and every other option
+is a workaround by comparison.
+
+**Until (or unless) the key is granted, the two halves of this spike's question
+get separate answers:**
+
+- **Login capture (this spike's deliverable):** cookie export via extension
+  (§a) — OT-B → `research-convert-cookies.ts` → `auth/land_com.json`. The
+  converter is built and mechanics-proven; only the operator's export and the
+  US-007 validation run remain.
+- **Posting egress (the follow-up this implies):** a **Tailscale exit node** on
+  a home device, route-level so capture browser and poster are fixed in one
+  move with zero code change. Capture without this pairing is explicitly not a
+  solution (Replay caveat).
+
+**Fallback chain:** LandFeed (when eligible) → cookie export §a + Tailscale
+exit node → run the whole poster locally (no always-on home device) →
+commercial residential proxy (last resort — trust cost). Bookmarklet capture is
+rejected outright; cookie export replayed from the unpaired worker box is the
+known-bad combination that must never ship.
+
+### What would change this decision
+
+- **LandFeed shared key granted (OT-C answered yes)** — LandFeed becomes the
+  build target immediately; the browser-capture path is demoted to a stopgap
+  until the feed integration ships, then retired to backup.
+- **LandFeed denied / gated to an unreachable Corporate tier** — the fallback
+  chain above becomes the permanent plan; §b (MV3 extension) becomes worth its
+  build cost if session expiry proves frequent in US-007.
+- **The `/LandFeed/` exemption closes** (Akamai starts 403ing the feed path
+  from the box) — LandFeed still works but now *also* needs the Tailscale
+  egress, weakening its "zero egress" advantage without changing its ranking.
+- **Akamai starts blocking the operator's home IP** (OT-A comes back 403) —
+  every residential-egress and capture-from-browser row dies at once; LandFeed
+  and commercial proxy become the only survivors.
+- **land.com adds MFA or aggressive session/IP binding** — captured sessions
+  stop replaying even from residential egress; run-whole-poster-locally (same
+  IP + fingerprint the session was minted on) or LandFeed become the only paths.
+- **No always-on home device materializes** — Tailscale drops out; the egress
+  choice falls to commercial proxy or run-locally per the fallback chain.
+- **US-007 validation reveals very short cookie lifetimes** — §a's per-refresh
+  friction multiplies; build §b (one-click extension) or accelerate LandFeed.
+
+### Named follow-ups (out of this spike's scope)
+
+- **`redirect_off` false-positive fix** — give `land_com` a *positive*
+  `login_success` signal (named session cookie ANDed with `redirect_off`, which
+  the config schema already supports) and/or teach
+  `workers/posting/capture/detect.ts` to treat the Akamai Access Denied page as
+  a hard failure; the uncommitted `sawLoginPage` guard in the working tree is
+  insufficient (the denial flow touches `/login` first).
+- **Posting egress** — enroll the worker box and a home device in a Tailscale
+  tailnet and route land.com traffic through the home exit node
+  (`tailscale up --exit-node=<home>`), fixing capture and posting with no code
+  change; config sketch in Residential Egress §.
+- **OT-B validation run (US-007's pending half)** — when the cookie export
+  lands, run the converter and the validation plan already written in the
+  Session Capture & Validation section.
