@@ -320,13 +320,215 @@ comparison matrix (US-008) weighs that against these pairings.
 
 ## Residential Egress
 
-*Pending US-005 — home tunnel / Tailscale exit node / commercial residential proxy,
-costed and scored.*
+The block is an **IP-reputation** block on the Linode datacenter range (see The
+Block). The whole family of fixes here is: make the worker box's land.com traffic
+*leave from an IP Akamai serves* — a residential IP — instead of the datacenter
+IP. Unlike capture-from-browser (which fixes only login capture), residential
+egress fixes **both** capture and posting in one move, because every land.com
+request the box makes then exits through the residential path. This section costs
+and scores three ways to get there. Pricing carries source URLs + fetch dates
+because vendor pricing drifts (the prior spike's Steel.dev drift proves the point).
+
+Note on scope: routing the *poster* through egress is a named follow-up
+(Non-Goals). This section documents each option's attach-point and implications;
+it changes no code.
+
+### (a) WireGuard or SSH SOCKS tunnel via a device on the home network
+
+Stand up a tunnel from the worker box to a device on the operator's home LAN (a
+spare PC, a Raspberry Pi, or the operator's always-on desktop) and route land.com
+traffic through it so it egresses from the home's residential IP.
+
+- **WireGuard** — the home device runs `wg` as a peer; the worker box routes only
+  land.com's address space (or all traffic, policy-routed) over the tunnel. Free
+  and open source ([wireguard.com](https://www.wireguard.com/), fetched
+  2026-07-11); the only cost is the home device's power and a static-ish home IP
+  (or a dynamic-DNS name).
+- **SSH SOCKS tunnel** — even lighter: `ssh -D 1080 -N operator@home-box` opens a
+  local SOCKS5 proxy on the worker box that forwards through the home connection.
+  Zero extra software beyond OpenSSH, which is already present. Best when only the
+  browser needs the residential path (it does — nothing else on the box talks to
+  land.com).
+
+Scoring:
+
+| Dimension | WireGuard | SSH SOCKS |
+|---|---|---|
+| Setup effort | Moderate — install `wg` both ends, exchange keys, config routes | Low — one `ssh -D` command (plus a home SSH endpoint) |
+| Ops burden (home box reboots) | Tunnel drops until the home peer + `wg-quick` restart; needs a boot service + reconnect loop | Same drop; needs `autossh`/systemd to re-dial |
+| Fragility | Home IP changes (ISP DHCP) break it → dynamic DNS; NAT traversal usually fine (WG roams) | Same home-IP fragility; SSH session dies on any network blip without `autossh` |
+| Security exposure | Opens an inbound path into the home LAN — scope the tunnel to land.com egress only, firewall the rest | SSH key from a datacenter box to the home network — treat that key as a secret; restrict the account to port-forward only (`command="",no-pty`) |
+| $/mo | **$0** (home power only) | **$0** |
+
+### (b) Tailscale exit node on a home device
+
+Install Tailscale on a home device and mark it an **exit node**; the worker box
+(also on the tailnet) routes land.com traffic through it, egressing from the home
+residential IP. This is the managed-tunnel version of (a) — Tailscale handles NAT
+traversal, key rotation, and reconnect, which is exactly the fragile part of the
+hand-rolled tunnels.
+
+- **Free-tier applicability: yes.** Tailscale's **Personal** plan is free forever,
+  supports up to 6 users with unlimited devices, and **includes exit nodes** in the
+  core feature set — a single-operator home-device-plus-worker-box tailnet sits
+  well inside the free tier ([tailscale.com/pricing](https://tailscale.com/pricing),
+  fetched 2026-07-11). The paid Mullvad exit-node add-on ($5/mo per 5 devices) is a
+  *different* thing — a commercial exit through Mullvad's datacenter IPs, which would
+  reintroduce exactly the datacenter-IP-reputation problem and must **not** be used
+  here; the free path is the operator's own home device.
+
+Scoring:
+
+| Dimension | Tailscale exit node (free tier) |
+|---|---|
+| Setup effort | Low — install Tailscale both ends, `tailscale up --advertise-exit-node` on the home box, approve it, `tailscale up --exit-node=<home>` on the worker box |
+| Ops burden (home box reboots) | Lowest — Tailscale runs as a service and reconnects automatically; the exit-node advertisement persists across reboots |
+| Fragility | Low — Tailscale's coordination plane handles home-IP changes and NAT; the failure mode is "home box offline" (then no egress at all), not "tunnel silently stale" |
+| Security exposure | Better than raw SSH/WG — device-scoped ACLs, no inbound port opened on the home network, key rotation handled; the trade is trusting Tailscale's coordination server (control plane only; traffic is WireGuard end-to-end) |
+| $/mo | **$0** on the Personal free tier |
+
+### (c) Commercial residential-proxy service
+
+Buy residential bandwidth from a proxy provider; land.com traffic egresses from the
+provider's pool of real-ISP residential IPs. No home device to maintain — the
+provider owns the residential footprint.
+
+- **Reputable example — IPRoyal:** residential from **$1.75/GB**, pay-as-you-go,
+  traffic that never expires ([iproyal.com/pricing](https://iproyal.com/pricing/),
+  fetched 2026-07-11). The wider 2026 market spans budget (IPRoyal/Webshare, from
+  ~$1.75/GB), mid-market (Decodo/Smartproxy ~$3–4/GB), and enterprise (Bright Data,
+  Oxylabs, ~$8/GB entry) ([aimultiple.com/proxy-pricing](https://aimultiple.com/proxy-pricing),
+  fetched 2026-07-11). For this workload — a handful of logins and posts per
+  property, image uploads dominating bytes — traffic is low, so budget-tier
+  PAYG is the right shelf; call it a few dollars a month at most.
+
+Scoring:
+
+| Dimension | Commercial residential proxy (IPRoyal-class) |
+|---|---|
+| Setup effort | Lowest — sign up, get `host:port:user:pass`, point the browser at it; nothing to host |
+| Ops burden (home box reboots) | None — no home device in the path; provider owns uptime |
+| Fragility | Rotating pools can hand out an IP that is *itself* flagged, or rotate mid-session and drop the login cookie's IP-binding → occasional re-auth; pick sticky/session IPs to reduce this |
+| Security exposure | Land.com session cookies transit a third-party proxy operator — a real trust concern for an authenticated session; only use a provider with a clean sourcing/ToS record, and never send the land.com *password* through it (there is none to send — capture is cookie-only) |
+| $/mo | ~**$2–5/mo** at this low volume ($1.75/GB × a few GB); scales with image bytes, but never signs a contract (PAYG) |
+
+### Attaching egress to the existing stack (prose + config sketch, no code)
+
+All three options terminate as **a proxy the browser points at** — a SOCKS5
+endpoint (SSH tunnel, or WireGuard/Tailscale fronted by a local SOCKS listener) or
+an HTTP proxy (commercial provider). Both the capture Chromium
+(`workers/posting/capture/session.ts`) and the poster
+(`workers/posting/post-*.ts`) launch Playwright Chromium, so both attach the same
+two ways — and this is the point of egress: **the same proxy fixes capture and
+posting.**
+
+Playwright's first-class `proxy` option (per context or per launch) is the clean
+attach point — sketch only, illustrating shape, not a change to commit:
+
+```ts
+// capture/session.ts launch (illustrative — not committed this spike):
+const browser = await chromium.launch({
+  headless: false,
+  proxy: { server: 'socks5://127.0.0.1:1080' },        // SSH -D / WG+SOCKS
+  // or: { server: 'http://res.iproyal.com:12321',      // commercial
+  //       username: process.env.LANDCOM_PROXY_USER,
+  //       password: process.env.LANDCOM_PROXY_PASS }   // secret, like auth/*.json
+});
+```
+
+For a raw-flag equivalent (e.g. a quick research run), Chromium takes
+`--proxy-server=socks5://127.0.0.1:1080` as a launch arg. A Tailscale exit node
+needs **no** proxy flag at all — it is set at the OS/route layer
+(`tailscale up --exit-node=<home>`), so the browser is unmodified and *all* box
+traffic to land.com egresses residential; that is the least-code attach of the
+three. WireGuard can likewise be route-level (policy-route land.com's subnet over
+`wg0`) with no browser change, or fronted by a local SOCKS proxy if per-app scoping
+is preferred. Whichever is chosen, the credential (SSH key, WG key, or proxy
+user/pass) is a **secret** on the same footing as `auth/*.json` — chmod 600,
+`.env.local`, never logged.
+
+### Verdicts (US-003 rubric: no password custody · operator-tolerable expiry friction · no bot-evasion/stealth)
+
+None of these three touch a password (land.com login stays in the operator's own
+browser; egress only moves *where requests exit*), and none is bot-evasion — a
+residential IP is *ordinary legitimate access from an IP Land.com serves*, exactly
+what the Non-Goals require (as opposed to fingerprint spoofing or CAPTCHA solving).
+They differ only on ops burden and trust:
+
+- **Tailscale exit node — Recommended.** $0 on the free tier, lowest ops burden
+  (auto-reconnect across reboots, no inbound port, ACL-scoped), and it fixes
+  capture *and* posting at once. Its only prerequisite is an always-on home device,
+  which the operator plausibly has. No password custody; expiry friction is nil
+  (the tunnel is orthogonal to session refresh); no stealth tooling.
+- **SSH SOCKS / WireGuard tunnel — Viable fallback.** Also $0 and also
+  residential, but the reconnect-on-reboot and home-IP-drift handling that
+  Tailscale gives for free become the operator's job (`autossh`/dynamic-DNS/systemd
+  units). Choose this only if Tailscale can't be installed on the home device.
+- **Commercial residential proxy — Fallback of last resort.** Zero home
+  infrastructure and trivial setup, but it routes an authenticated land.com session
+  through a third-party operator (a real trust cost) and its rotating IPs can
+  themselves be flagged or drop mid-session. Justified only if the operator has no
+  usable always-on home device. No password custody; low but nonzero $/mo; not
+  stealth tooling, but the *provider's* IP sourcing must be reputable to stay on the
+  right side of "ordinary legitimate access."
 
 ## Run Locally
 
-*Pending US-005 — running the capture stack (or the whole worker) on the operator's
-machine and syncing the session to the server.*
+Instead of making the server look residential, move the browser work **to** a
+machine that is already residential — the operator's own computer. Two granularities:
+
+**1. Run only the capture stack locally.** The operator runs a headed Playwright
+Chromium (or the live-view capture stack) on their own machine, logs in to
+land.com over their home connection — which is not blocked — and the session is
+exported to `land_com.json` right there. That file is then synced to the server's
+`workers/posting/auth/land_com.json` (chmod 600, over `scp`/`rsync`/Tailscale file
+copy — same secret discipline as any `auth/*.json`). This is essentially the
+capture-from-browser family (Capture From the User's Browser §), but with the
+*whole browser* running locally rather than exporting cookies from an everyday
+browser session — it captures `localStorage` and fingerprint-adjacent state a
+cookie-only export misses, at the cost of the operator running a script instead of
+clicking an extension.
+
+- **The honest caveat:** this fixes **capture only**. Once `land_com.json` lands on
+  the server, the *poster* still runs on the worker box and still egresses from the
+  blocked datacenter IP — so it still gets `403 Access Denied` pre-auth, exactly as
+  in the Replay caveat (Capture From the User's Browser §). A perfectly captured,
+  freshly-synced session replayed from the datacenter IP changes nothing. **Run
+  capture locally only if it is paired with a Residential Egress option for the
+  poster** — otherwise it reproduces the silent logged-out-403 that opened this
+  spike, just with a real cookie instead of a bogus one.
+
+**2. Run the whole poster (or worker) locally.** Move `run-poster.sh` +
+`workers/posting/post-*.ts` onto the operator's machine so both capture *and*
+posting execute from the residential IP. This is the only "run locally" variant
+that is self-sufficient — IP *and* browser-fingerprint class match, the
+least-fragile replay of all — because nothing ever touches the datacenter IP for
+land.com. The cost is architectural: the poster is no longer server-side, so it
+runs only when the operator's machine is on, loses the box's cron/always-on
+posting, and needs task state (`postings[]` PATCHes) to reach the dashboard API
+over the network (a Tailscale tailnet makes that a localhost-like call). It also
+splits the posting fleet — land_com posts locally, the other five platforms keep
+posting from the box — unless the whole poster moves, which then makes *every*
+platform depend on the operator's machine being up.
+
+### Verdict (US-003 rubric: no password custody · operator-tolerable expiry friction · no bot-evasion/stealth)
+
+- **Run capture locally — Viable, but only as half a solution.** No password
+  custody (operator logs in on their own machine), no stealth tooling, and it is
+  the highest-fidelity capture (real `localStorage` + native fingerprint). But it
+  fixes capture alone; unpaired with egress it is worse than useless (silent
+  logged-out replay). Expiry friction ≈ the capture-from-browser path plus a sync
+  step. **Recommend only paired with Tailscale egress** — and if Tailscale is
+  already up for egress, cookie-export capture (§a) is less friction than running a
+  local browser stack, so this variant's niche is narrow.
+- **Run the whole poster locally — Recommended only if server-side posting is
+  abandoned for land_com.** It is the single most robust *replay* (residential IP +
+  native fingerprint, no proxy in the path, no capture/egress split), no password
+  custody, no stealth. But it trades away the system's server-side, always-on
+  posting model and couples land_com posting to the operator's machine being on —
+  a real regression from the current architecture. Prefer server-side box + a
+  Residential Egress tunnel (which keeps posting on the box and automatic) unless
+  the operator specifically wants land.com handled from their own machine.
 
 ## LandFeed API
 

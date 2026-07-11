@@ -125,11 +125,11 @@ and "run it at home" options costed and compared, because they fix capture and
 posting at once while the browser-capture idea fixes only capture.
 
 **Acceptance Criteria:**
-- [ ] Residential Egress section compares, with current pricing + source URLs + fetch dates: (a) WireGuard or SSH SOCKS tunnel via a device on the operator's home network; (b) Tailscale exit node on a home device (free-tier applicability stated); (c) a commercial residential-proxy service (one reputable example with $/GB); each scored on setup effort, ops burden (what breaks when the home box reboots), fragility, security exposure, and $/mo
-- [ ] Section documents how each option would attach to the existing stack — Chromium `--proxy-server` / Playwright `proxy` option for the capture browser and later the poster — as prose + config sketch, no code changes
-- [ ] Run Locally section covers running the capture stack (or the whole worker) on the operator's own machine and syncing `auth/land_com.json` to the server, with the honest caveat that server-side posting still hits the block unless paired with egress
-- [ ] Both sections end with verdict lines against the same rubric as US-003
-- [ ] Typecheck passes
+- [x] Residential Egress section compares, with current pricing + source URLs + fetch dates: (a) WireGuard or SSH SOCKS tunnel via a device on the operator's home network; (b) Tailscale exit node on a home device (free-tier applicability stated); (c) a commercial residential-proxy service (one reputable example with $/GB); each scored on setup effort, ops burden (what breaks when the home box reboots), fragility, security exposure, and $/mo
+- [x] Section documents how each option would attach to the existing stack — Chromium `--proxy-server` / Playwright `proxy` option for the capture browser and later the poster — as prose + config sketch, no code changes
+- [x] Run Locally section covers running the capture stack (or the whole worker) on the operator's own machine and syncing `auth/land_com.json` to the server, with the honest caveat that server-side posting still hits the block unless paired with egress
+- [x] Both sections end with verdict lines against the same rubric as US-003
+- [x] Typecheck passes
 
 ### US-006: Re-anchor the LandFeed API option
 **Description:** As the operator, I want the sanctioned-API option restated

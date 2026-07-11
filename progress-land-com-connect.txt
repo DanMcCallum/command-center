@@ -122,3 +122,36 @@
     be no_restriction/unspecified — converter must normalize, expirationDate is
     float seconds and absent for session cookies).
   - Typecheck is still a no-op pass for doc-only stories (tsc exits clean).
+---
+
+## Iteration 5 - US-005: Research residential egress and run-locally families
+- Replaced the "Residential Egress" and "Run Locally" stubs with full sections.
+  Residential Egress: framing (IP-reputation block → egress fixes capture AND
+  posting), three options each with a 5-dimension scoring table (setup effort,
+  ops burden on home-box reboot, fragility, security exposure, $/mo) —
+  (a) WireGuard/SSH SOCKS tunnel ($0), (b) Tailscale exit node ($0 Personal free
+  tier, exit nodes included; flagged that the paid Mullvad add-on is the WRONG
+  path since it reintroduces datacenter IPs), (c) commercial residential proxy
+  (IPRoyal $1.75/GB PAYG, market $1.75–8/GB). Attach-point subsection: Playwright
+  `proxy` option + Chromium `--proxy-server` config sketch (illustrative, not
+  committed), noting Tailscale/WG can be route-level with no browser change, and
+  the proxy credential is a secret like auth/*.json. Verdicts against the US-003
+  rubric: Tailscale Recommended, hand-rolled tunnel viable fallback, commercial
+  proxy last resort (trust cost of routing an authed session through a 3rd party).
+  Run Locally: two granularities (capture-only-local + sync land_com.json;
+  whole-poster-local), each with the honest caveat that capture-only-local still
+  403s from the box unless paired with egress, and verdicts.
+- Files changed: research/land-com-connect-spike/report.md,
+  specs/land-com-connect.md (US-005 checked off), progress-land-com-connect.txt
+- Learnings for future iterations:
+  - Pricing anchored 2026-07-11: Tailscale Personal = free forever, up to 6 users
+    / unlimited devices, exit nodes INCLUDED (tailscale.com/pricing). IPRoyal
+    residential from $1.75/GB PAYG (iproyal.com/pricing); 2026 market tiers
+    ~$1.75 (budget) / ~$3–4 (Decodo mid) / ~$8 (Bright Data/Oxylabs entry)
+    (aimultiple.com/proxy-pricing). Reuse these in US-008's matrix ($/mo column).
+  - The through-line for US-008: residential egress fixes BOTH capture and posting
+    (unlike capture-from-browser which fixes only capture, and unlike LandFeed
+    which sidesteps both). Tailscale exit node is the recommended egress; the
+    posting-egress follow-up should default to it.
+  - US-005 is doc-only — typecheck (cd workers/posting && npm run typecheck) is a
+    clean no-op pass; it touches no .ts. Same holds for US-006/US-008.
