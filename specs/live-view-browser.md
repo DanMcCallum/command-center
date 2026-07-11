@@ -113,11 +113,11 @@ in and persist the session into the poster's existing auth file, so posting reus
 with no change to `post.ts`.
 
 **Acceptance Criteria:**
-- [ ] New `workers/posting/capture/detect.ts` exports a pure predicate `isLoggedIn(signal, { cookies, url })` returning a boolean from the `login_success` signal (cookie present and/or URL no longer on `redirect_off`), plus a `checkSession(sessionId)` that reads the live context's cookies + current URL and applies it
-- [ ] On success, it calls `context.storageState({ path: <AUTH_DIR>/<platform>.json })`, `chmod 600`s the file (mirroring `capture-login.ts`), then tears down the session + stream (US-003)
-- [ ] Cookie values and storageState contents are never logged
-- [ ] A unit check (`workers/posting/capture/detect.test.ts`, runnable via `npm test`) covers `isLoggedIn` for cookie-signal, redirect-signal, and not-yet-logged-in cases
-- [ ] Typecheck passes (`cd workers/posting && npm run typecheck`)
+- [x] New `workers/posting/capture/detect.ts` exports a pure predicate `isLoggedIn(signal, { cookies, url })` returning a boolean from the `login_success` signal (cookie present and/or URL no longer on `redirect_off`), plus a `checkSession(sessionId)` that reads the live context's cookies + current URL and applies it
+- [x] On success, it calls `context.storageState({ path: <AUTH_DIR>/<platform>.json })`, `chmod 600`s the file (mirroring `capture-login.ts`), then tears down the session + stream (US-003)
+- [x] Cookie values and storageState contents are never logged
+- [x] A unit check (`workers/posting/capture/detect.test.ts`, runnable via `npm test`) covers `isLoggedIn` for cookie-signal, redirect-signal, and not-yet-logged-in cases
+- [x] Typecheck passes (`cd workers/posting && npm run typecheck`)
 
 ### US-005: Capture-server HTTP surface on the worker
 **Description:** As a developer, I need a small HTTP service on the worker machine that

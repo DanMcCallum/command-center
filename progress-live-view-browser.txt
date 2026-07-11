@@ -26,3 +26,126 @@
   - US-002 next: workers/posting/capture/session.ts; reuse AUTH_DIR from
     post-common.ts, no file writes yet.
 ---
+
+## Iteration 2 - US-002: Capture-session manager (headed Chromium under a display)
+- What was implemented:
+  - New workers/posting/capture/session.ts: startSession(platformKey) validates
+    the platform (enabled + capture: "live-view", one-line errors), launches
+    chromium.launch({ headless: false }) (inherits process.env.DISPLAY),
+    opens context+page, navigates to login_url, tracks the session in an
+    in-memory Map keyed by a random hex sessionId. getSession(id) exposes the
+    live context/page; closeSession(id) closes the browser and forgets it
+    (no-op for unknown ids). The session record carries authPath computed from
+    post-common's AUTH_DIR (for US-004's storageState export) — no file writes.
+  - post-common.ts PlatformConfig gained the optional capture + login_success
+    fields (exported LoginSuccessSignal) so loadPlatformConfig covers US-001's
+    config shape; capture-login.ts keeps its own local copy of the interface.
+  - tsconfig.json include widened to ["*.ts", "capture/**/*.ts"] — the old
+    ["*.ts"] would have silently skipped the new subdirectory in typecheck.
+- Files changed: workers/posting/capture/session.ts (new),
+  workers/posting/post-common.ts, workers/posting/tsconfig.json,
+  specs/live-view-browser.md
+- Learnings for future iterations:
+  - npm run typecheck AND npm test both pass (12/12). The test script compiles
+    with --outDir /tmp/posting-test-build and globs only top-level *.test.js —
+    US-004's capture/detect.test.ts will compile to
+    /tmp/posting-test-build/capture/detect.test.js and NOT be picked up; the
+    test script glob must become e.g. "/tmp/posting-test-build/**/*.test.js"
+    (node --test accepts multiple patterns) when adding that test.
+  - Rejection paths are runtime-verified without a browser via
+    npx tsx -e "import { startSession } ..." — disabled platform and unknown
+    platform both throw one-line errors (unknown comes from loadPlatformConfig).
+  - No platform in config is capture: "cli" today (all six are live-view), so
+    the not-live-view rejection branch is only type/logic-verified.
+  - Startup failure after launch (e.g. goto throws) closes the browser before
+    rethrowing — no orphaned Chromium.
+  - US-003 next: capture/stream.ts (Xvfb -> x11vnc -> websockify -> noVNC),
+    single-active-session enforcement lives THERE, needs CAPTURE_STREAM_SECRET
+    (OT-3) for token signing and must fail closed naming missing binaries (OT-1).
+---
+
+## Iteration 3 - US-003: Streaming bridge (Xvfb -> x11vnc -> websockify -> noVNC)
+- What was implemented:
+  - New workers/posting/capture/stream.ts: startStream() checks the single-session
+    slot (claimed as 'starting' at entry so concurrent starts fail closed), then
+    secret -> binaries -> noVNC root (all BEFORE any spawn, so a missing dep never
+    leaves a partial stream), then spawns Xvfb :99 (1280x800x24, -nolisten tcp),
+    x11vnc (-rfbport 5901 -localhost -forever -shared -nopw), and websockify
+    (--web <novncRoot> 6080 localhost:5901), each awaited ready (X socket file /
+    TCP port poll, 10 s timeout, early-exit detection with stderr tail in the error).
+  - Sets process.env.DISPLAY=:99 on success so session.ts's headed chromium.launch
+    renders into the stream; stopStream() restores the prior DISPLAY and tears down
+    in reverse order (SIGTERM, SIGKILL after 3 s).
+  - Token: signStreamToken/verifyStreamToken — "<expiryMs>.<hmacSha256Hex>" over
+    "live-view:<exp>", 10-min TTL, timingSafeEqual verify. getStreamSecret() reads
+    CAPTURE_STREAM_SECRET from env, falling back to parsing project-root .env.local.
+    Exported for US-005's server to verify tokens.
+  - Fixed plumbing exported: CAPTURE_DISPLAY=':99', WS_PORT (env CAPTURE_WS_PORT,
+    default 6080); VNC_PORT 5901 internal. noVNC root: NOVNC_ROOT env override,
+    then /usr/share/novnc, /usr/share/webapps/novnc, /usr/local/share/novnc.
+- Files changed: workers/posting/capture/stream.ts (new), specs/live-view-browser.md
+- Learnings for future iterations:
+  - This box has Xvfb + websockify installed but NOT x11vnc or noVNC, and no
+    CAPTURE_STREAM_SECRET in .env.local — OT-1/OT-3 are still incomplete. All
+    fail-closed paths were runtime-verified for real; the happy path was verified
+    with a stub x11vnc (python TCP listener on 5901) + stub vnc.html on PATH,
+    with REAL Xvfb + websockify: URL token present, second start rejected,
+    vnc.html served (200) over websockify, headed Playwright Chromium launched
+    onto :99 via the same launch call session.ts uses, teardown left zero orphans
+    and restored DISPLAY. Stub-binary-on-PATH is a cheap reusable pattern for
+    testing process orchestration without the real deps.
+  - websockify's --web mode serves the static client AND bridges the WebSocket
+    on ONE port — the noVNC URL uses path=websockify on the same port (6080).
+  - .env.local lives at project root (not dashboard/); fetch-dialpad.sh sources
+    it; stream.ts parses it directly since Node doesn't auto-load it.
+  - US-004 next: capture/detect.ts (isLoggedIn predicate + checkSession), calls
+    context.storageState + chmod 600, tears down session AND stream. Remember:
+    package.json test glob is /tmp/posting-test-build/*.test.js — must widen to
+    pick up capture/detect.test.js (node --test accepts multiple patterns).
+---
+
+## Iteration 4 - US-004: Login-success detection + storageState export
+- What was implemented:
+  - New workers/posting/capture/detect.ts: isLoggedIn(signal, {cookies, url})
+    pure predicate — AND over the defined login_success signals (cookie name
+    present; URL *pathname* no longer contains redirect_off, so a query-string
+    mention like ?from=%2Flogin doesn't count); missing/empty signal or
+    unparseable URL fails closed (false). checkSession(sessionId) reads the
+    live context's cookies + page.url(); on success mkdirs the auth dir,
+    context.storageState({ path: session.authPath }), chmod 600, then
+    closeSession + stopStream. False result leaves the session alive.
+    Nothing is ever logged (no cookie values, no state contents).
+  - New workers/posting/capture/detect.test.ts: 8 node:test cases (cookie
+    present/absent, redirect on/off/query-string/unparseable, combined
+    signals, empty signal).
+  - package.json test glob widened to also run
+    /tmp/posting-test-build/capture/*.test.js (the gotcha from iteration 2).
+- Files changed: workers/posting/capture/detect.ts (new),
+  workers/posting/capture/detect.test.ts (new), workers/posting/package.json,
+  specs/live-view-browser.md
+- Learnings for future iterations:
+  - detect.ts imports session.ts/stream.ts LAZILY (await import inside
+    checkSession) — session.ts has a runtime `import { chromium }` and the
+    compiled test build runs from /tmp where playwright can't resolve, so a
+    static import would break `npm test` at load time. TS compiles dynamic
+    import under CommonJS to a lazy require, which is exactly what's needed.
+    Keep this pattern for any capture/* module that a unit test imports.
+  - Typecheck + all 20 tests pass (12 prior + 8 new).
+  - Runtime-verified checkSession end-to-end under xvfb-run with a LOCAL stub
+    login server (http.createServer) + a transient _verify_stub platform
+    appended to config/posting-platforms.json and restored in finally (git
+    diff clean afterwards): false-on-login-page leaves the session alive;
+    true-after-redirect writes storageState (keys cookies,origins) mode 600
+    and tears the session down; unknown sessionId errors cleanly. Redirect
+    session.authPath to /tmp before a success-path test — auth/*.json holds
+    REAL sessions (landmodo + land_com exist, mode 600).
+  - Real-site verification is flaky: page.goto('https://www.landmodo.com/login')
+    timed out on the 'load' event under Xvfb (slow third-party subresources)
+    even though curl gets a 200 in ~1.3 s. Prefer the local-stub pattern; if a
+    real site is ever needed, expect to need waitUntil: 'domcontentloaded'.
+  - US-005 next: capture/server.ts HTTP service on CAPTURE_PORT (default 4750):
+    POST /capture/start, GET /capture/status?sessionId, POST /capture/cancel;
+    guard with token derived from CAPTURE_STREAM_SECRET (stream.ts exports
+    getStreamSecret/verifyStreamToken); fail closed at startup if secret
+    absent; add "capture-server" script to package.json.
+---

@@ -6,7 +6,7 @@
     "capture-login": "tsx capture-login.ts",
     "post": "tsx post.ts",
     "typecheck": "tsc -p tsconfig.json",
-    "test": "tsc -p tsconfig.json --noEmit false --outDir /tmp/posting-test-build && node --test /tmp/posting-test-build/*.test.js"
+    "test": "tsc -p tsconfig.json --noEmit false --outDir /tmp/posting-test-build && node --test /tmp/posting-test-build/*.test.js /tmp/posting-test-build/capture/*.test.js"
   },
   "dependencies": {
     "playwright": "^1.45.0"
