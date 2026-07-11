@@ -125,11 +125,11 @@ starts a capture (session + stream) and reports login status, so the dashboard c
 it over localhost/tunnel.
 
 **Acceptance Criteria:**
-- [ ] New `workers/posting/capture/server.ts` serves on `CAPTURE_PORT` (env, default e.g. 4750): `POST /capture/start { platform }` validates the platform is enabled + `capture: "live-view"`, starts US-002 + US-003, and returns `{ sessionId, liveViewUrl }`
-- [ ] `GET /capture/status?sessionId=…` runs US-004 detection and returns `{ loggedIn: boolean }`; `POST /capture/cancel { sessionId }` tears down
-- [ ] Requests are guarded by a shared token derived from `CAPTURE_STREAM_SECRET`; requests without it get `401`, and the service fails closed at startup with a clear message when the secret is absent (OT-3 gate) — no secret is logged or returned
-- [ ] A `capture-server` script is added to `workers/posting/package.json`
-- [ ] Typecheck passes (`cd workers/posting && npm run typecheck`)
+- [x] New `workers/posting/capture/server.ts` serves on `CAPTURE_PORT` (env, default e.g. 4750): `POST /capture/start { platform }` validates the platform is enabled + `capture: "live-view"`, starts US-002 + US-003, and returns `{ sessionId, liveViewUrl }`
+- [x] `GET /capture/status?sessionId=…` runs US-004 detection and returns `{ loggedIn: boolean }`; `POST /capture/cancel { sessionId }` tears down
+- [x] Requests are guarded by a shared token derived from `CAPTURE_STREAM_SECRET`; requests without it get `401`, and the service fails closed at startup with a clear message when the secret is absent (OT-3 gate) — no secret is logged or returned
+- [x] A `capture-server` script is added to `workers/posting/package.json`
+- [x] Typecheck passes (`cd workers/posting && npm run typecheck`)
 
 ### US-006: Dashboard connect + status proxy routes
 **Description:** As a developer, I need dashboard API routes that proxy to the worker

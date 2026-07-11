@@ -33,7 +33,13 @@ export interface StartSessionResult {
 
 const sessions = new Map<string, CaptureSession>()
 
-export async function startSession(platformKey: string): Promise<StartSessionResult> {
+/**
+ * Loads a platform's config and rejects — with a one-line error — anything
+ * that is not an enabled live-view capture target. Shared with the
+ * capture-server (US-005) so requests are validated before any stream
+ * process is spawned.
+ */
+export function requireLiveViewPlatform(platformKey: string): PlatformConfig {
   const platform = loadPlatformConfig(platformKey)
   if (!platform.enabled) {
     throw new Error(
@@ -46,6 +52,11 @@ export async function startSession(platformKey: string): Promise<StartSessionRes
         `(capture: "${platform.capture ?? 'cli'}")`
     )
   }
+  return platform
+}
+
+export async function startSession(platformKey: string): Promise<StartSessionResult> {
+  const platform = requireLiveViewPlatform(platformKey)
 
   const browser = await chromium.launch({ headless: false })
   try {

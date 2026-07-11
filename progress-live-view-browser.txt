@@ -149,3 +149,52 @@
     getStreamSecret/verifyStreamToken); fail closed at startup if secret
     absent; add "capture-server" script to package.json.
 ---
+## Iteration 5 - US-005: Capture-server HTTP surface on the worker
+- What was implemented:
+  - New workers/posting/capture/server.ts: HTTP service on CAPTURE_PORT
+    (env, default 4750, binds 127.0.0.1). POST /capture/start {platform}
+    pre-validates (enabled + live-view) BEFORE spawning anything, checks
+    isStreamActive() -> 409, then startStream() -> startSession() (session
+    failure rolls back the stream). GET /capture/status?sessionId runs
+    checkSession (404 unknown session, {loggedIn} otherwise). POST
+    /capture/cancel {sessionId} closes session + stream. Every request
+    needs "Authorization: Bearer <deriveApiToken(secret)>" where
+    deriveApiToken = HMAC-SHA256("capture-api", CAPTURE_STREAM_SECRET),
+    compared with timingSafeEqual; missing/wrong -> 401. Startup calls
+    getStreamSecret() and exits 1 with the OT-3 message when absent.
+    SIGINT/SIGTERM tear down the current session + stream. Bad JSON /
+    missing fields -> 400 (readBodyOr400 helper).
+  - session.ts: extracted requireLiveViewPlatform(platformKey) (validation
+    startSession already did) so the server pre-validates cheaply; exported.
+  - package.json: added "capture-server": "tsx capture/server.ts".
+- Files changed: workers/posting/capture/server.ts (new),
+  workers/posting/capture/session.ts, workers/posting/package.json,
+  specs/live-view-browser.md
+- Learnings for future iterations:
+  - Runtime-verified end-to-end over HTTP with the stub-binary pattern
+    (stub x11vnc node listener on 5901 + stub vnc.html + REAL Xvfb +
+    websockify) plus a local stub login site whose /login meta-refreshes
+    to /home after 4s, and a transient _verify_stub platform (config
+    backed up + restored, git diff clean after): no/wrong token 401;
+    bad JSON 400; unknown platform 400; start returns 32-hex sessionId +
+    liveViewUrl with signed token; concurrent start 409; status false on
+    /login leaves session alive; status true writes auth/<platform>.json
+    mode 600 (keys cookies,origins) and tears down (later status 404);
+    cancel 200 + full teardown; zero orphan processes.
+  - GOTCHA: killing a backgrounded `npx tsx ...` by its $! kills npx but
+    NOT the node child — the server keeps running and holds the port
+    (next start dies EADDRINUSE while curls silently hit the OLD code).
+    Use fuser -k <port>/tcp to reliably free it.
+  - pgrep -f self-matches the Bash tool's wrapper (the eval'd command
+    string contains the pattern) — use pgrep -x for orphan checks.
+  - deriveApiToken is exported from capture/server.ts; US-006's dashboard
+    proxy can copy the 3-line HMAC derivation (dashboard can't import
+    workers modules) or the operator puts the derived token in dashboard
+    env. Capture-server env: CAPTURE_PORT, CAPTURE_STREAM_SECRET (or
+    project-root .env.local), NOVNC_ROOT/CAPTURE_WS_PORT via stream.ts.
+  - US-006 next: dashboard/app/api/posting-auth/connect/route.ts +
+    status/route.ts proxying the capture-server (base URL + token from
+    env, e.g. CAPTURE_SERVER_URL); reject non-live-view platforms; keep
+    read-only GET /api/posting-auth unchanged; dashboard typecheck is
+    npx tsc --noEmit.
+---
