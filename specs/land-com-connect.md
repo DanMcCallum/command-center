@@ -114,10 +114,10 @@ for exporting my logged-in land.com session so the validation story (US-007) has
 its raw material.
 
 **Acceptance Criteria:**
-- [ ] `research/land-com-connect-spike/operator-input/README.md` (committed, unlike its siblings) contains numbered steps for the chosen least-friction export method from US-003, including which browser, which cookies/domains to include, and the exact filename to save as
-- [ ] Instructions include the safety rules: export lands only in the gitignored `operator-input/` dir, is deleted after conversion, and cookie values are never pasted into the report, logs, or chat
-- [ ] The report's Capture From the User's Browser section links to the instructions and records that OT-B is now actionable
-- [ ] Typecheck passes
+- [x] `research/land-com-connect-spike/operator-input/README.md` (committed, unlike its siblings) contains numbered steps for the chosen least-friction export method from US-003, including which browser, which cookies/domains to include, and the exact filename to save as
+- [x] Instructions include the safety rules: export lands only in the gitignored `operator-input/` dir, is deleted after conversion, and cookie values are never pasted into the report, logs, or chat
+- [x] The report's Capture From the User's Browser section links to the instructions and records that OT-B is now actionable
+- [x] Typecheck passes
 
 ### US-005: Research residential egress and run-locally families
 **Description:** As the operator, I want the "make the server look residential"

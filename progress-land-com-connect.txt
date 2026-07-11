@@ -94,3 +94,31 @@
   - The replay caveat is the through-line for US-005 and US-008: capture-from-
     browser fixes capture but NOT posting from the box; it must be paired with an
     egress option, or superseded by LandFeed (US-006, endpoint not blocked).
+---
+
+## Iteration 4 - US-004: Write the operator cookie-export instructions (OT-B enabler)
+- Rewrote operator-input/README.md's OT-B section from a placeholder into full
+  numbered instructions for the US-003-recommended method (cookie-export
+  extension): Chrome/Chromium (or Firefox) with Cookie-Editor, log in on
+  www.land.com, export ALL site cookies as JSON (both www.land.com host cookies
+  and domain-wide .land.com, HttpOnly included), save exactly as
+  operator-input/land_com-cookies.json, plus a shape sanity-check step
+  (must contain at least one "httpOnly": true entry — proves the export ran with
+  extension privileges) and the standing safety rules (gitignored dir only,
+  deleted after conversion, values never in report/logs/chat, log-out-to-revoke
+  if leaked).
+- Report's Capture From the User's Browser section (sub-option (a)) now links to
+  the instructions and records that OT-B is actionable.
+- Files changed: research/land-com-connect-spike/operator-input/README.md,
+  research/land-com-connect-spike/report.md,
+  specs/land-com-connect.md (US-004 checked off)
+- Learnings for future iterations:
+  - Instructions deliberately defer the localStorage question: cookies-only export
+    first; if US-007 validation shows cookies alone don't authenticate, US-007
+    adds a DevTools localStorage step then. Don't front-load operator friction.
+  - The exact drop-off filename for US-007's converter is
+    operator-input/land_com-cookies.json (Cookie-Editor JSON array shape:
+    name/value/domain/path/expirationDate/httpOnly/secure/sameSite; sameSite may
+    be no_restriction/unspecified — converter must normalize, expirationDate is
+    float seconds and absent for session cookies).
+  - Typecheck is still a no-op pass for doc-only stories (tsc exits clean).

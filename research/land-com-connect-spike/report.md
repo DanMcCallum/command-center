@@ -201,6 +201,12 @@ script) turns it into `auth/land_com.json`.
   that it is manual on every session refresh; option (b) is the upgrade if that
   friction ever bites.
 
+Step-by-step operator instructions for this method (US-004) are in the
+[operator-input README](operator-input/README.md#ot-b--landcom-cookie-export):
+which browser, the Cookie-Editor export flow, the exact drop-off filename
+(`land_com-cookies.json`), and the safety rules. **OT-B is now actionable** —
+once the export lands in `operator-input/`, US-007 converts and validates it.
+
 ### (b) Minimal MV3 extension that POSTs land.com cookies to the dashboard
 
 The PhantomBuster pattern from the prior spike (§1): a purpose-built Manifest V3
