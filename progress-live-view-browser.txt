@@ -198,3 +198,97 @@
     read-only GET /api/posting-auth unchanged; dashboard typecheck is
     npx tsc --noEmit.
 ---
+## Iteration 6 - US-006: Dashboard connect + status proxy routes
+- What was implemented:
+  - New dashboard/lib/capture-server.ts (shared by both routes): reads
+    CAPTURE_SERVER_URL + CAPTURE_STREAM_SECRET from process.env with fallback
+    to project-root .env.local (same file/parse as stream.ts, so OT-3's one
+    secret serves both ends); derives the Bearer token with the identical
+    HMAC-SHA256("capture-api") derivation (copied — dashboard can't import
+    workers modules); requireLiveViewPlatform() validates exists + enabled +
+    capture:"live-view"; captureServerFetch() attaches the token and maps
+    connection failure to a clear "capture-server unreachable at <url>" error.
+    Typed errors: CaptureConfigError (-> 503) vs CaptureRequestError (-> 400);
+    other failures -> 502. Secret/token never logged, never in a response.
+  - POST /api/posting-auth/connect { platform }: validates live-view, proxies
+    /capture/start, returns { liveViewUrl, sessionId }; upstream error
+    statuses/messages pass through (they're non-secret by US-005's contract).
+  - GET /api/posting-auth/status?sessionId=…[&platform=…]: proxies
+    /capture/status, returns { loggedIn }; optional platform param is
+    validated live-view when present (sessions can only exist for live-view
+    platforms anyway — capture-server enforces at start).
+  - GET /api/posting-auth untouched.
+- Files changed: dashboard/lib/capture-server.ts (new),
+  dashboard/app/api/posting-auth/connect/route.ts (new),
+  dashboard/app/api/posting-auth/status/route.ts (new),
+  specs/live-view-browser.md
+- Learnings for future iterations:
+  - Runtime-verified against next dev -p 3001 in two phases: (A) no env ->
+    both routes 503 with the CAPTURE_SERVER_URL message, posting-auth GET
+    still 200; (B) env set + stub capture-server on 4750 that ASSERTS the
+    Bearer token equals the HMAC derivation (it logged token-ok, proving the
+    two independent derivations match): unknown platform 400, cli-capture
+    platform 400 (via transient _verify_stub_cli config entry, backed up +
+    restored, git diff clean), bad JSON/missing fields 400, stub down 502
+    unreachable, happy path 200 {liveViewUrl, sessionId}, status polls
+    false->true, unknown-session 404 passes through verbatim.
+  - Env plumbing for next dev: pass vars on the command line
+    (VAR=x npx next dev) — Next.js loads dashboard/.env.local, NOT the
+    project-root .env.local; the lib's .env.local fallback covers production.
+  - fuser -k 3001/tcp is also the reliable way to kill a backgrounded
+    `npx next dev` (same npx-wrapper gotcha as tsx from iteration 5).
+  - Operator setup for US-006 in production: put CAPTURE_SERVER_URL
+    (http://127.0.0.1:4750) and CAPTURE_STREAM_SECRET in project-root
+    .env.local — nothing needed in dashboard/.env.local.
+  - US-007 next (final story): PostingAuthPanel Connect button — but NOTE:
+    dashboard/components/PostingAuthPanel.tsx does NOT exist yet; the auth
+    panel lives inside app/settings (check how /settings renders auth status
+    from GET /api/posting-auth and /api/posting-platforms). Connect ->
+    POST /api/posting-auth/connect, iframe sandbox="allow-same-origin
+    allow-scripts", poll GET /api/posting-auth/status until loggedIn, error/
+    timeout states in existing chip styling, browser-verify on /settings
+    (mock connect route if OT-1/OT-2 absent). After US-007: Ship step
+    (specs.md summary + readme fixes + Status: Implemented).
+## Iteration 7 - US-007: "Connect" UI in PostingAuthPanel
+- What was implemented:
+  - Rewrote dashboard/components/PostingAuthPanel.tsx (it DID already exist,
+    contrary to iteration 6's note): load() now fetches /api/posting-auth AND
+    /api/posting-platforms together and derives a per-platform capture mode
+    (live-view vs cli, defaulting cli). live-view platforms get a Connect /
+    Re-connect (when hasSession) button; cli platforms keep the read-only
+    "run capture-login" code snippet.
+  - Capture state machine: idle -> connecting -> active -> idle|error.
+    Connect POSTs /api/posting-auth/connect; on success mounts an
+    <iframe sandbox="allow-same-origin allow-scripts"> with the liveViewUrl
+    below the platform rows plus a blue "waiting for login…" chip. A useEffect
+    keyed on the active phase polls GET /api/posting-auth/status every 3s
+    (sessionId + platform params); loggedIn:true tears down the iframe and
+    re-runs load() so "Session saved (date)" refreshes. 5-minute deadline ->
+    error "Login not detected within 5 minutes". Connect/proxy/poll failures
+    -> red error chip (PostingChips pill styling: rounded-full, color20 bg,
+    truncated with title tooltip) inline in that platform's row; all Connect
+    buttons disabled while connecting/active (single-session constraint).
+- Files changed: dashboard/components/PostingAuthPanel.tsx, AGENTS.md,
+  specs/live-view-browser.md
+- Learnings for future iterations:
+  - GOTCHA (now in AGENTS.md): Playwright must browse http://localhost:3001,
+    NOT http://127.0.0.1:3001 — Next dev blocks its own script chunks as
+    cross-origin from any other host, so the page serves HTML but never
+    hydrates: client components sit in initial state ("Loading…") with zero
+    page errors (only webpack-hmr WS console noise). Symptom looks exactly
+    like a data-fetch bug.
+  - Browser-verified via transient workers/posting/verify-us007.ts (deleted
+    after — it would otherwise join the workers typecheck): page.route mocks
+    for connect (returns stub liveViewUrl+sessionId), status (false then true),
+    and the iframe URL itself (page.route intercepts subframe navigation, so
+    no stub HTTP server needed). Verified: Re-connect renders for landmodo,
+    iframe mounts with exact src + sandbox attrs, teardown after 2 polls,
+    panel returns to idle, 503 connect -> error chip + no iframe. Screenshots
+    /tmp/us007-iframe.png, /tmp/us007-error.png.
+  - Both typechecks pass (dashboard npx tsc --noEmit; workers npm run
+    typecheck). Real auth sessions exist for landmodo + land_com, so both
+    rows show Re-connect.
+  - All US-001..007 criteria are now [x]; header still "Status: Draft" —
+    NEXT ITERATION IS THE SHIP STEP (specs.md summary, readme.md fixes,
+    Status: Implemented (date), docs commit).
+---

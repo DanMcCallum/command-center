@@ -149,11 +149,11 @@ in the dashboard and refreshes the saved-session status when I finish, so I neve
 a terminal.
 
 **Acceptance Criteria:**
-- [ ] `dashboard/components/PostingAuthPanel.tsx` renders a **Connect** (or **Re-connect** when a session already exists) button only for `capture: "live-view"` platforms; `"cli"` platforms keep today's read-only "run capture-login" text
-- [ ] Clicking Connect calls `POST /api/posting-auth/connect`, embeds the returned `liveViewUrl` in a sandboxed interactive `<iframe>` (`sandbox="allow-same-origin allow-scripts"`), and polls `GET /api/posting-auth/status` until `loggedIn: true`, then tears down the iframe and refreshes the saved-session display
-- [ ] Error and timeout states (session-create failed, capture-server unreachable, login not detected within N minutes) are surfaced in-panel using the existing status-chip styling — no new modal
-- [ ] **Browser verification:** with the dashboard dev server running, load `/settings`, confirm the Connect button renders for `landmodo` and the iframe mounts on click (mock the connect route if OT-1/OT-2 are not yet done)
-- [ ] Typecheck passes (`cd dashboard && npx tsc --noEmit`)
+- [x] `dashboard/components/PostingAuthPanel.tsx` renders a **Connect** (or **Re-connect** when a session already exists) button only for `capture: "live-view"` platforms; `"cli"` platforms keep today's read-only "run capture-login" text
+- [x] Clicking Connect calls `POST /api/posting-auth/connect`, embeds the returned `liveViewUrl` in a sandboxed interactive `<iframe>` (`sandbox="allow-same-origin allow-scripts"`), and polls `GET /api/posting-auth/status` until `loggedIn: true`, then tears down the iframe and refreshes the saved-session display
+- [x] Error and timeout states (session-create failed, capture-server unreachable, login not detected within N minutes) are surfaced in-panel using the existing status-chip styling — no new modal
+- [x] **Browser verification:** with the dashboard dev server running, load `/settings`, confirm the Connect button renders for `landmodo` and the iframe mounts on click (mock the connect route if OT-1/OT-2 are not yet done)
+- [x] Typecheck passes (`cd dashboard && npx tsc --noEmit`)
 
 ## Non-Goals
 
