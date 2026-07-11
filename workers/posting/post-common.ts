@@ -23,11 +23,21 @@ export const CONFIG_PATH = path.join(PROJECT_ROOT, 'config/posting-platforms.jso
 export const AUTH_DIR = path.resolve(__dirname, 'auth')
 export const OUTPUTS_DIR = path.join(PROJECT_ROOT, 'workers/workspace/outputs')
 
+export interface LoginSuccessSignal {
+  /** Logged in when a cookie with this name is present. */
+  cookie?: string
+  /** Logged in when the page URL no longer contains this path. */
+  redirect_off?: string
+}
+
 export interface PlatformConfig {
   display_name: string
   enabled: boolean
   login_url: string
   new_listing_url: string
+  /** How a login session is captured; defaults to "cli" when absent. */
+  capture?: 'live-view' | 'cli'
+  login_success?: LoginSuccessSignal
 }
 
 /** The slice of the dashboard Task record the posting scripts need. */

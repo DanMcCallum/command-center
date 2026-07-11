@@ -88,11 +88,11 @@ to a virtual display, navigates it to a platform's `login_url`, and tracks the l
 context by session id, so a login can happen remotely instead of at a stdin prompt.
 
 **Acceptance Criteria:**
-- [ ] New `workers/posting/capture/session.ts` exports `startSession(platformKey)` that launches `chromium.launch({ headless: false })` (inheriting `process.env.DISPLAY`), opens a context + page, navigates to the platform's `login_url` from config, and returns a `{ sessionId, platformKey }`
-- [ ] Sessions are tracked in an in-memory map keyed by `sessionId`; `getSession(id)` exposes the live `context`/`page`, and `closeSession(id)` closes the browser and removes it
-- [ ] Reuses `AUTH_DIR` from `workers/posting/post-common.ts` (no new auth-path constant); does not write any file yet (export happens in US-004)
-- [ ] Rejects a platform that is not `enabled` or not `capture: "live-view"` with a one-line error
-- [ ] Typecheck passes (`cd workers/posting && npm run typecheck`)
+- [x] New `workers/posting/capture/session.ts` exports `startSession(platformKey)` that launches `chromium.launch({ headless: false })` (inheriting `process.env.DISPLAY`), opens a context + page, navigates to the platform's `login_url` from config, and returns a `{ sessionId, platformKey }`
+- [x] Sessions are tracked in an in-memory map keyed by `sessionId`; `getSession(id)` exposes the live `context`/`page`, and `closeSession(id)` closes the browser and removes it
+- [x] Reuses `AUTH_DIR` from `workers/posting/post-common.ts` (no new auth-path constant); does not write any file yet (export happens in US-004)
+- [x] Rejects a platform that is not `enabled` or not `capture: "live-view"` with a one-line error
+- [x] Typecheck passes (`cd workers/posting && npm run typecheck`)
 
 ### US-003: Streaming bridge (Xvfb → x11vnc → websockify → noVNC)
 **Description:** As a developer, I need to stream the capture session's display into the
