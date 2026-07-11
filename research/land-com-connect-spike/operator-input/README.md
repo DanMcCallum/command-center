@@ -7,8 +7,8 @@ git, the report, logs, or chat.
 
 ## OT-A — home network probes
 
-From a home/residential connection, run the probe script the spike prepares at
-`../home-probe.sh` (arrives with US-002) and save its output here as:
+From a home/residential connection, run the probe script at `../home-probe.sh`
+and save its output here as:
 
 ```
 home-probes.txt

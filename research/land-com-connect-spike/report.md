@@ -102,9 +102,48 @@ and/or teaching detection to recognize the Akamai denial page as a hard failure.
 
 ## Block Scope
 
-*Pending US-002 — probes of the full land.com surface (including the LandFeed
-endpoints, which returned HTTP 200 from this box on 2026-07-10) and the home-IP
-probe script for OT-A.*
+Probes run from the worker box (same Linode datacenter IP as The Block section)
+with `curl -s -o /dev/null -w "%{http_code} %{size_download}" --max-time 30`.
+Sizes are response-body bytes; bodies were inspected only to the first line, to
+classify 200s as real content vs. a disguised denial page.
+
+| URL | Worker box (2026-07-11T05:58:36–37Z) | Home IP (OT-A) |
+|---|---|---|
+| `https://www.land.com/` | **403** · 366 B | awaiting OT-A |
+| `https://www.land.com/login` | **403** · 371 B | awaiting OT-A |
+| `https://www.land.com/LandFeed/` | **200** · 30,894 B | awaiting OT-A |
+| `https://www.land.com/LandFeed/Docs/` | **200** · 85,138 B | awaiting OT-A |
+| `https://www.land.com/LandFeed/schemas/LandFeedSchema1.0.xsd` | **200** · 8,080 B | awaiting OT-A |
+| `https://www.landsofamerica.com/` | **403** · 376 B | awaiting OT-A |
+| `https://www.landwatch.com/` | **403** · 371 B | awaiting OT-A |
+
+First-line checks of the three 200s: the two `/LandFeed/` HTML pages return a
+normal `<!DOCTYPE html>` document (not the Akamai `Access Denied` page — its
+~370-byte body and `<TITLE>Access Denied</TITLE>` are unmistakable), and the
+`.xsd` returns the actual schema (`<?xml version="1.0" …><xs:schema …>`).
+
+**Conclusion: the LandFeed endpoints are NOT blocked from the datacenter IP.**
+The Akamai block covers the consumer site — `www.land.com` pages and the sister
+brands `landsofamerica.com` and `landwatch.com` (all 403 with the same
+edge-denial body) — but the `/LandFeed/` path is exempt, consistent with the
+2026-07-10 probes from the prior spike. This means the sanctioned LandFeed API
+route survives the block intact: if the operator obtains a shared key (OT-C),
+the worker box can push listings to Land.com directly, with no egress work at
+all. The block only kills browser-based capture and posting from this box.
+
+The 403s on `landsofamerica.com`/`landwatch.com` also close a loophole worth
+noting: logging in via a sister brand instead of `www.land.com` is not an
+escape hatch — the whole consumer surface is behind the same edge policy.
+
+### Home-IP probes (OT-A)
+
+A copy-pasteable probe script for the same URL list is at
+[`home-probe.sh`](home-probe.sh) (plain `curl` loop, no dependencies, prints no
+response bodies). **OT-A:** run it from a home/residential connection and paste
+the output into `operator-input/home-probes.txt` (see the
+[operator-input README](operator-input/README.md)). The Home IP column above is
+pending until OT-A lands; the working assumption — the operator browses
+land.com normally from home — is unverified until then.
 
 ## Capture From the User's Browser
 

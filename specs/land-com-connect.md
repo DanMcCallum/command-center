@@ -89,11 +89,11 @@ are blocked from the server — especially whether the LandFeed endpoints still
 respond — because that decides whether the sanctioned API route survives the block.
 
 **Acceptance Criteria:**
-- [ ] From the worker box, record HTTP status + response size (no bodies beyond the first line) for: `https://www.land.com/`, `https://www.land.com/login`, `https://www.land.com/LandFeed/`, `https://www.land.com/LandFeed/Docs/`, `https://www.land.com/LandFeed/schemas/LandFeedSchema1.0.xsd`, `https://www.landsofamerica.com/`, and `https://www.landwatch.com/` — all in a Block Scope table with fetch timestamps
-- [ ] Block Scope section states the conclusion explicitly: LandFeed endpoints blocked / not blocked from the datacenter IP, and what that means for the API option
-- [ ] A copy-pasteable probe script (plain curl loop, no dependencies) for the same URL list is written to `research/land-com-connect-spike/home-probe.sh` for OT-A, and the report notes results are pending until OT-A lands
-- [ ] If `operator-input/home-probes.txt` already exists, its results are incorporated into the table (home column); otherwise the report marks the column "awaiting OT-A"
-- [ ] Typecheck passes
+- [x] From the worker box, record HTTP status + response size (no bodies beyond the first line) for: `https://www.land.com/`, `https://www.land.com/login`, `https://www.land.com/LandFeed/`, `https://www.land.com/LandFeed/Docs/`, `https://www.land.com/LandFeed/schemas/LandFeedSchema1.0.xsd`, `https://www.landsofamerica.com/`, and `https://www.landwatch.com/` — all in a Block Scope table with fetch timestamps
+- [x] Block Scope section states the conclusion explicitly: LandFeed endpoints blocked / not blocked from the datacenter IP, and what that means for the API option
+- [x] A copy-pasteable probe script (plain curl loop, no dependencies) for the same URL list is written to `research/land-com-connect-spike/home-probe.sh` for OT-A, and the report notes results are pending until OT-A lands
+- [x] If `operator-input/home-probes.txt` already exists, its results are incorporated into the table (home column); otherwise the report marks the column "awaiting OT-A"
+- [x] Typecheck passes
 
 ### US-003: Research the capture-from-user's-browser family
 **Description:** As the operator, I want a grounded design for "log in on my own

@@ -36,3 +36,28 @@
 - Learnings: see Learnings section above (journal filtering, uncommitted detect.ts
   guard, explicit staging).
 ---
+
+## Iteration 2 - US-002: Map the block scope from the worker box and prepare home probes
+- Probed all seven URLs from the worker box (2026-07-11T05:58Z): www.land.com/
+  and /login 403 (~370 B Akamai denial), all three LandFeed endpoints 200 with
+  real content (XSD serves actual schema XML), and both sister brands
+  (landsofamerica.com, landwatch.com) 403. Filled the report's Block Scope
+  section: probe table (home column "awaiting OT-A"), first-line 200
+  classification, explicit conclusion (LandFeed EXEMPT from the block — the
+  sanctioned API route survives; block covers the whole consumer surface incl.
+  sister brands, so no sister-site login loophole).
+- Wrote research/land-com-connect-spike/home-probe.sh (plain POSIX curl loop,
+  prints no bodies, chmod +x) and ran it end-to-end; updated operator-input
+  README to drop the "arrives with US-002" placeholder.
+- Files changed: research/land-com-connect-spike/report.md,
+  research/land-com-connect-spike/home-probe.sh (new),
+  research/land-com-connect-spike/operator-input/README.md,
+  specs/land-com-connect.md (US-002 checked off)
+- Learnings for future iterations:
+  - The Akamai denial body is ~366–376 bytes — response size alone cleanly
+    separates denial pages from real content in probe output.
+  - LandFeed 200s: the two HTML pages are JS-shell documents (empty <title>),
+    so "first line is <!DOCTYPE html> and size ≫ 400 B" is the classification,
+    not the title; the .xsd is directly verifiable (<?xml + <xs:schema).
+  - US-006 can now state plainly that the feed endpoint is reachable from the
+    box — the block does NOT change LandFeed viability.
