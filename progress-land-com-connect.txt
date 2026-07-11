@@ -1,0 +1,38 @@
+# Progress Log — Land.com Access Research Spike (specs/land-com-connect.md)
+
+## Learnings
+(Patterns discovered during implementation)
+
+- Journal evidence: `journalctl --user -u capture-server` is noisy with `key-debug`
+  lines — filter with `grep -vE 'key-debug|typed [0-9]+ chars'` to see the capture
+  lifecycle. The three false positives are at 04:50:55/04:51:04/04:51:11 UTC.
+- `workers/posting/capture/detect.ts` has an UNCOMMITTED partial mitigation in the
+  working tree (`sawLoginPage` guard). Do not commit it with spike stories, and don't
+  describe it as shipped — the report's finding section covers why it's insufficient
+  (the Access Denied flow does touch /login first).
+- The bogus `auth/land_com.json` was already deleted (~04:57); only `landmodo.json`
+  exists. US-007 will create land_com.json fresh from the OT-B export.
+- The branch carries many unrelated modified files — stage spike files explicitly
+  by path, never `git add -A`.
+- `git check-ignore -v` + a throwaway touch file is a quick way to prove a scoped
+  .gitignore (`*` + `!README.md` + `!.gitignore`) does what the AC asks.
+
+---
+
+## Iteration 1 - US-001: Scaffold the report and document the block with evidence
+- Created research/land-com-connect-spike/report.md with all seven required section
+  headings; The Block section has fresh worker-box curl probes (both 403 at
+  2026-07-11T05:54:34Z), the verbatim Akamai/edgesuite Access Denied page pattern,
+  the 04:50–05:12 UTC journal timeline (three ~2s false "capture succeeded" runs
+  with session ids), and the redirect_off false-positive finding (mechanism, root
+  cause, follow-up flag, detect.ts reference). Remaining sections are stubs naming
+  the story that fills them.
+- Created operator-input/ with a scoped .gitignore (everything ignored except
+  .gitignore + README.md) and a README explaining the OT-A (home-probes.txt) and
+  OT-B (cookie export) drop-offs plus safety rules.
+- Files changed: research/land-com-connect-spike/report.md,
+  research/land-com-connect-spike/operator-input/{.gitignore,README.md},
+  specs/land-com-connect.md (US-001 checked off)
+- Learnings: see Learnings section above (journal filtering, uncommitted detect.ts
+  guard, explicit staging).
+---

@@ -1,0 +1,6 @@
+# Operator drop-offs land here (home probe output, raw cookie exports).
+# Everything is ignored except this file and the README — cookie exports
+# are session secrets and must never reach git.
+*
+!.gitignore
+!README.md
