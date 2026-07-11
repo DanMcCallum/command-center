@@ -100,12 +100,12 @@ browser and return an embeddable, token-guarded live-view URL, so the operator c
 and control the login inside an iframe.
 
 **Acceptance Criteria:**
-- [ ] New `workers/posting/capture/stream.ts` starts an Xvfb display, `x11vnc` on it, and `websockify` bridging a WebSocket port to x11vnc, and returns a noVNC client URL carrying a short-lived signed token (HMAC with `CAPTURE_STREAM_SECRET`)
-- [ ] The capture session's Chromium (US-002) launches against that same `DISPLAY`, so the login page is what the stream shows
-- [ ] **Single active capture session at a time** (single-operator constraint): a second concurrent start fails closed with a clear "capture already in progress" message; the display/port is documented as fixed for the single session
-- [ ] Missing `xvfb`/`x11vnc`/`websockify` binaries (OT-1 absent) produce a clear fail-closed error naming the missing dependency — no crash, no partial stream
-- [ ] Tearing down the session stops Xvfb, x11vnc, and websockify (no orphan processes)
-- [ ] Typecheck passes (`cd workers/posting && npm run typecheck`)
+- [x] New `workers/posting/capture/stream.ts` starts an Xvfb display, `x11vnc` on it, and `websockify` bridging a WebSocket port to x11vnc, and returns a noVNC client URL carrying a short-lived signed token (HMAC with `CAPTURE_STREAM_SECRET`)
+- [x] The capture session's Chromium (US-002) launches against that same `DISPLAY`, so the login page is what the stream shows
+- [x] **Single active capture session at a time** (single-operator constraint): a second concurrent start fails closed with a clear "capture already in progress" message; the display/port is documented as fixed for the single session
+- [x] Missing `xvfb`/`x11vnc`/`websockify` binaries (OT-1 absent) produce a clear fail-closed error naming the missing dependency — no crash, no partial stream
+- [x] Tearing down the session stops Xvfb, x11vnc, and websockify (no orphan processes)
+- [x] Typecheck passes (`cd workers/posting && npm run typecheck`)
 
 ### US-004: Login-success detection + storageState export
 **Description:** As a developer, I need to detect when the operator has finished logging
