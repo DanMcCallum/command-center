@@ -11,11 +11,18 @@ const CONFIG_PATH = path.resolve(
   'posting-platforms.json',
 );
 
+export interface LoginSuccessSignal {
+  cookie?: string;
+  redirect_off?: string;
+}
+
 export interface PostingPlatformConfig {
   display_name: string;
   enabled: boolean;
   login_url: string;
   new_listing_url: string;
+  capture?: 'live-view' | 'cli'; // defaults to "cli" when absent
+  login_success?: LoginSuccessSignal;
 }
 
 export async function GET() {

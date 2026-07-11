@@ -1,0 +1,28 @@
+# Progress — Self-Hosted Live-View Login Capture (specs/live-view-browser.md)
+
+## Iteration 1 - US-001: Add capture-mode config + login-success signal
+- What was implemented:
+  - All six platforms in config/posting-platforms.json gained capture: "live-view"
+    and a login_success signal (redirect_off matching each platform's login path;
+    land_com uses "/account/login", the rest "/login"). _doc updated to explain both fields.
+  - PlatformConfig (workers/posting/capture-login.ts) and PostingPlatformConfig
+    (dashboard/app/api/posting-platforms/route.ts) gained optional capture +
+    login_success fields; both export/declare a LoginSuccessSignal shape
+    { cookie?: string, redirect_off?: string }.
+  - GET /api/posting-platforms needed NO code change — it returns the parsed
+    config.platforms verbatim, so new config fields flow through automatically.
+- Files changed: config/posting-platforms.json, workers/posting/capture-login.ts,
+  dashboard/app/api/posting-platforms/route.ts, specs/live-view-browser.md
+- Learnings for future iterations:
+  - Typecheck commands: `cd workers/posting && npm run typecheck` (tsc -p tsconfig.json)
+    and `cd dashboard && npx tsc --noEmit`. Both pass clean as of this iteration.
+  - The working tree had a pre-existing unrelated change: landmodo login_url was
+    updated from /users/sign_in to /login (kept; committed with US-001 since the
+    redirect_off signal depends on the current login path).
+  - login_success.redirect_off values are best-effort for the four disabled platforms
+    (same caveat as their placeholder URLs) — verify before enabling a platform.
+  - Quick config sanity check: node -e "require('.../posting-platforms.json')" and
+    print fields — cheaper than spinning up the dashboard.
+  - US-002 next: workers/posting/capture/session.ts; reuse AUTH_DIR from
+    post-common.ts, no file writes yet.
+---

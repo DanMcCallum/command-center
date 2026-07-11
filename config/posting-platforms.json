@@ -1,41 +1,53 @@
 {
-  "_doc": "Per-platform posting config for the auto-poster (see PRD: Auto-Post Approved Ads). Keys match config/ad-platforms.json. Only enabled platforms are posted to; the rest stay manual in v1. login_url is where capture-login opens a headed browser for the operator to sign in; new_listing_url is where the posting script starts the listing form. URLs for disabled platforms are best-effort placeholders — verify against the live site before enabling. Saved sessions live in workers/posting/auth/<platform>.json (secrets — never expose via the files API or logs).",
+  "_doc": "Per-platform posting config for the auto-poster (see PRD: Auto-Post Approved Ads). Keys match config/ad-platforms.json. Only enabled platforms are posted to; the rest stay manual in v1. login_url is where capture-login opens a headed browser for the operator to sign in; new_listing_url is where the posting script starts the listing form. capture selects the login-capture mechanism: 'live-view' (self-hosted streamed browser, see PRD: Self-Hosted Live-View Login Capture) or 'cli' (terminal capture-login ritual; the default when absent). login_success tells live-view capture when the operator has finished logging in: cookie = a cookie name that appears on success, redirect_off = a path the browser leaves on success. URLs for disabled platforms are best-effort placeholders — verify against the live site before enabling. Saved sessions live in workers/posting/auth/<platform>.json (secrets — never expose via the files API or logs).",
   "platforms": {
     "landmodo": {
       "display_name": "Landmodo",
       "enabled": true,
-      "login_url": "https://www.landmodo.com/users/sign_in",
-      "new_listing_url": "https://www.landmodo.com/listings/new"
+      "login_url": "https://www.landmodo.com/login",
+      "new_listing_url": "https://www.landmodo.com/listings/new",
+      "capture": "live-view",
+      "login_success": { "redirect_off": "/login" }
     },
     "land_century": {
       "display_name": "Land Century",
       "enabled": false,
       "login_url": "https://www.landcentury.com/login",
-      "new_listing_url": "https://www.landcentury.com/submit-listing"
+      "new_listing_url": "https://www.landcentury.com/submit-listing",
+      "capture": "live-view",
+      "login_success": { "redirect_off": "/login" }
     },
     "landflip": {
       "display_name": "Landflip.com",
       "enabled": false,
       "login_url": "https://www.landflip.com/login",
-      "new_listing_url": "https://www.landflip.com/member/listings/new"
+      "new_listing_url": "https://www.landflip.com/member/listings/new",
+      "capture": "live-view",
+      "login_success": { "redirect_off": "/login" }
     },
     "land_com": {
       "display_name": "Land.com",
       "enabled": true,
       "login_url": "https://www.land.com/account/login",
-      "new_listing_url": "https://www.land.com/account/listings/new"
+      "new_listing_url": "https://www.land.com/account/listings/new",
+      "capture": "live-view",
+      "login_success": { "redirect_off": "/account/login" }
     },
     "land_listings": {
       "display_name": "Land-listings.com",
       "enabled": false,
       "login_url": "https://www.land-listings.com/login",
-      "new_listing_url": "https://www.land-listings.com/add-listing"
+      "new_listing_url": "https://www.land-listings.com/add-listing",
+      "capture": "live-view",
+      "login_success": { "redirect_off": "/login" }
     },
     "landhub": {
       "display_name": "Landhub.com",
       "enabled": false,
       "login_url": "https://www.landhub.com/login",
-      "new_listing_url": "https://www.landhub.com/sell-land"
+      "new_listing_url": "https://www.landhub.com/sell-land",
+      "capture": "live-view",
+      "login_success": { "redirect_off": "/login" }
     }
   }
 }

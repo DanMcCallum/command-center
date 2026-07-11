@@ -17,11 +17,18 @@ import { chromium } from 'playwright';
 const CONFIG_PATH = path.resolve(__dirname, '../../config/posting-platforms.json');
 const AUTH_DIR = path.resolve(__dirname, 'auth');
 
+interface LoginSuccessSignal {
+  cookie?: string;
+  redirect_off?: string;
+}
+
 interface PlatformConfig {
   display_name: string;
   enabled: boolean;
   login_url: string;
   new_listing_url: string;
+  capture?: 'live-view' | 'cli'; // defaults to "cli" when absent
+  login_success?: LoginSuccessSignal;
 }
 
 interface PostingPlatformsFile {
