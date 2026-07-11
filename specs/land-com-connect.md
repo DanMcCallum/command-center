@@ -1,6 +1,6 @@
 # PRD: Land.com Access — Research Spike
 
-**Status:** Draft
+**Status:** Implemented (2026-07-11)
 **Date:** 2026-07-11
 **Type:** Research spike — the deliverable is a report plus one validated land.com session file, not a code change to the running system.
 

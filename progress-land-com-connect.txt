@@ -227,3 +227,51 @@
     When OT-B lands, the validation plan is in the report's US-007 section —
     converter is done, only the run itself is pending.
 ---
+
+## Iteration 8 - US-008: Comparison matrix and recommendation
+- Replaced the "Comparison & Recommendation" stub with the full section: a
+  9-row matrix (LandFeed, cookie-export §a/§b, bookmarklet [rejected row],
+  Tailscale, SSH/WG tunnel, commercial proxy, run-capture-locally,
+  run-poster-locally) × the 8 spec'd dimensions, with "must pair with egress"
+  called out in the fixes-posting column for capture-only rows. Primary
+  recommendation: LandFeed (send OT-C now), with the interim answer split
+  explicitly per the AC — login capture = cookie export §a (converter done,
+  awaiting OT-B), posting egress = Tailscale exit node (named follow-up).
+  Fallback chain: LandFeed → §a+Tailscale → run-poster-locally → commercial
+  proxy. Seven-entry "what would change this decision" list (LandFeed key
+  granted/denied, feed exemption closes, home IP blocked, MFA/IP-binding,
+  no home device, short cookie lifetimes). Named follow-ups: redirect_off
+  positive-signal fix (noting the uncommitted sawLoginPage guard is
+  insufficient), Tailscale posting-egress, and the pending OT-B validation
+  run. Also flipped the report header to "Complete (US-007 validation run
+  pending OT-B)".
+- Files changed: research/land-com-connect-spike/report.md,
+  specs/land-com-connect.md (US-008 checked off), progress-land-com-connect.txt
+- Learnings for future iterations:
+  - Doc-only as predicted; typecheck clean. ALL user stories are now [x] —
+    the next iteration is the Ship step (specs.md summary + readme.md fixes +
+    PRD header to Implemented).
+  - Ship-step readme.md candidates spotted while writing: the repo map's
+    research/ entry only lists auth-capture-spike (add land-com-connect-spike),
+    and §7's "Ad platforms have no API integration" claim is still true today
+    but the report recommends LandFeed — only fix readme if/when that ships,
+    not at spike-ship time.
+
+## Iteration 9 - Ship: feature log + readme updates
+- Ship step per specs/specs.md: added the "Land.com access — research spike" summary
+  to specs/specs.md (block scope incl. the LandFeed exemption, HttpOnly boundary,
+  redirect_off false-positive follow-up, replay-needs-egress caveat, recommendation
+  + fallback chain, open OT-A/OT-B/OT-C, deliverable paths incl. the converter).
+  Also added a one-line gotcha to the live-view entry: land_com live-view capture is
+  dead from this box as of 2026-07-11, pointing at the new entry.
+- readme.md fixes: repo map research/ gains land-com-connect-spike; specs/ list gains
+  land-com-connect.md (and the previously-omitted auth-research.md).
+- Flipped specs/land-com-connect.md header to "**Status:** Implemented (2026-07-11)".
+- Typecheck clean (doc-only).
+- Files changed: specs/specs.md, specs/readme.md, specs/land-com-connect.md,
+  progress-land-com-connect.txt
+- Learnings for future iterations:
+  - Feature is fully shipped. Remaining work lives outside Ralph: OT-A/OT-B/OT-C
+    operator tasks, then the US-007 validation run (plan is in the report), the
+    redirect_off detection fix, and the Tailscale posting-egress follow-up — each a
+    candidate for its own future PRD/story, not this spec.

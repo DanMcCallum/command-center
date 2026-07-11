@@ -320,11 +320,15 @@ command-center/
     posting-platforms.json  Posting targets: enabled flags + login/new-listing URLs
   research/
     auth-capture-spike/ Auth-capture proposal: report.md + PDF + recon artifacts (specs.md -> Marketplace auth-capture)
+    land-com-connect-spike/ Land.com Akamai-block spike: report.md + home-probe.sh +
+                        operator-input/ drop-off dir (specs.md -> Land.com access)
   specs/
     readme.md           This document (core system)
     specs.md            Feature log: one summary per shipped feature + spec process
     ad-posting.md       Feature PRD: auto-post approved ads (implemented)
     ad-photos.md        Feature PRD: photo upload/ordering + failure UX (implemented)
     live-view-browser.md  Feature PRD: in-dashboard live-view login capture (implemented)
+    auth-research.md    Research-spike PRD: marketplace auth-capture proposal (implemented)
+    land-com-connect.md Research-spike PRD: Land.com access after the Akamai block (implemented)
   *.md                  Original design docs (Blueprint, TLDR, Worker System Spec)
 ```

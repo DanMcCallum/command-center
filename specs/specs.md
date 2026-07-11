@@ -15,6 +15,29 @@ One summary per shipped feature. Read this **and** [readme.md](readme.md) (the c
 
 ---
 
+## Land.com access — research spike (Akamai block, proposal + converter, no production changes)
+
+**PRD:** [land-com-connect.md](land-com-connect.md) · **Shipped:** 2026-07-11 · **Type:** research spike (deliverable is a report plus a throwaway converter script; the spec'd validated session artifact is pending an operator task)
+
+On 2026-07-11 Land.com's Akamai edge began hard-blocking the worker box's Linode datacenter IP **pre-auth** (flat `403 Access Denied`, `errors.edgesuite.net` reference — browser-independent, so no login flow from this box can work). This spike documents the block, maps its scope, evaluates every realistic way to still connect Land.com, and recommends a path. **No system behavior changed** — no dashboard, API, capture-stack, or poster code was touched.
+
+**Deliverables:** `research/land-com-connect-spike/report.md` (source of truth: block evidence, scope table, four option families, comparison matrix, recommendation); `home-probe.sh` (curl probe loop for the operator's home IP); `operator-input/` (gitignored drop-off dir for operator artifacts, README has the export instructions); `workers/posting/research-convert-cookies.ts` (throwaway, in-package so it typechecks, wired into nothing — converts a Cookie-Editor JSON export to Playwright storageState at `auth/land_com.json` chmod 600, normalizes `sameSite`/`expirationDate`, filters to land.com domains, fails closed on zero-`HttpOnly` exports, never prints values).
+
+**Key verified facts (2026-07-11, each cited in the report) that outlive the spike:**
+- The Akamai block covers the whole **consumer** surface from the box — `www.land.com`, `/login`, and the sister brands `landsofamerica.com`/`landwatch.com` (no sister-site login loophole) — but the **`/LandFeed/` endpoints are exempt** (HTTP 200 with real content, matching 2026-07-10). The sanctioned LandFeed XML API works from the box today with zero egress work.
+- `HttpOnly` session cookies are readable only via extension (`chrome.cookies`), DevTools, or CDP — never page JS. Bookmarklet/pure-web capture is impossible; any cookie-export flow must be extension- or DevTools-based.
+- The `redirect_off`-only `login_success` signal **false-positives on the Access Denied flow** (three "captures succeeded" in ~2 s, each exporting a logged-out session): a negative-only redirect signal can't tell "logged in" from "any navigation off /login". Named follow-up: give `land_com` a positive cookie signal ANDed with `redirect_off` (config schema already supports it) and/or teach `capture/detect.ts` to treat the Akamai denial page as hard failure. An uncommitted `sawLoginPage` guard in the working tree is **insufficient** (the denial flow touches `/login` first).
+- A session captured on a residential IP still `403`s when replayed from the blocked box IP (the block is pre-auth) — capture-from-browser only works **paired with egress** (Tailscale exit node on a home device recommended; free Personal tier, route-level, no code change) or by running the poster locally.
+
+**Recommendation:** LandFeed API primary (send the OT-C shared-key email from the prior spike's report §2). Interim: cookie export via extension (OT-B; converter ready) for capture + Tailscale exit node for posting egress. Fallback chain: LandFeed → cookie export + Tailscale → run poster locally → commercial residential proxy.
+
+**Invariants / gotchas:**
+- Raw cookie exports in `operator-input/` are secrets like `auth/*.json`: gitignored (scoped `.gitignore`, only README + itself tracked), deleted after conversion, values never in report/logs/chat.
+- Operator tasks still open at ship time: **OT-A** (home-IP probes via `home-probe.sh` → `operator-input/home-probes.txt`), **OT-B** (cookie export → `operator-input/land_com-cookies.json`; then run the converter + the validation plan in the report's "Session Capture & Validation" section — no code remains to write), **OT-C** (LandFeed shared-key email). US-007 completed via its explicit absent-input path: blocked status recorded, nothing fabricated.
+- No bot-evasion tooling anywhere in the options — everything is either sanctioned (LandFeed) or ordinary access from an IP Land.com serves.
+
+**Extending:** if OT-C is granted, promote a LandFeed feed-integration PRD (full-inventory-diff semantics, photos by public URL — the report's LandFeed § has the constraints); the posting-egress follow-up defaults to the Tailscale exit node; the converter generalizes to any platform's cookie-export capture.
+
 ## Self-hosted live-view login capture — in-dashboard marketplace login
 
 **PRD:** [live-view-browser.md](live-view-browser.md) · **Shipped:** 2026-07-11
@@ -37,6 +60,7 @@ Replaces the terminal-only `capture-login` ritual with an in-dashboard **Connect
 - The live-view URL grants full browser control — treat as a secret (short-lived signed token, TLS tunnel only, never logged). Cookie values and storageState contents are never logged anywhere in the chain.
 - One active capture session at a time, on fixed display `:99` and fixed ports — generalizing to concurrent sessions means parameterizing display/port allocation in `stream.ts`.
 - Operator tasks still pending at ship time: OT-1 (this box has Xvfb + websockify but **not** x11vnc or noVNC), OT-2 (tunnel ingress for the capture port), OT-3 (`CAPTURE_STREAM_SECRET` in `.env.local`). Every code path fails closed with a clear message until they're done.
+- **land_com live-view capture is dead from this box as of 2026-07-11** — Akamai blocks the datacenter IP pre-auth, and its `redirect_off`-only signal false-positives on the denial flow (see the Land.com access spike entry above for evidence, the detection follow-up, and the recommended path).
 - Verification patterns that work: stub-binary-on-PATH (fake x11vnc/vnc.html + real Xvfb/websockify) for process orchestration; transient `_verify_stub` platform appended to config and restored in `finally`; Playwright must browse `http://localhost:3001`, never `127.0.0.1` (Next dev serves HTML that never hydrates cross-origin — in AGENTS.md).
 
 **Extending:** a new platform opts in with `enabled: true` + `capture: "live-view"` + a `login_success` signal in config — zero code. Swapping the transport (neko/WebRTC, raw CDP screencast) rewrites `stream.ts` and touches session/detect/server (PRD US-002…US-005).
