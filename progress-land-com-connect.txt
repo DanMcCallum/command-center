@@ -184,3 +184,46 @@
   - Doc-only story; typecheck (cd workers/posting && npm run typecheck) is a clean
     no-op pass. Only US-007 remains as a code-touching story (the converter script).
 ---
+
+## Iteration 7 - US-007: Capture and validate a real land.com session
+- OT-B export (operator-input/land_com-cookies.json) was ABSENT, so the story
+  completed via its explicit absent-input path: added a "Session Capture &
+  Validation (US-007)" section to the report recording the blocked status
+  (checked 2026-07-11T06:14:27Z), the exact OT-B ask (with README link), and
+  the ready-to-run validation plan. No session captured, no auth/land_com.json
+  written, no validation fabricated.
+- Built the converter anyway (the story's non-gated half):
+  workers/posting/research-convert-cookies.ts — throwaway, research-* named,
+  in-package, wired into nothing. Reads the OT-B drop-off by default (or
+  argv[2]/argv[3]), accepts raw Cookie-Editor arrays or {cookies:[...]}
+  wrappers, filters to land.com domains, normalizes sameSite
+  (no_restriction→None, unspecified/absent→Lax), expirationDate float-secs →
+  integer expires (-1 for session cookies), writes storageState chmod 600,
+  fails closed on missing input / empty array / zero HttpOnly cookies (the
+  page-script-export signature), prints names/flags/expiries only — never values.
+- Mechanics verified against a SYNTHETIC fixture in /tmp (fake values, deleted
+  after): output loads into a Playwright chromium context (3 cookies), both
+  guards exit 1 with actionable messages. Also linked the converter command from
+  the operator-input README step 7.
+- Files changed: workers/posting/research-convert-cookies.ts (new),
+  research/land-com-connect-spike/report.md,
+  research/land-com-connect-spike/operator-input/README.md,
+  specs/land-com-connect.md (US-007 checked off, with an OT-B-absent-path note),
+  AGENTS.md (new bullet), progress-land-com-connect.txt
+- Learnings for future iterations:
+  - workers/posting tsconfig is module:CommonJS — import.meta is a typecheck
+    error; use __dirname like capture-login.ts does.
+  - PRE-EXISTING test failure on this branch, NOT from the spike: npm test in
+    workers/posting fails 1/20 ("parses headline and description from a real
+    landmodo sample") because parse-ad-output.test.ts asserts against the LIVE
+    workspace file outputs/task-1780891259218-ppunbv/landmodo.md, which carries
+    an uncommitted edit appending "(Property: Desert Basecamp)" — the asserted
+    final sentence no longer ends the description. Predates this iteration
+    (file listed dirty at branch start); typecheck passes and US-007's script
+    is not exercised by the suite. Added an AGENTS.md bullet about this class
+    of failure. Whoever commits/reverts those workspace edits should reconcile
+    the test.
+  - US-008 (last story) is doc-only. After it, the Ship iteration remains.
+    When OT-B lands, the validation plan is in the report's US-007 section —
+    converter is done, only the run itself is pending.
+---

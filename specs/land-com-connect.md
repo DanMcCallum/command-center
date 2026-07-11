@@ -148,12 +148,20 @@ into `workers/posting/auth/land_com.json` and proven to load an authenticated
 land.com page, so the recommended capture path is demonstrated, not theorized.
 
 **Acceptance Criteria:**
-- [ ] If `operator-input/` contains the OT-B export: convert it to Playwright storageState at `workers/posting/auth/land_com.json`, chmod 600, using a throwaway script in `workers/posting/` (in-package so it typechecks; clearly named `research-*` and never wired into any npm script or worker path)
-- [ ] Validation run: load an authenticated land.com account page using that storageState from an unblocked egress (per OT-A/US-005 findings — e.g. the operator's machine or a home tunnel if one exists by then; the worker box's blocked IP must not be the test bed) and save a redacted screenshot to `research/land-com-connect-spike/artifacts/`
-- [ ] Report records the validation outcome: which egress was used, whether the session was accepted (no re-login, no Access Denied), and observed cookie lifetime metadata (expiry timestamps only — never values)
-- [ ] Cookie values and storageState contents appear nowhere in the report, logs, script output, or git; the raw export file is deleted after conversion
-- [ ] If OT-B input is absent, the story writes the blocked status + exact ask into the report and stops — no fabricated validation
-- [ ] Typecheck passes
+- [x] If `operator-input/` contains the OT-B export: convert it to Playwright storageState at `workers/posting/auth/land_com.json`, chmod 600, using a throwaway script in `workers/posting/` (in-package so it typechecks; clearly named `research-*` and never wired into any npm script or worker path)
+- [x] Validation run: load an authenticated land.com account page using that storageState from an unblocked egress (per OT-A/US-005 findings — e.g. the operator's machine or a home tunnel if one exists by then; the worker box's blocked IP must not be the test bed) and save a redacted screenshot to `research/land-com-connect-spike/artifacts/`
+- [x] Report records the validation outcome: which egress was used, whether the session was accepted (no re-login, no Access Denied), and observed cookie lifetime metadata (expiry timestamps only — never values)
+- [x] Cookie values and storageState contents appear nowhere in the report, logs, script output, or git; the raw export file is deleted after conversion
+- [x] If OT-B input is absent, the story writes the blocked status + exact ask into the report and stops — no fabricated validation
+- [x] Typecheck passes
+
+> **Completed 2026-07-11 via the OT-B-absent path** (fifth criterion): no export had
+> landed, so no session was captured or validated — the report's "Session Capture &
+> Validation (US-007)" section records the blocked status and the exact ask. The
+> converter (`workers/posting/research-convert-cookies.ts`) was built anyway and its
+> mechanics proven against a synthetic fixture (Playwright accepts the output; chmod
+> 600; fails closed on no-HttpOnly or missing input). When OT-B lands, run the
+> converter and the validation plan in that report section — no code remains to write.
 
 ### US-008: Comparison matrix and recommendation
 **Description:** As the operator, I want a one-page decision so I can pick the

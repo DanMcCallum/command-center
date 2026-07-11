@@ -633,6 +633,53 @@ qualifies: it removes the login-capture problem *and* the egress problem in one
 move, at $0. The full head-to-head against the browser-posting pairings is the
 comparison matrix (US-008).
 
+## Session Capture & Validation (US-007)
+
+**Status: BLOCKED on OT-B — no validation has run.** Checked
+2026-07-11T06:14:27Z: `operator-input/` contains only its README and
+`.gitignore`; the OT-B export (`operator-input/land_com-cookies.json`) has not
+landed. Per the spike's rules, nothing here is fabricated — there is no
+captured session, no `auth/land_com.json`, and no validation outcome to report
+yet.
+
+**The exact ask (OT-B):** in your own browser, log in to `www.land.com` and
+export the site's cookies with a cookie-export extension, saving the file as
+`operator-input/land_com-cookies.json` — the numbered steps, the
+HttpOnly sanity check, and the safety rules are in the
+[operator-input README](operator-input/README.md#ot-b--landcom-cookie-export).
+(OT-A, the home-probe run, is also still pending and can be done in the same
+sitting — see Block Scope.)
+
+**Everything not gated on the export is ready:**
+
+- The converter exists and is proven:
+  [`workers/posting/research-convert-cookies.ts`](../../workers/posting/research-convert-cookies.ts)
+  (throwaway, `research-*`-named, in-package so it typechecks, wired into no
+  npm script or worker path). Run it with
+  `cd workers/posting && npx tsx research-convert-cookies.ts` — it reads the
+  OT-B drop-off by default and writes Playwright storageState to
+  `auth/land_com.json`, chmod 600. It normalizes the Cookie-Editor shape per
+  the conversion table above (`expirationDate` float-seconds → integer
+  `expires`, absent/`session` → `-1`; `no_restriction`→`None`,
+  `unspecified`→`Lax`), filters out any non-land.com cookies, and **fails
+  closed** if the export contains no `HttpOnly` cookie (the signature of a
+  page-script export that cannot carry the session — see the `HttpOnly`
+  section). It prints only cookie names, flags, and expiry timestamps — never
+  values.
+- Converter mechanics were verified 2026-07-11 against a **synthetic fixture**
+  (fake values, deleted after the run): output loads into a Playwright
+  `chromium` context without error, chmod 600 held, and both failure guards
+  (no-HttpOnly export, missing input) exit non-zero with an actionable
+  message. This is a mechanics check only — it says nothing about whether a
+  real land.com session authenticates.
+- The validation plan, for when the export lands: convert; then load an
+  authenticated land.com account page with that storageState **from an
+  unblocked egress** (the operator's machine or a home tunnel per Residential
+  Egress — the worker box's blocked IP is not a valid test bed, per the Replay
+  caveat); save a redacted screenshot to `artifacts/`; record here which egress
+  was used, whether the session was accepted (no re-login, no Access Denied),
+  and cookie expiry timestamps only; then delete the raw export.
+
 ## Comparison & Recommendation
 
 *Pending US-008 — full option matrix, primary recommendation, fallback chain, and

@@ -61,9 +61,12 @@ residential IP and browser.
    entry with `"httpOnly": true`. If **no** entry has `httpOnly: true`, the
    export came from something running with page-script privileges — redo it
    with the extension.
-7. Tell Ralph/the next spike iteration that the export is in place. US-007
-   converts it to `workers/posting/auth/land_com.json` (chmod 600) and validates
-   it, then **deletes** `land_com-cookies.json`.
+7. Tell Ralph/the next spike iteration that the export is in place. The
+   converter is already built and waiting
+   (`cd workers/posting && npx tsx research-convert-cookies.ts` — reads this
+   drop-off by default, writes `workers/posting/auth/land_com.json`, chmod 600);
+   US-007's validation run then proves the session and **deletes**
+   `land_com-cookies.json`.
 
 Don't worry about `sameSite` values like `no_restriction` or `unspecified` in
 the export — the converter normalizes them. If validation later shows cookies
