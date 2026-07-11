@@ -61,3 +61,36 @@
     not the title; the .xsd is directly verifiable (<?xml + <xs:schema).
   - US-006 can now state plainly that the feed endpoint is reachable from the
     box — the block does NOT change LandFeed viability.
+---
+
+## Iteration 3 - US-003: Research the capture-from-user's-browser family
+- Replaced the "Capture From the User's Browser" stub with the full section:
+  the HttpOnly-decides-everything framing (chrome.cookies/DevTools/CDP see
+  HttpOnly, document.cookie/CookieStore.getAll do not — both verified with
+  fetch-dated sources); sub-options (a) manual DevTools/cookie-export-extension
+  paste [Recommended for spike], (b) minimal MV3 extension POSTing cookies
+  [viable fallback / future upgrade — production code, out of scope], (c)
+  bookmarklet [Rejected — impossible for HttpOnly session cookies]; the full
+  cookie→Playwright storageState conversion shape with per-attribute preservation
+  notes (domain leading-dot, expires in seconds/-1, sameSite normalization map,
+  localStorage caveat that chrome.cookies can't read it); and the replay caveat
+  with three explicit pairings (capture+residential-egress, capture+run-locally,
+  capture+worker-box=still-403).
+- Files changed: research/land-com-connect-spike/report.md,
+  specs/land-com-connect.md (US-003 checked off), progress-land-com-connect.txt
+- Learnings for future iterations:
+  - The load-bearing fact for the whole browser-capture family: HttpOnly session
+    cookies are readable ONLY via chrome.cookies (extension), DevTools, or CDP
+    Network.getAllCookies — never via page JS. This is why the bookmarklet path
+    is a dead end and why US-004's export instructions must use DevTools or a
+    cookie-export extension, not a bookmarklet.
+  - Verified Playwright storageState shape for US-007's converter:
+    {cookies:[{name,value,domain,path,expires,httpOnly,secure,sameSite}],
+    origins:[{origin,localStorage:[{name,value}]}]}. sameSite must be normalized
+    to Strict|Lax|None (exporters emit no_restriction/unspecified) or Playwright
+    rejects the file; expires is seconds (-1 for session cookies).
+  - US-003 is doc-only, so typecheck is a no-op pass — it touches no .ts. Same
+    will be true for US-004/US-005/US-006/US-008; only US-007 adds a script.
+  - The replay caveat is the through-line for US-005 and US-008: capture-from-
+    browser fixes capture but NOT posting from the box; it must be paired with an
+    egress option, or superseded by LandFeed (US-006, endpoint not blocked).

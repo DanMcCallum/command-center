@@ -102,11 +102,11 @@ contact with cookie security (`HttpOnly`, fingerprint/IP binding) before anythin
 gets built.
 
 **Acceptance Criteria:**
-- [ ] Section covers, with sources and fetch dates: (a) manual DevTools/extension cookie export + paste into a dashboard form; (b) a minimal MV3 extension that POSTs land.com cookies to the dashboard (PhantomBuster/Apify pattern — build on `research/auth-capture-spike/initial-research.md` §1 rather than re-researching); (c) a pure web-page/bookmarklet flow, with an explicit verdict on whether `HttpOnly` session cookies make extension-less capture impossible
-- [ ] Section documents the cookie→`storageState` conversion shape (Playwright storageState JSON fields) and which land.com cookie attributes must be preserved (domain, path, expiry, `HttpOnly`, `Secure`, `SameSite`)
-- [ ] Section states the replay caveat honestly: a session minted on the operator's home IP/fingerprint still cannot be replayed from the blocked datacenter IP — capture-from-browser only helps if paired with an egress option, and the pairing is spelled out
-- [ ] Each sub-option ends with a verdict line (Recommended / viable fallback / rejected because …) judged against: no password custody, operator-tolerable friction on session expiry, no bot-evasion/stealth tooling
-- [ ] Typecheck passes
+- [x] Section covers, with sources and fetch dates: (a) manual DevTools/extension cookie export + paste into a dashboard form; (b) a minimal MV3 extension that POSTs land.com cookies to the dashboard (PhantomBuster/Apify pattern — build on `research/auth-capture-spike/initial-research.md` §1 rather than re-researching); (c) a pure web-page/bookmarklet flow, with an explicit verdict on whether `HttpOnly` session cookies make extension-less capture impossible
+- [x] Section documents the cookie→`storageState` conversion shape (Playwright storageState JSON fields) and which land.com cookie attributes must be preserved (domain, path, expiry, `HttpOnly`, `Secure`, `SameSite`)
+- [x] Section states the replay caveat honestly: a session minted on the operator's home IP/fingerprint still cannot be replayed from the blocked datacenter IP — capture-from-browser only helps if paired with an egress option, and the pairing is spelled out
+- [x] Each sub-option ends with a verdict line (Recommended / viable fallback / rejected because …) judged against: no password custody, operator-tolerable friction on session expiry, no bot-evasion/stealth tooling
+- [x] Typecheck passes
 
 ### US-004: Write the operator cookie-export instructions (OT-B enabler)
 **Description:** As the operator, I want exact, safe, step-by-step instructions
