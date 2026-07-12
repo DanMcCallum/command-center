@@ -5,7 +5,7 @@
  *
  * Drives an already-authenticated page handed in by the caller (the local
  * poster agent's headed browser, or post.ts's headless one built from the
- * saved capture-login session) — the caller owns the browser lifecycle.
+ * saved auth/<platform>.json session) — the caller owns the browser lifecycle.
  * Fills the new-listing form from the parsed ad copy plus task metadata,
  * uploads photos from <outputDir>/photos/ when present, saves a full-page
  * proof screenshot, and returns the live listing URL after submit.

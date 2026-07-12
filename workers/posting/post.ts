@@ -6,7 +6,7 @@
  * Usage: npm run post -- <platform> <taskId> [--dry-run]
  *
  * The CLI is the local-dev path: it reads the server-side outputs/ layout,
- * builds a headless browser from the saved capture-login session, and hands
+ * builds a headless browser from the saved auth/<platform>.json session, and hands
  * the authenticated page to the platform's posting script. The agent builds
  * the same PostContext from its headed browser and cache dir instead.
  * Logs go to stderr; the final line on stdout is a JSON PostResult so the

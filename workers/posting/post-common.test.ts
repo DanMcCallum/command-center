@@ -92,9 +92,9 @@ test('loadPlatformConfig throws on unknown platform', () => {
   assert.strictEqual(loadPlatformConfig('landmodo').display_name, 'Landmodo')
 })
 
-test('requireAuthState errors with capture-login hint when session is missing', () => {
+test('requireAuthState errors with poster-agent hint when session is missing', () => {
   assert.throws(
     () => requireAuthState('no-such-platform'),
-    /capture-login -- no-such-platform/
+    /No saved login for "no-such-platform".*poster agent/
   )
 })

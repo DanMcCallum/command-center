@@ -3,8 +3,8 @@
  * (specs/local-publish-2-local-agent.md, US-004).
  *
  * authenticate() owns the browser side of a publish job: it launches a headed
- * Chromium on the operator's real display (headless: false, never Xvfb — the
- * popup window IS the login UI), loads the locally saved session
+ * Chromium on the operator's real display (headless: false, never a virtual
+ * display — the popup window IS the login UI), loads the locally saved session
  * (auth/<platform>.json) when one exists, probes whether that session is
  * actually logged in using the hardened three-way detection from
  * capture/detect.ts, and — only when it isn't — parks the browser on the
@@ -18,8 +18,9 @@
  * storageState contents never appear in logs or error messages either; only
  * the auth file path may be referenced.
  *
- * Do not import capture/session.ts or capture/stream.ts here — the VNC stack
- * dies in Part 3 and the agent must never depend on it.
+ * The server-side VNC capture stack was deleted in Local publish 3/3;
+ * capture/detect.ts is the only capture/ module left and the agent's only
+ * dependency there.
  */
 import * as fs from 'node:fs'
 import * as path from 'node:path'

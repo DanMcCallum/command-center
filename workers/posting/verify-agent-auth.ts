@@ -1,11 +1,10 @@
 /**
  * Verification harness for agent-auth.ts (US-004). NOT part of `npm test` —
  * the compiled test build runs from /tmp where playwright doesn't resolve.
- * Run from workers/posting/ with a display available (test scaffolding may be
- * an Xvfb; the agent itself never manages one):
+ * Run from workers/posting/ with a display available (test scaffolding may
+ * provide a virtual one; the agent itself never manages a display):
  *
- *   Xvfb :98 &
- *   DISPLAY=:98 npx tsx verify-agent-auth.ts
+ *   xvfb-run -n 98 npx tsx verify-agent-auth.ts
  *
  * Spins up a mock marketplace on 127.0.0.1:4799 whose /login page "logs the
  * operator in" via a JS timer (or never, with ?noauto=1), then drives

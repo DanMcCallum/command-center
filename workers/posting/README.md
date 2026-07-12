@@ -10,19 +10,14 @@ npm install
 npx playwright install chromium
 ```
 
-## Capture a login session
+## Login sessions
 
 Posting scripts reuse a saved browser session per platform — no passwords are
-stored. To capture one (repeat whenever a session expires):
-
-```bash
-cd workers/posting
-npm run capture-login -- <platform>   # e.g. landmodo or land_com
-```
-
-A headed Chromium window opens on the platform's login page. Log in by hand,
-then press Enter in the terminal. The session is saved to
-`workers/posting/auth/<platform>.json`.
+stored. Sessions are captured by the local poster agent (`npm run agent`, see
+`AGENT.md`): when a publish job needs auth, a headed Chromium window opens on
+the platform's login page, you log in by hand, and the session is saved to
+`workers/posting/auth/<platform>.json` (repeat happens automatically whenever
+a session expires). Delete a platform's file to force a fresh login.
 
 **`auth/*.json` files are secrets** — they grant marketplace account access.
 The directory is gitignored; never expose it via the dashboard files API or

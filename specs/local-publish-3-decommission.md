@@ -59,12 +59,12 @@ Deletion is the point: every line of the VNC stack that survives is a line someo
 **Description:** As a developer, I want the server-side capture apparatus removed at the root.
 
 **Acceptance Criteria:**
-- [ ] Delete `workers/posting/capture/stream.ts` and `workers/posting/capture/server.ts`; remove the `capture-server` npm script
-- [ ] `capture/session.ts`: delete the VNC paste-relay init-script glue and anything referencing `DISPLAY :99`/streaming; keep (or fold into the agent) only what the agent's headed flow uses; `capture/detect.ts` survives (the agent depends on it)
-- [ ] Delete `workers/posting/capture-login.ts` CLI if the agent flow fully supersedes it (it does — headed login is now the Publish path)
-- [ ] `grep -r "x11vnc\|websockify\|Xvfb\|noVNC\|novnc" workers/ dashboard/` returns no live code references (specs/research docs are fine)
-- [ ] `workers/posting` typecheck passes with the deletions
-- [ ] Typecheck passes
+- [x] Delete `workers/posting/capture/stream.ts` and `workers/posting/capture/server.ts`; remove the `capture-server` npm script
+- [x] `capture/session.ts`: delete the VNC paste-relay init-script glue and anything referencing `DISPLAY :99`/streaming; keep (or fold into the agent) only what the agent's headed flow uses; `capture/detect.ts` survives (the agent depends on it)
+- [x] Delete `workers/posting/capture-login.ts` CLI if the agent flow fully supersedes it (it does — headed login is now the Publish path)
+- [x] `grep -r "x11vnc\|websockify\|Xvfb\|noVNC\|novnc" workers/ dashboard/` returns no live code references (specs/research docs are fine)
+- [x] `workers/posting` typecheck passes with the deletions
+- [x] Typecheck passes
 
 ### US-006: Config, env, and docs cleanup
 **Description:** As a developer, I want config and specs to describe the system that actually exists.

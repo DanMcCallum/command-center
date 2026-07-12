@@ -96,15 +96,16 @@ export function loadPlatformConfig(platformKey: string): PlatformConfig {
 }
 
 /**
- * Returns the saved storage-state path for a platform, or throws the
- * "run capture-login" error if no session has been captured yet.
+ * Returns the saved storage-state path for a platform, or throws if no
+ * session has been captured yet. Sessions are minted by the poster agent's
+ * headed login (agent-auth.ts) on the operator's machine.
  */
 export function requireAuthState(platformKey: string): string {
   const authPath = path.join(AUTH_DIR, `${platformKey}.json`)
   if (!fs.existsSync(authPath)) {
     throw new Error(
       `No saved login for "${platformKey}" (${authPath} missing). ` +
-        `Run: npm run capture-login -- ${platformKey}`
+        `Publish with the poster agent running (npm run agent) to log in`
     )
   }
   return authPath
@@ -114,7 +115,7 @@ export function requireAuthState(platformKey: string): string {
 export function loginExpiredError(platformKey: string, currentUrl: string): Error {
   return new Error(
     `Login for "${platformKey}" appears expired — landed on a login page (${currentUrl}). ` +
-      `Run: npm run capture-login -- ${platformKey}`
+      `Publish with the poster agent running (npm run agent) to log in again`
   )
 }
 
