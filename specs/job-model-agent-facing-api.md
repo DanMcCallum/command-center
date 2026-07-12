@@ -79,11 +79,11 @@ Operator's machine                        Linode server
 **Description:** As the local agent, I need to atomically claim a queued job so a job is never picked up twice.
 
 **Acceptance Criteria:**
-- [ ] `POST /api/publish-jobs/claim` with body `{taskId, platform}`, guarded by `requireAgentToken`
-- [ ] Uses the existing `dashboard/lib/data.ts` write mutex; flips the posting `queued → posting` and returns the full task
-- [ ] 409 if the posting is not currently `queued`
-- [ ] Verified with `curl`: claim succeeds once, second identical claim returns 409
-- [ ] Typecheck passes
+- [x] `POST /api/publish-jobs/claim` with body `{taskId, platform}`, guarded by `requireAgentToken`
+- [x] Uses the existing `dashboard/lib/data.ts` write mutex; flips the posting `queued → posting` and returns the full task
+- [x] 409 if the posting is not currently `queued`
+- [x] Verified with `curl`: claim succeeds once, second identical claim returns 409
+- [x] Typecheck passes
 
 ### US-006: Publish bundle endpoint (ad copy + photo list)
 **Description:** As the local agent, I need to download everything required to post — the ad copy and the photos — since I don't share a filesystem with the server anymore.
