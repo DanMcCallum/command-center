@@ -3,7 +3,7 @@
   "private": true,
   "description": "Playwright scripts that post approved ads to marketplaces (see PRD: Auto-Post Approved Ads)",
   "scripts": {
-    "agent": "tsx agent.ts",
+    "agent": "node --import tsx agent.ts",
     "capture-login": "tsx capture-login.ts",
     "capture-server": "tsx capture/server.ts",
     "post": "tsx post.ts",

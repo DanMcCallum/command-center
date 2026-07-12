@@ -56,13 +56,13 @@ The agent lives in this repo (`workers/posting/agent.ts`) so it typechecks and e
 **Description:** As an operator, when I click Publish and my session is stale, I want a browser window to just pop up on my machine; I log in, and posting continues automatically.
 
 **Acceptance Criteria:**
-- [ ] Agent launches headed Chromium (`headless: false`, operator's real display — no Xvfb) with `auth/<platform>.json` storageState when the file exists
-- [ ] Session probe: navigate to the platform's `new_listing_url` (or `login_url`), evaluate US-003 detection; valid session skips login entirely
-- [ ] If not logged in: PATCH posting to `awaiting_auth`, navigate to `login_url`, poll detection until logged in (no timeout shorter than 10 minutes — humans are slow) or the operator closes the window (→ `failed`, `lastError: 'login cancelled'`)
-- [ ] On login success: save `context.storageState()` to local `workers/posting/auth/<platform>.json`, chmod 600, and PATCH posting back to `posting`
-- [ ] A `blocked` detection result fails the job with a `lastError` that names the Akamai block
-- [ ] Cookie values are never logged (names and expiry timestamps only)
-- [ ] Typecheck passes
+- [x] Agent launches headed Chromium (`headless: false`, operator's real display — no Xvfb) with `auth/<platform>.json` storageState when the file exists
+- [x] Session probe: navigate to the platform's `new_listing_url` (or `login_url`), evaluate US-003 detection; valid session skips login entirely
+- [x] If not logged in: PATCH posting to `awaiting_auth`, navigate to `login_url`, poll detection until logged in (no timeout shorter than 10 minutes — humans are slow) or the operator closes the window (→ `failed`, `lastError: 'login cancelled'`)
+- [x] On login success: save `context.storageState()` to local `workers/posting/auth/<platform>.json`, chmod 600, and PATCH posting back to `posting`
+- [x] A `blocked` detection result fails the job with a `lastError` that names the Akamai block
+- [x] Cookie values are never logged (names and expiry timestamps only)
+- [x] Typecheck passes
 
 ### US-005: Post in the same browser context and report results
 **Description:** As the agent, after auth I post the ad in the same browser and push every result the dashboard needs back over the API.

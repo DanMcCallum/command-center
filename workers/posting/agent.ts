@@ -9,7 +9,8 @@
  */
 import * as fs from 'node:fs'
 import * as path from 'node:path'
-import { PROJECT_ROOT } from './post-common'
+import { authenticate } from './agent-auth'
+import { loadPlatformConfig, PROJECT_ROOT } from './post-common'
 
 interface AgentConfig {
   dashboardUrl: string
@@ -264,14 +265,55 @@ async function processJob(config: AgentConfig, job: PublishJob): Promise<void> {
     return
   }
 
-  // TODO(US-004/US-005): headed auth + posting happen here in the same pass.
-  // Until then, fail the job explicitly rather than stranding it in `posting`
-  // (a stranded job blocks re-publish; `failed` keeps the Publish-again path
-  // open on the dashboard).
-  await reportPosting(config, job, {
-    status: 'failed',
-    lastError: 'agent: bundle downloaded — posting not implemented yet (US-005)',
+  let platform
+  try {
+    platform = loadPlatformConfig(job.platform)
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    log(`job ${job.platform}/${job.taskId} failed: ${message}`)
+    await reportPosting(config, job, { status: 'failed', lastError: `agent: ${message}` })
+    return
+  }
+
+  // Auth and posting are one transaction in one browser: probe the saved
+  // session, pop a headed window for the operator only when it's stale, then
+  // (US-005) post in that same context.
+  log(`checking ${job.platform} session in a headed browser on this machine`)
+  const auth = await authenticate({
+    platformKey: job.platform,
+    platform,
+    log,
+    shouldAbort: () => shuttingDown,
+    onAwaitingAuth: () => reportPosting(config, job, { status: 'awaiting_auth' }),
   })
+
+  if (auth.outcome !== 'ready') {
+    log(`job ${job.platform}/${job.taskId} failed (${auth.outcome}): ${auth.message}`)
+    await reportPosting(config, job, {
+      status: 'failed',
+      // The cancelled message is the operator-facing contract ("login
+      // cancelled") — don't prefix it.
+      lastError: auth.outcome === 'cancelled' ? auth.message : `agent: ${auth.message}`,
+    })
+    return
+  }
+
+  try {
+    if (auth.usedHeadedLogin) {
+      await reportPosting(config, job, { status: 'posting' })
+    }
+    // TODO(US-005): post via POSTERS[job.platform] using auth.context and the
+    // cached bundle, then report posted + upload the proof screenshot. Until
+    // then, fail the job explicitly rather than stranding it in `posting`
+    // (a stranded job blocks re-publish; `failed` keeps the Publish-again
+    // path open on the dashboard).
+    await reportPosting(config, job, {
+      status: 'failed',
+      lastError: 'agent: logged in — posting not implemented yet (US-005)',
+    })
+  } finally {
+    await auth.browser.close().catch(() => {})
+  }
 }
 
 async function main(): Promise<void> {
