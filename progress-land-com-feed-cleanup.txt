@@ -74,3 +74,17 @@
   - For US-007: the top-level operator-input/home-probes.txt (OT-A raw output) likely contains /LandFeed/ URLs — it's gitignored and a non-goal area, but the US-007 repo grep may hit it; exclude operator-input/ or note the exemption.
   - US-006 next: initial-research.md (10), progress-auth-research.txt (13), progress-land-com-connect.txt (18).
 ---
+
+## Iteration 6 - US-006: Scrub initial-research.md and the progress logs
+- What was implemented:
+  - research/auth-capture-spike/initial-research.md (10 mention lines): headline-finding paragraph reworded as "later invalidated" pointing at specs/specs.md; the Land.com feed-API deep-dive section reduced to a 4-line rejection stub; the comparison-matrix feed row deleted; Recommendation #1 rewritten as "feed-API path rejected, Playwright path stays"; the unverified-items (a) entry and the docs-URL key source removed; remaining unverified items relettered a/b/c.
+  - progress-auth-research.txt (13): Iteration 2 retitled "Verify the Land.com feed API" and its body compressed (fetch URLs + loa_* auth fields stripped, replaced with a dated summary + rejection parenthetical); iterations 5/6/7/9 mentions reworded to "feed API" with "later rejected — see specs/specs.md" parentheticals; "LOA_SHARED_KEY env" became "shared-key env var".
+  - progress-land-com-connect.txt (18): Iteration 2 probe summary keeps the 200 results but the exemption conclusion is flagged as later removed; iteration 3/5 learnings reworded; Iteration 6 retitled "Re-anchor the feed-API option", body compressed with loa_* fields and OT-C stripped, rejection block added; Iteration 8's matrix/recommendation/fallback-chain lines reworded as "at the time / then" with the cookie-export+Tailscale promotion noted; Iteration 9's OT-A/OT-B/OT-C lists reduced to OT-A/OT-B with "since-dropped shared-key task" wording.
+  - Verified: grep -ci landfeed = 0 on all three files; grep loa_shared_key/loa_account/OT-C = 0 on all three (pre-clearing part of US-007's sweep); typecheck passes.
+- Files changed: research/auth-capture-spike/initial-research.md, progress-auth-research.txt, progress-land-com-connect.txt, specs/land-com-feed-cleanup.md (checkboxes), this file.
+- Learnings for future iterations:
+  - initial-research.md was UNTRACKED (?? in git status) — cleaned and committed anyway (same precedent as home-probe.zsh in iteration 5): untracked files still hit US-007's filesystem-wide grep.
+  - The two progress logs had no foreign uncommitted hunks, so plain git add by path was safe.
+  - For historical log entries the pattern that keeps dates/structure: keep the entry title + what-was-done summary, strip URLs/field names, add a "(later rejected — see specs/specs.md; detail stripped in the 2026-07-12 cleanup)" parenthetical.
+  - US-007 next: remember operator-input/ is gitignored and may contain /LandFeed/ URLs in home-probes.txt (OT-A raw output) — exclude it from the repo grep or note the exemption; also the PRD itself (specs/land-com-feed-cleanup.md) is exempt per Non-Goals but --exclude=PRD.md in the criterion names the wrong filename — use the spirit (exclude the in-flight PRD).
+---

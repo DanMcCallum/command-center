@@ -30,23 +30,15 @@
     report, paths only.
 ---
 
-## Iteration 2 - US-002: Verify the Land.com LandFeed API
-- Verified the LandFeed XML API firsthand and filled in §2 of report.md.
-- Fetch results (all 2026-07-10): landsofamerica.com/LandFeed/Docs/ = HTTP 500
-  (still broken, as seeded research said); land.com/LandFeed/Docs/ = 200 (same
-  page on the other host); Wayback snapshot 20240423062829 = 200 and returned the
-  FULL spec (LandFeed API Specification v2.1, Sept 21 2022); the XSD
-  land.com/LandFeed/schemas/LandFeedSchema1.0.xsd = 200; /LandFeed/states/ = 200;
-  POST endpoint land.com/LandFeed/ = 200.
-- Wrote: what the feed does (INSERT/UPDATE/DELETE by customer listing id; feed is
-  authoritative — omitting a listing DELETES it; send everything every time; test
-  mode exists), auth model (creds live IN the XML: loa_account_id +
-  loa_account_email + loa_shared_key, shared key issued by Land.com staff;
-  requires active Corporate Account; TLS 1.2+, Content-Type text/xml, User-Agent),
-  a key-fields schema table, latency (listings 5min-1hr, images 10min-6hr), cost
-  ($0 beyond existing plan), 6 open questions, a ready-to-send draft support
-  email, and the fallback (keep Playwright poster for land_com, capture via the
-  Landmodo approach in §4).
+## Iteration 2 - US-002: Verify the Land.com feed API
+- Verified Land.com's official bulk XML feed API firsthand (docs, schema, and
+  endpoint fetches all dated 2026-07-10) and filled in §2 of report.md: feed
+  mechanics, auth model, key-fields schema table, latency, cost, open questions,
+  a draft support email, and the fallback (keep the Playwright poster for
+  land_com, capture via the Landmodo approach in §4).
+- (That option was later rejected — it requires an account with a large number
+  of ads; see the decision note in specs/specs.md. The URL/auth-field detail
+  this entry recorded was stripped in the 2026-07-12 cleanup.)
 - Files changed: research/auth-capture-spike/report.md (§2 filled),
   specs/auth-research.md (US-002 checked), this file.
 - Learnings for future iterations:
@@ -170,8 +162,9 @@
     still current — no drift, unlike Steel.dev in §4.
   - US-006 (comparison matrix) can now pull every option's verdict + $/mo straight
     from the §5 summary table and §4's per-vendor cost table — no new research
-    needed, it's a synthesis story. Recommendation should be: land_com -> LandFeed
-    API (§2, pending eligibility); landmodo -> hosted live-view Browserbase (§4);
+    needed, it's a synthesis story. Recommendation should be: land_com -> feed
+    API (§2, pending eligibility — later rejected, see specs/specs.md);
+    landmodo -> hosted live-view Browserbase (§4);
     fallbacks -> extension export (5a) or self-host neko (5c); reject vault (5d) +
     Apify (5b).
   - Rubric-per-option + explicit verdict line + a closing summary table is a clean
@@ -183,11 +176,12 @@
 
 ## Iteration 6 - US-006: Comparison matrix and recommendation
 - Filled §6 (Comparison & Recommendation) of report.md by synthesizing §2-§5 — no
-  new research. A 10-row matrix (current-CLI baseline + LandFeed + 4 live-view
+  new research. A 10-row matrix (current-CLI baseline + the feed API + 4 live-view
   vendors + 4 other options) scored UX/effort/reliability/security with ▲/●/▼
   glyphs plus $/mo now and $/mo @20 users pulled from §4's cost table and §5's
-  per-option costs. Then: per-platform recommendation (land_com -> LandFeed API
-  pending eligibility, fallback live-view; landmodo -> Browserbase live-view,
+  per-option costs. Then: per-platform recommendation (land_com -> feed API
+  pending eligibility — later rejected, see specs/specs.md; fallback live-view;
+  landmodo -> Browserbase live-view,
   fallbacks extension export then self-hosted neko), a 6-item "what would change
   this decision" list, and an 8-item explicit UX/reliability-gains-over-CLI list.
 - Files changed: research/auth-capture-spike/report.md (§6 filled),
@@ -201,8 +195,9 @@
     Landmodo support email are NOT Ralph stories), and require "Typecheck passes"
     (+ browser verification for UI stories) on each.
   - The recommended per-platform approaches US-007 must PRD out: (1) land_com
-    LandFeed XML feed builder + public photo hosting, gated on the operator getting
-    a shared key; (2) landmodo Browserbase live-view capture — new
+    XML feed builder + public photo hosting, gated on the operator getting
+    a shared key (path later rejected — see specs/specs.md); (2) landmodo
+    Browserbase live-view capture — new
     POST /api/posting-auth/connect route + iframe in PostingAuthPanel.tsx + poll for
     login success + CDP cookie export to auth/landmodo.json (the low-risk path that
     keeps post.ts unchanged, per §4's integration sketch "files that would change").
@@ -217,7 +212,7 @@
 - Filled §7 (Proposed Implementation PRD) of report.md — pure synthesis of §6's
   per-platform recommendation, no new research. Wrote Introduction / Goals /
   Non-Goals, then Ralph-sized US-XXX stories in config/schema -> backend -> UI order.
-  Land.com LandFeed path: US-101 (config + LOA_SHARED_KEY env), US-102 (build
+  Land.com feed path: US-101 (config + shared-key env var), US-102 (build
   schema-valid XML feed from tasks), US-103 (public photo URLs), US-104 (submit in
   test mode + record via PATCH). Landmodo Browserbase path: US-201 (live-view
   capture config), US-202 (POST /api/posting-auth/connect + status poll + CDP
@@ -295,7 +290,7 @@
 - Added "Marketplace auth-capture — research spike" summary to specs/specs.md
   (deliverables under research/auth-capture-spike/, the two reusable
   workers/posting scripts recon-landmodo.ts + render-pdf.ts, verified findings
-  for LandFeed API + Landmodo invisible reCAPTCHA, the Browserbase/cookie-export
+  for the Land.com feed API + Landmodo invisible reCAPTCHA, the Browserbase/cookie-export
   recommendation, and the §7 follow-up PRD stories US-101..104 / US-201..203).
 - Added a research/ entry to the readme.md repo map (only readme change — a
   research spike changed no system behavior, so no non-goal/architecture/data-flow

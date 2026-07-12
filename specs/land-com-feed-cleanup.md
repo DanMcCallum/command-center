@@ -77,11 +77,11 @@ This feature removes every LandFeed reference repo-wide and leaves exactly **one
 **Description:** As the operator, I want the remaining historical artifacts (seeded research + two progress logs) cleaned to complete the repo-wide sweep.
 
 **Acceptance Criteria:**
-- [ ] `research/auth-capture-spike/initial-research.md`: 10 mentions removed or reduced to a single "rejected — see specs/specs.md" line
-- [ ] `progress-auth-research.txt`: 13 mentions removed or reworded (keep log entries' dates/structure; just strip the LandFeed content)
-- [ ] `progress-land-com-connect.txt`: 18 mentions removed or reworded the same way
-- [ ] `grep -ci landfeed` returns 0 for all three files
-- [ ] Typecheck passes
+- [x] `research/auth-capture-spike/initial-research.md`: 10 mentions removed or reduced to a single "rejected — see specs/specs.md" line
+- [x] `progress-auth-research.txt`: 13 mentions removed or reworded (keep log entries' dates/structure; just strip the LandFeed content)
+- [x] `progress-land-com-connect.txt`: 18 mentions removed or reworded the same way
+- [x] `grep -ci landfeed` returns 0 for all three files
+- [x] Typecheck passes
 
 ### US-007: Repo-wide verification sweep
 **Description:** As the operator, I want proof that exactly one LandFeed reference remains and nothing was left dangling, so the decision is cleanly recorded.

@@ -39,13 +39,14 @@
 
 ## Iteration 2 - US-002: Map the block scope from the worker box and prepare home probes
 - Probed all seven URLs from the worker box (2026-07-11T05:58Z): www.land.com/
-  and /login 403 (~370 B Akamai denial), all three LandFeed endpoints 200 with
+  and /login 403 (~370 B Akamai denial), the three feed-API endpoints 200 with
   real content (XSD serves actual schema XML), and both sister brands
   (landsofamerica.com, landwatch.com) 403. Filled the report's Block Scope
   section: probe table (home column "awaiting OT-A"), first-line 200
-  classification, explicit conclusion (LandFeed EXEMPT from the block — the
-  sanctioned API route survives; block covers the whole consumer surface incl.
-  sister brands, so no sister-site login loophole).
+  classification, explicit conclusion (block covers the whole consumer surface
+  incl. sister brands, so no sister-site login loophole). (The feed-API probe
+  rows and exemption conclusion were later removed from the report — that
+  option was rejected; see the decision note in specs/specs.md.)
 - Wrote research/land-com-connect-spike/home-probe.sh (plain POSIX curl loop,
   prints no bodies, chmod +x) and ran it end-to-end; updated operator-input
   README to drop the "arrives with US-002" placeholder.
@@ -56,11 +57,12 @@
 - Learnings for future iterations:
   - The Akamai denial body is ~366–376 bytes — response size alone cleanly
     separates denial pages from real content in probe output.
-  - LandFeed 200s: the two HTML pages are JS-shell documents (empty <title>),
+  - The feed-API 200s: the two HTML pages are JS-shell documents (empty <title>),
     so "first line is <!DOCTYPE html> and size ≫ 400 B" is the classification,
     not the title; the .xsd is directly verifiable (<?xml + <xs:schema).
   - US-006 can now state plainly that the feed endpoint is reachable from the
-    box — the block does NOT change LandFeed viability.
+    box — the block does NOT change feed-API viability. (Moot: that option was
+    later rejected — see specs/specs.md.)
 ---
 
 ## Iteration 3 - US-003: Research the capture-from-user's-browser family
@@ -93,7 +95,8 @@
     will be true for US-004/US-005/US-006/US-008; only US-007 adds a script.
   - The replay caveat is the through-line for US-005 and US-008: capture-from-
     browser fixes capture but NOT posting from the box; it must be paired with an
-    egress option, or superseded by LandFeed (US-006, endpoint not blocked).
+    egress option, or superseded by the feed API (US-006, endpoint not
+    blocked; that option was later rejected — see specs/specs.md).
 ---
 
 ## Iteration 4 - US-004: Write the operator cookie-export instructions (OT-B enabler)
@@ -150,37 +153,32 @@
     ~$1.75 (budget) / ~$3–4 (Decodo mid) / ~$8 (Bright Data/Oxylabs entry)
     (aimultiple.com/proxy-pricing). Reuse these in US-008's matrix ($/mo column).
   - The through-line for US-008: residential egress fixes BOTH capture and posting
-    (unlike capture-from-browser which fixes only capture, and unlike LandFeed
-    which sidesteps both). Tailscale exit node is the recommended egress; the
+    (unlike capture-from-browser which fixes only capture, and unlike the feed
+    API — later rejected — which sidestepped both). Tailscale exit node is the
+    recommended egress; the
     posting-egress follow-up should default to it.
   - US-005 is doc-only — typecheck (cd workers/posting && npm run typecheck) is a
     clean no-op pass; it touches no .ts. Same holds for US-006/US-008.
 
-## Iteration 6 - US-006: Re-anchor the LandFeed API option
-- Replaced the "LandFeed API" stub with the full section. Summarizes (not
-  re-researches) the prior spike's §2 verified findings: auth model (creds inside
-  the XML <channel> — loa_account_id/email/shared_key, no OAuth/cookie/session,
-  never expires), full-inventory-diff gotcha (one POST carries the ENTIRE
-  inventory; absent listing ID = DELETE; mode=test validates without touching
-  live), photo-by-URL requirement (image_link/loa_photo_tour_images pulled from
-  public URLs ≤2MB — diverges from the local-file poster), and the Corporate
-  Account prerequisite. Incorporates the US-002 probe result (all three LandFeed
-  endpoints 200 from the box on 2026-07-11, matching 2026-07-10) and states
-  plainly: the block does NOT change feed viability — /LandFeed/ is exempt, so the
-  box can POST the feed with zero egress. Restates OT-C (shared-key email, target
-  support@land.com) with status "not yet reported by the operator" and names the
-  fallback chain if feed access is denied (browser-capture+Tailscale egress →
-  run-locally → commercial proxy).
+## Iteration 6 - US-006: Re-anchor the feed-API option
+- Replaced the feed-API stub with the full section. Summarized (not
+  re-researched) the prior spike's §2 verified findings: auth model (credentials
+  inside the XML channel, no OAuth/cookie/session, never expires),
+  full-inventory-diff gotcha (one POST carries the ENTIRE inventory; absent
+  listing ID = DELETE; test mode validates without touching live), photo-by-URL
+  requirement (public URLs ≤2MB — diverges from the local-file poster), and the
+  Corporate Account prerequisite. Incorporated the US-002 probe result (feed
+  endpoints 200 from the box on 2026-07-11, matching 2026-07-10), restated the
+  shared-key operator task, and named the fallback chain if feed access is
+  denied (browser-capture+Tailscale egress → run-locally → commercial proxy).
+- (That option was later rejected — it requires an account with a large number
+  of ads; see the decision note in specs/specs.md. The report section this
+  entry describes is now a one-paragraph rejection stub, and the shared-key
+  operator task was dropped. The auth-field and endpoint detail recorded here
+  was stripped in the 2026-07-12 cleanup.)
 - Files changed: research/land-com-connect-spike/report.md,
   specs/land-com-connect.md (US-006 checked off), progress-land-com-connect.txt
 - Learnings for future iterations:
-  - The load-bearing fact for US-008's matrix: LandFeed is the ONLY option that
-    fixes both capture and posting at $0 with no egress (endpoint exempt from the
-    block), but it's gated on OT-C eligibility. When eligible it dominates; when
-    denied the fallback is browser-posting + egress. US-008 should rank it first
-    with the eligibility caveat.
-  - OT-C status is still unreported — US-008's "what would change this decision"
-    list should include "LandFeed shared key granted" as the top entry.
   - Doc-only story; typecheck (cd workers/posting && npm run typecheck) is a clean
     no-op pass. Only US-007 remains as a code-touching story (the converter script).
 ---
@@ -230,15 +228,16 @@
 
 ## Iteration 8 - US-008: Comparison matrix and recommendation
 - Replaced the "Comparison & Recommendation" stub with the full section: a
-  9-row matrix (LandFeed, cookie-export §a/§b, bookmarklet [rejected row],
+  9-row matrix (the feed API, cookie-export §a/§b, bookmarklet [rejected row],
   Tailscale, SSH/WG tunnel, commercial proxy, run-capture-locally,
   run-poster-locally) × the 8 spec'd dimensions, with "must pair with egress"
   called out in the fixes-posting column for capture-only rows. Primary
-  recommendation: LandFeed (send OT-C now), with the interim answer split
+  recommendation at the time: the feed API (later rejected — see specs/specs.md;
+  cookie export §a + Tailscale is now primary), with the interim answer split
   explicitly per the AC — login capture = cookie export §a (converter done,
   awaiting OT-B), posting egress = Tailscale exit node (named follow-up).
-  Fallback chain: LandFeed → §a+Tailscale → run-poster-locally → commercial
-  proxy. Seven-entry "what would change this decision" list (LandFeed key
+  Fallback chain then: feed API → §a+Tailscale → run-poster-locally → commercial
+  proxy. Seven-entry "what would change this decision" list (feed key
   granted/denied, feed exemption closes, home IP blocked, MFA/IP-binding,
   no home device, short cookie lifetimes). Named follow-ups: redirect_off
   positive-signal fix (noting the uncommitted sawLoginPage guard is
@@ -254,14 +253,16 @@
   - Ship-step readme.md candidates spotted while writing: the repo map's
     research/ entry only lists auth-capture-spike (add land-com-connect-spike),
     and §7's "Ad platforms have no API integration" claim is still true today
-    but the report recommends LandFeed — only fix readme if/when that ships,
+    but the report then recommended the feed API (since rejected — see
+    specs/specs.md) — only fix readme if/when an API integration ships,
     not at spike-ship time.
 
 ## Iteration 9 - Ship: feature log + readme updates
 - Ship step per specs/specs.md: added the "Land.com access — research spike" summary
-  to specs/specs.md (block scope incl. the LandFeed exemption, HttpOnly boundary,
+  to specs/specs.md (block scope, HttpOnly boundary,
   redirect_off false-positive follow-up, replay-needs-egress caveat, recommendation
-  + fallback chain, open OT-A/OT-B/OT-C, deliverable paths incl. the converter).
+  + fallback chain, open operator tasks OT-A/OT-B plus the since-dropped
+  shared-key task, deliverable paths incl. the converter).
   Also added a one-line gotcha to the live-view entry: land_com live-view capture is
   dead from this box as of 2026-07-11, pointing at the new entry.
 - readme.md fixes: repo map research/ gains land-com-connect-spike; specs/ list gains
@@ -271,7 +272,7 @@
 - Files changed: specs/specs.md, specs/readme.md, specs/land-com-connect.md,
   progress-land-com-connect.txt
 - Learnings for future iterations:
-  - Feature is fully shipped. Remaining work lives outside Ralph: OT-A/OT-B/OT-C
+  - Feature is fully shipped. Remaining work lives outside Ralph: the OT-A/OT-B
     operator tasks, then the US-007 validation run (plan is in the report), the
     redirect_off detection fix, and the Tailscale posting-egress follow-up — each a
     candidate for its own future PRD/story, not this spec.
