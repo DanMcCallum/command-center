@@ -100,7 +100,7 @@ The agent lives in this repo (`workers/posting/agent.ts`) so it typechecks and e
 - No parallel job execution, job priorities, or scheduling — one job at a time, FIFO by `queuedAt`.
 - No auto-retry — a failed publish waits for the operator to click Publish again.
 - No packaging/installer for the agent (no binaries, no auto-update) — `git pull` + `npm run agent` is the deployment story.
-- No LandFeed, no CAPTCHA solving, no stealth/fingerprint tooling, no password storage.
+- No CAPTCHA solving, no stealth/fingerprint tooling, no password storage.
 
 ## Technical Considerations
 

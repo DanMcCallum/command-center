@@ -143,7 +143,7 @@ Operator's machine                        Linode server
 - No local agent yet — that is Part 2. After Part 1, publish jobs queue and are drivable via `curl`, and that's the intended state.
 - No deletion of the live-view/capture stack (`workers/posting/capture/*`, `posting-auth` proxy routes, `PostingAuthPanel`) — Part 3.
 - No new platform posters: only `landmodo` and `land_com` have `post-*.ts` implementations; the other four platforms stay `enabled: false` and get no Publish button.
-- No LandFeed API integration (separate track, gated on OT-C).
+- No Land.com feed/API integration.
 - No password storage, CAPTCHA solving, or fingerprint/stealth tooling — ever.
 - No multi-agent/multi-operator support: one agent token, one operator.
 

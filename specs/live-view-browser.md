@@ -182,8 +182,8 @@ canvas, so pasted text is relayed server-side and typed into the focused field.
   operator; per-user container orchestration and a TURN server are out of scope.
 - **No change to `post.ts` or the per-platform posters.** State handoff is via the
   existing `auth/<platform>.json` storageState file only.
-- **No Land.com LandFeed XML API work.** That is a separate transport path (report §2);
-  here `land_com` only uses live-view capture as a fallback if it needs a session.
+- **No Land.com feed-API work.** Here `land_com` only uses live-view capture as a
+  fallback if it needs a session.
 - **No ad-copy/generation changes** — this is purely login capture; DREAMS and char
   caps stay in `config/ad-platforms.json` / generate-ad.
 

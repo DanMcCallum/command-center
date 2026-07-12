@@ -45,12 +45,12 @@ This feature removes every LandFeed reference repo-wide and leaves exactly **one
 **Description:** As the operator, I want the light-touch spec files cleaned so `specs/` carries no LandFeed references outside the specs.md note.
 
 **Acceptance Criteria:**
-- [ ] `specs/auth-research.md`: remove/reword the 5 mentions (key-findings bullet, US-002 title + description + Docs-fetch criterion, the "what would change this decision" example)
-- [ ] `specs/job-model-agent-facing-api.md`: reword the non-goal "No LandFeed API integration (separate track, gated on OT-C)" to a plain "No Land.com feed/API integration" non-goal with no LandFeed or OT-C mention
-- [ ] `specs/live-view-browser.md`: remove the "No Land.com LandFeed XML API work" non-goal bullet or reword it without naming LandFeed
-- [ ] `specs/local-publish-2-local-agent.md`: reword the non-goal "No LandFeed, no CAPTCHA solving…" to drop the LandFeed word
-- [ ] `grep -rci landfeed specs/ | grep -v ':0'` matches only `specs/specs.md`
-- [ ] Typecheck passes
+- [x] `specs/auth-research.md`: remove/reword the 5 mentions (key-findings bullet, US-002 title + description + Docs-fetch criterion, the "what would change this decision" example)
+- [x] `specs/job-model-agent-facing-api.md`: reword the non-goal "No LandFeed API integration (separate track, gated on OT-C)" to a plain "No Land.com feed/API integration" non-goal with no LandFeed or OT-C mention
+- [x] `specs/live-view-browser.md`: remove the "No Land.com LandFeed XML API work" non-goal bullet or reword it without naming LandFeed
+- [x] `specs/local-publish-2-local-agent.md`: reword the non-goal "No LandFeed, no CAPTCHA solving…" to drop the LandFeed word
+- [x] `grep -rci landfeed specs/ | grep -v ':0'` matches only `specs/specs.md`
+- [x] Typecheck passes
 
 ### US-004: Scrub research/auth-capture-spike/report.md and regenerate the PDF
 **Description:** As the operator, I want the auth-capture research report (63 matches) cleaned so the shareable proposal no longer proposes LandFeed.

@@ -22,8 +22,9 @@ its claims (several are marked **unverified**), fill gaps with hands-on checks,
 and turn it into a decision-ready proposal.
 
 Key seeded findings to validate:
-- **Land.com has an official LandFeed XML API** (account ID + shared key, HTTPS
-  POST) that may eliminate browser automation for that site entirely.
+- **Land.com offers an official bulk XML feed API** that might eliminate browser
+  automation for that site entirely (that option was later rejected — see the
+  decision note in specs/specs.md).
 - **Landmodo has no API**, so it still needs a browser session; hosted live-view
   browsers (Browserbase, Steel.dev, Anchor, Hyperbrowser) let the user log in
   inside an iframe in our own dashboard, with the session persisted for automation.
@@ -53,13 +54,14 @@ description of today's capture flow and its pain points so the "before" is clear
 - [x] Current State lists at least 4 concrete pain points (terminal required, must run on the worker machine, dashboard is read-only status, silent session expiry until a post fails, not usable by non-technical users)
 - [x] Typecheck passes (`cd workers/posting && npm run typecheck` and `cd dashboard && npx tsc --noEmit`)
 
-### US-002: Verify the Land.com LandFeed API
-**Description:** As the operator, I want to know whether the LandFeed XML API is
-actually available to my account tier, because it would remove login capture for
-Land.com entirely.
+### US-002: Verify the Land.com feed API
+**Description:** As the operator, I want to know whether Land.com's bulk XML feed
+API is actually available to my account tier, because it would remove login
+capture for Land.com entirely. (That option was later rejected — see the decision
+note in specs/specs.md.)
 
 **Acceptance Criteria:**
-- [x] Attempt to fetch `https://www.landsofamerica.com/LandFeed/Docs/` (and a web-archive copy if the live page errors); record HTTP status and whatever schema/auth details are obtainable
+- [x] Attempt to fetch the feed-API docs page on landsofamerica.com (and a web-archive copy if the live page errors); record HTTP status and whatever schema/auth details are obtainable
 - [x] Land.com section of `report.md` filled in: what the feed does, auth model (account ID + shared key), known schema fields, posting latency, and cost
 - [x] Section contains an explicit "Open questions for Land.com support" list (at minimum: is feed access available on our advertiser tier, and how are credentials issued) plus a ready-to-send draft email requesting feed access
 - [x] Section states the fallback if feed access is denied (keep current Playwright poster; capture via the approach chosen for Landmodo)
@@ -110,7 +112,7 @@ whole report.
 **Acceptance Criteria:**
 - [x] Comparison & Recommendation section contains a matrix table: every evaluated option × (UX, effort, reliability, security, $/mo now, $/mo at 20 users)
 - [x] A per-platform recommendation is stated: one primary approach for land_com and one for landmodo, each with a 2–3 sentence rationale and a named fallback
-- [x] A "what would change this decision" list (e.g. LandFeed access denied, Landmodo adds bot protection, vendor pricing changes)
+- [x] A "what would change this decision" list (e.g. feed-API access denied, Landmodo adds bot protection, vendor pricing changes)
 - [x] All UX/reliability improvements over the current CLI flow are listed explicitly (no terminal, capture from any device, in-app re-auth when expired, works for non-technical users, session survives longer via same-IP replay, etc.)
 - [x] Typecheck passes
 
