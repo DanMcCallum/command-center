@@ -70,11 +70,11 @@ Deletion is the point: every line of the VNC stack that survives is a line someo
 **Description:** As a developer, I want config and specs to describe the system that actually exists.
 
 **Acceptance Criteria:**
-- [ ] `config/posting-platforms.json`: remove the `capture: "live-view"` field from all platforms (schema and any readers updated)
-- [ ] Remove `CAPTURE_STREAM_SECRET`, `CAPTURE_PUBLIC_URL`, `CAPTURE_PORT`, `CAPTURE_VNC_PORT`, `CAPTURE_WS_PORT`, `NOVNC_ROOT` from all code paths and env documentation; note in the PR/progress log that the operator can delete them from `.env.local` and tear down the Cloudflare tunnel ingress for live-view
-- [ ] `specs/specs.md` gets a newest-first entry summarizing the local-publish architecture (all three parts) and marking the live-view-browser spec superseded
-- [ ] Note for the operator (in progress log): delete any stale `workers/posting/auth/*.json` on the server — sessions live only on the operator's machine now
-- [ ] Typecheck passes
+- [x] `config/posting-platforms.json`: remove the `capture: "live-view"` field from all platforms (schema and any readers updated)
+- [x] Remove `CAPTURE_STREAM_SECRET`, `CAPTURE_PUBLIC_URL`, `CAPTURE_PORT`, `CAPTURE_VNC_PORT`, `CAPTURE_WS_PORT`, `NOVNC_ROOT` from all code paths and env documentation; note in the PR/progress log that the operator can delete them from `.env.local` and tear down the Cloudflare tunnel ingress for live-view
+- [x] `specs/specs.md` gets a newest-first entry summarizing the local-publish architecture (all three parts) and marking the live-view-browser spec superseded
+- [x] Note for the operator (in progress log): delete any stale `workers/posting/auth/*.json` on the server — sessions live only on the operator's machine now
+- [x] Typecheck passes
 
 ## Non-Goals
 

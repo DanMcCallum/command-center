@@ -67,3 +67,20 @@
   - The `npm test` script's `/tmp/posting-test-build/capture/*.test.js` glob still matches (detect.test.ts) — no package.json test-glob change needed.
   - US-006 operator notes to include: delete CAPTURE_* env vars + NOVNC_ROOT from .env.local, tear down the live-view Cloudflare ingress AND the systemd user units that ran the capture stack (see memory: worker-live-view-infra), delete stale server-side workers/posting/auth/*.json.
 ---
+## Iteration 6 - US-006: Config, env, and docs cleanup
+- Removed the `capture: "live-view"` field from all six platforms in config/posting-platforms.json and rewrote its `_doc` for the agent architecture (login_success stays — it drives the agent's detectLogin; the land_com cookie-signal TODO stays). Dropped the `capture?:` type field from both remaining declarations (workers/posting/post-common.ts PlatformConfig, dashboard/app/api/posting-platforms/route.ts PostingPlatformConfig) — nothing read its value anymore.
+- AGENTS.md env bullet updated: CAPTURE_STREAM_SECRET/CAPTURE_SERVER_URL and the deleted stream.ts/capture-server.ts references replaced with AGENT_TOKEN + the living readProjectEnvVar examples (dashboard/lib/agent-auth.ts, workers/posting/agent.ts).
+- specs/specs.md: new newest-first "Local publish 3/3 — decommission" entry summarizing the whole three-part local-publish architecture (job model → local agent → decommission) plus Part 3's data-model/API/UI surface and removals; superseded banner added to the "Self-hosted live-view login capture" entry; specs/live-view-browser.md header marked superseded (file kept as a record).
+- Files changed: config/posting-platforms.json, workers/posting/post-common.ts, dashboard/app/api/posting-platforms/route.ts, AGENTS.md, specs/specs.md, specs/live-view-browser.md, specs/local-publish-3-decommission.md.
+- Verified: grep for CAPTURE_STREAM_SECRET|CAPTURE_PUBLIC_URL|CAPTURE_PORT|CAPTURE_VNC_PORT|CAPTURE_WS_PORT|NOVNC_ROOT|CAPTURE_SERVER_URL over dashboard/ workers/ config/ AGENTS.md returns nothing; grep for the live-view field value in code returns nothing; dashboard `npx tsc --noEmit` clean; workers/posting `npm run typecheck` clean; `npm test` 26/27 (the 1 failure is the documented pre-existing parse-ad-output working-tree-dirt failure, untouched).
+
+**OPERATOR ACTION ITEMS (decommission complete — safe to do now):**
+1. Delete from root `.env.local`: `CAPTURE_STREAM_SECRET`, `CAPTURE_PUBLIC_URL`, `CAPTURE_PORT`, `CAPTURE_VNC_PORT`, `CAPTURE_WS_PORT`, `NOVNC_ROOT` (and `CAPTURE_SERVER_URL` if present in either .env.local). Keep `AGENT_TOKEN` and the Dialpad keys.
+2. Tear down the live-view Cloudflare tunnel ingress (the `CAPTURE_PUBLIC_URL` hostname, e.g. capture.<domain>). The dashboard tunnel (`dashboard.ownaloha.land`) MUST stay — the agent and browser depend on it.
+3. Remove/disable any systemd user units that ran the capture stack (Xvfb/x11vnc/websockify/capture-server — see memory note worker-live-view-infra) and uninstall x11vnc/noVNC if nothing else uses them.
+4. Delete stale server-side `workers/posting/auth/*.json` on the server box — sessions live only on the operator's machine now.
+
+- Learnings for future iterations:
+  - Hunk-level selective staging (build staged content from `git show HEAD:<file>` + your edits, write, `git add`, restore working copy) cleanly commits your changes to a file carrying unrelated pre-existing dirt (config/posting-platforms.json land_com URL edit and specs/live-view-browser.md's uncommitted paste-relay AC line both stay uncommitted in the working tree — someone should still triage them).
+  - The specs.md "Local publish 3/3" entry added here doubles as the Ship-step feature-log summary — the Ship iteration only needs the readme.md fixes (repo map still lists capture/, capture-server.ts, PostingAuthPanel Connect, /settings live-view text, worker-deps xvfb/x11vnc line) + PRD header flip to Implemented + commit.
+---

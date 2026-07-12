@@ -1,12 +1,11 @@
 {
-  "_doc": "Per-platform posting config for the auto-poster (see PRD: Auto-Post Approved Ads). Keys match config/ad-platforms.json. Only enabled platforms are posted to; the rest stay manual in v1. login_url is where capture-login opens a headed browser for the operator to sign in; new_listing_url is where the posting script starts the listing form. capture selects the login-capture mechanism: 'live-view' (self-hosted streamed browser, see PRD: Self-Hosted Live-View Login Capture) or 'cli' (terminal capture-login ritual; the default when absent). login_success tells live-view capture when the operator has finished logging in: cookie = a cookie name that appears on success, redirect_off = a path the browser leaves on success. URLs for disabled platforms are best-effort placeholders — verify against the live site before enabling. Saved sessions live in workers/posting/auth/<platform>.json (secrets — never expose via the files API or logs). land_com MUST gain a positive cookie signal: its redirect_off-only login_success false-positived on the Akamai Access Denied flow (see the Land.com access spike entry in specs/specs.md). The local poster agent logs the session's cookie NAMES (never values) on every successful login capture — after the first real login on the operator's machine, take land_com's session-cookie name from that log line and add it here as login_success.cookie alongside redirect_off. When both cookie and redirect_off are set, detection requires BOTH (AND) — unit-tested in workers/posting/capture/detect.test.ts.",
+  "_doc": "Per-platform posting config for the local poster agent (see specs/specs.md: Local publish 1-3/3). Keys match config/ad-platforms.json. Only enabled platforms get Publish buttons; the rest stay manual. login_url is where the agent opens a headed browser on the operator's machine when a session is missing/stale; new_listing_url is where the posting script starts the listing form. login_success tells the agent's login detection (workers/posting/capture/detect.ts) when the operator has finished logging in: cookie = a cookie name that appears on success, redirect_off = a path the browser leaves on success. URLs for disabled platforms are best-effort placeholders — verify against the live site before enabling. Sessions live ONLY on the operator's machine at workers/posting/auth/<platform>.json (secrets — never expose via the files API or logs). land_com MUST gain a positive cookie signal: its redirect_off-only login_success false-positived on the Akamai Access Denied flow (see the Land.com access spike entry in specs/specs.md). The agent logs the session's cookie NAMES (never values) on every successful login capture — after the first real login on the operator's machine, take land_com's session-cookie name from that log line and add it here as login_success.cookie alongside redirect_off. When both cookie and redirect_off are set, detection requires BOTH (AND) — unit-tested in workers/posting/capture/detect.test.ts.",
   "platforms": {
     "landmodo": {
       "display_name": "Landmodo",
       "enabled": true,
       "login_url": "https://www.landmodo.com/login",
       "new_listing_url": "https://www.landmodo.com/listings/new",
-      "capture": "live-view",
       "login_success": { "redirect_off": "/login" }
     },
     "land_century": {
@@ -14,7 +13,6 @@
       "enabled": false,
       "login_url": "https://www.landcentury.com/login",
       "new_listing_url": "https://www.landcentury.com/submit-listing",
-      "capture": "live-view",
       "login_success": { "redirect_off": "/login" }
     },
     "landflip": {
@@ -22,7 +20,6 @@
       "enabled": false,
       "login_url": "https://www.landflip.com/login",
       "new_listing_url": "https://www.landflip.com/member/listings/new",
-      "capture": "live-view",
       "login_success": { "redirect_off": "/login" }
     },
     "land_com": {
@@ -30,7 +27,6 @@
       "enabled": true,
       "login_url": "https://www.land.com/account/login",
       "new_listing_url": "https://www.land.com/account/listings/new",
-      "capture": "live-view",
       "login_success": { "redirect_off": "/account/login" }
     },
     "land_listings": {
@@ -38,7 +34,6 @@
       "enabled": false,
       "login_url": "https://www.land-listings.com/login",
       "new_listing_url": "https://www.land-listings.com/add-listing",
-      "capture": "live-view",
       "login_success": { "redirect_off": "/login" }
     },
     "landhub": {
@@ -46,7 +41,6 @@
       "enabled": false,
       "login_url": "https://www.landhub.com/login",
       "new_listing_url": "https://www.landhub.com/sell-land",
-      "capture": "live-view",
       "login_success": { "redirect_off": "/login" }
     }
   }

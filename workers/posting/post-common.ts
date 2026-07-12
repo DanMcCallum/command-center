@@ -35,8 +35,6 @@ export interface PlatformConfig {
   enabled: boolean
   login_url: string
   new_listing_url: string
-  /** How a login session is captured; defaults to "cli" when absent. */
-  capture?: 'live-view' | 'cli'
   login_success?: LoginSuccessSignal
 }
 

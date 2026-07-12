@@ -1,6 +1,6 @@
 # PRD: Self-Hosted Live-View Login Capture
 
-**Status:** Implemented (2026-07-11)
+**Status:** Implemented (2026-07-11) — **superseded (2026-07-12)** by Local publish 1–3/3 ([local-publish-3-decommission.md](local-publish-3-decommission.md) deleted the capture stack; only `capture/detect.ts` survives). This file stays as a record.
 
 ## Introduction
 

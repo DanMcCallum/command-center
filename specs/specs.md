@@ -15,6 +15,28 @@ One summary per shipped feature. Read this **and** [readme.md](readme.md) (the c
 
 ---
 
+## Local publish 3/3 — decommission server-side posting & live-view
+
+**PRD:** [local-publish-3-decommission.md](local-publish-3-decommission.md) · **Shipped:** 2026-07-12 · **Series:** Part 3 of 3 — closes the local-publish series (Part 1: [job-model-agent-facing-api.md](job-model-agent-facing-api.md), Part 2: [local-publish-2-local-agent.md](local-publish-2-local-agent.md)).
+
+**The whole series in one paragraph:** posting moved off the server because its datacenter IP is Akamai-blocked pre-auth. Part 1 replaced approve-time auto-posting with per-platform **Publish** buttons that queue publish jobs, plus a token-authed agent API (`AGENT_TOKEN`) to list/claim/download/report jobs via outbound-only polling. Part 2 built the consumer: `npm run agent` on the **operator's machine** (residential IP) polls, claims, posts with Playwright, and pops a headed login window when a session is stale — sessions are minted and stored only at `workers/posting/auth/<platform>.json` on that machine. Part 3 deleted everything that architecture stranded: the server-side Xvfb/x11vnc/websockify/noVNC live-view capture stack, the capture HTTP server and CLI, the dashboard's capture proxy routes, and the Connect UI — and replaced server-side session visibility with agent self-reporting. **The [Self-hosted live-view login capture](#self-hosted-live-view-login-capture--in-dashboard-marketplace-login) feature below is superseded**: its code no longer exists; its spec ([live-view-browser.md](live-view-browser.md)) stays as a record.
+
+**Data model:** `AgentStatus` is now `{lastSeenAt, platforms: AgentPlatformSession[]}` where `AgentPlatformSession = {platform, hasSession, capturedAt: string|null, earliestCookieExpiry?}` (`dashboard/lib/types.ts`). `data.ts` readers/writers normalize the old `{lastSeenAt}`-only `agent-status.json` shape (`platforms: []`) — keep normalizing until no old file remains; `recordAgentSeen()` preserves the stored platforms report, `saveAgentPlatformReport()` also stamps `lastSeenAt` (a report is proof of life).
+
+**API:** `POST /api/agent-status` (agent-token guarded) — the agent reports its sessions on startup and after every login capture, from a scan of its local `auth/` dir (names, mtimes, min cookie expiry — never values); entries are validated and rebuilt so unknown fields are never stored. `GET /api/agent-status` (browser, no token) returns the full `AgentStatus`. `GET /api/posting-auth` and the `posting-auth/connect|status|type` proxy routes are **deleted**.
+
+**UI:** `useAgentLiveness()` (`dashboard/lib/agent-liveness.ts`) — one shared module-level poller of `GET /api/agent-status` every 15 s feeding all subscribers; online = `lastSeenAt` within `ONLINE_WINDOW_MS = 45_000` (3× the agent's *default* 15 s poll — `AGENT_POLL_SECONDS` is operator-tunable but invisible to the server, so the window is fixed). Tasks page shows an online/offline dot (hidden until the first fetch resolves); `PublishButtons` render an amber warning when offline but **still queue** on click; `PostingAuthPanel` is a read-only per-platform session view fed by the agent's report.
+
+**Removed (Part 3):** `workers/posting/capture/{stream,server,session}.ts`, `capture-login.ts`, the `capture-server`/`capture-login` npm scripts, `checkSession` from `detect.ts` (`detectLogin`/`isLoggedIn` survive — `capture/detect.ts` is the sole `capture/` survivor and the agent's dependency), `dashboard/lib/capture-server.ts`, the `dashboard/app/api/posting-auth/` tree, and the `capture: "live-view"|"cli"` config field (`login_success` stays — it drives the agent's login detection). **No `CAPTURE_*`/`NOVNC_ROOT` env vars exist anywhere**; the operator can delete `CAPTURE_STREAM_SECRET`, `CAPTURE_PUBLIC_URL`, `CAPTURE_PORT`, `CAPTURE_VNC_PORT`, `CAPTURE_WS_PORT`, `NOVNC_ROOT` from `.env.local`, tear down the live-view tunnel ingress and any capture systemd units, and delete stale server-side `workers/posting/auth/*.json`.
+
+**Invariants / gotchas:**
+- The server never sees sessions — everything the dashboard knows about auth comes from `POST /api/agent-status`. A platform with no report yet renders as "No report from agent yet", not "no session".
+- Publish-while-offline is deliberate: jobs queue and run when the agent returns; liveness is advisory only.
+- Committed Playwright harnesses `verify-agent-liveness.ts` / `verify-auth-panel.ts` show the `page.route` fixture pattern for driving liveness/panel states without touching real data files.
+- Ad **generation** is still server-side (`run-worker.sh` + cron) — only posting moved local.
+
+**Extending:** a new platform is still a `Poster` entry + config entry (Part 2's rule); its session visibility comes free from the agent's auth-dir scan. Anything that needs "is the agent alive?" should consume `useAgentLiveness()`, not poll the API itself.
+
 ## Local publish 2/3 — the local poster agent
 
 **PRD:** [local-publish-2-local-agent.md](local-publish-2-local-agent.md) · **Shipped:** 2026-07-12 · **Series:** Part 2 of 3 — consumes Part 1's publish jobs ([job-model-agent-facing-api.md](job-model-agent-facing-api.md)); Part 3 ([local-publish-3-decommission.md](local-publish-3-decommission.md)) deletes the live-view/VNC stack and server-posting remnants.
@@ -94,6 +116,8 @@ On 2026-07-11 Land.com's Akamai edge began hard-blocking the worker box's Linode
 ## Self-hosted live-view login capture — in-dashboard marketplace login
 
 **PRD:** [live-view-browser.md](live-view-browser.md) · **Shipped:** 2026-07-11
+
+> **Superseded (2026-07-12, Local publish 3/3):** the entire capture stack described here — session/stream/server, the capture-login CLI, the dashboard proxy routes, the Connect UI, and the `capture` config field — is deleted. Login capture now happens headed on the operator's machine via the local poster agent. Only `capture/detect.ts` (the login-success detection) survives, as the agent's dependency. This entry stays as a record of what was built.
 
 Replaces the terminal-only `capture-login` ritual with an in-dashboard **Connect** button (the auth-capture spike's §5c self-hosted option — no hosted-browser vendor). A headed Playwright Chromium on the worker box is streamed into a sandboxed dashboard iframe (Xvfb → x11vnc → websockify → noVNC); the operator logs in on the real site (no password custody; passes Landmodo's invisible reCAPTCHA naturally); on detected success the session is exported via `context.storageState()` to `workers/posting/auth/<platform>.json`, chmod 600 — so the poster pipeline (`run-poster.sh` → `post.ts`) is untouched. Capture and posting run on the same box, so sessions replay from the IP class they were minted on.
 

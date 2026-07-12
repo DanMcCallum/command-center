@@ -21,7 +21,6 @@ export interface PostingPlatformConfig {
   enabled: boolean;
   login_url: string;
   new_listing_url: string;
-  capture?: 'live-view' | 'cli'; // defaults to "cli" when absent
   login_success?: LoginSuccessSignal;
 }
 
