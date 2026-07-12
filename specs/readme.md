@@ -169,7 +169,7 @@ completed    -> pending        (operator reopens)
 | `/tasks` | Primary view. Task list polling every 30 s; filter tabs (All / Pending / In progress / Needs review / Completed) with counts; inline create form; expandable task rows showing priority dot, status badge, Claude's notes, links to output files. Actions per task: approve, request revision, delete, edit output files in a modal (`FileEditorModal`), **Save to knowledge base** (`SaveToKbModal`), and — on ad tasks — per-platform **Publish** buttons (specs.md → Local publish 1/3). A dismissible banner surfaces permanently failed marketplace postings (specs.md → Ad photos). Supports `?focus={id}` deep links. |
 | `/ad-builder` | Structured property form: location, acreage, price, access (paved / dirt-year-round / dirt-seasonal / none), utilities (power/water/septic/internet as yes/no/unknown), terrain, zoning, comps, must-include notes, buyer hint (retiree / off-gridder / investor / builder / hunter / remote-worker), target platforms, and photos (at least 1 required; drag-and-drop ordering with one starred primary). Submit creates a priority-1 opus `generate-ad` task with the form as `metadata`, uploads the photos into the task's outputs dir, then fires the worker and routes to `/tasks?focus={id}` (specs.md → Ad photos). |
 | `/roadmap` | Read-only list of future-work items from `data/todos.json`; each is a ready-to-run prompt brief. |
-| `/settings` | Worker scheduling via `CronConfigPanel`: on/off toggle, interval picker (over the cron-config/worker-status APIs), and a status card (last run, last task, crontab installed). Also marketplace login management via `PostingAuthPanel`: per-platform saved-session status plus an in-dashboard live-view **Connect** login flow (specs.md → Self-hosted live-view login capture). |
+| `/settings` | Worker scheduling via `CronConfigPanel`: on/off toggle, interval picker (over the cron-config/worker-status APIs), and a status card (last run, last task, crontab installed). Also `PostingAuthPanel`: a read-only per-platform view of marketplace sessions as reported by the local poster agent, plus an agent online/offline indicator — sessions are established on the operator's machine when Publish runs (specs.md → Local publish 3/3). |
 
 ### 5.3 Dashboard API
 
@@ -250,7 +250,7 @@ Notion-inspired dark minimalism. The principle: **the UI is a document, not an a
 
 - **Runtime:** Node.js 20+, Linux (WSL-compatible). Dashboard on localhost (started via `start.sh` from an `@reboot` cron entry in production mode).
 - **Remote access:** a Cloudflare tunnel (`cloudflared`, also started `@reboot`) publishes the dashboard at `dashboard.ownaloha.land`, gated by Cloudflare Access. The app itself has no auth — the edge is the only gate.
-- **Worker deps:** `claude` CLI, `curl`, `jq`, `flock`, `timeout`, `fuser`. Optional (live-view login capture only, fail-closed when absent): `xvfb`, `x11vnc`, `websockify`, and the noVNC static client (specs.md → Self-hosted live-view login capture).
+- **Worker deps:** `claude` CLI, `curl`, `jq`, `flock`, `timeout`, `fuser`.
 - **No database, no external services** except the Dialpad API for transcript fetch and the Cloudflare tunnel for remote access; the only in-app auth is the agent-API bearer token (`AGENT_TOKEN` in root `.env.local`). Ad platforms have no API integration — enabled ones are posted via publish jobs consumed by the local poster agent on the operator's machine, the rest manually (specs.md → Local publish 1/3 and 2/3).
 - **Timeout budget:** 30 min per task; 35 min stale-lock threshold.
 - **Config:** `config/paths.json` (external directory roots — never hardcode paths) and `config/ad-platforms.json`.
@@ -290,9 +290,9 @@ command-center/
     components/         TaskCard, TaskForm, SaveToKbModal, FileEditorModal,
                         CronConfigPanel, Nav, StatusBadge, PriorityIndicator,
                         PhotoPicker, PostingChips, PostingFailureBanner,
-                        PostingAuthPanel (saved sessions + live-view Connect)
+                        PostingAuthPanel (read-only agent-reported sessions)
     lib/                types.ts, data.ts (JSON I/O), cron.ts, utils.ts,
-                        capture-server.ts (proxy to the worker capture-server)
+                        agent-auth.ts (agent-token guard), agent-liveness.ts
     data/               tasks.json, todos.json, cron-config.json
     start.sh            Production start (called from @reboot cron)
   workers/
@@ -301,8 +301,8 @@ command-center/
                         local poster agent run on the operator's machine (setup
                         guide: AGENT.md; specs.md -> Local publish 2/3);
                         auth/ holds login sessions (secret)
-      capture/          Live-view login capture: session/stream/detect/server
-                        (specs.md -> Self-hosted live-view login capture)
+      capture/          detect.ts only — login-success detection used by the
+                        agent (the live-view stack is gone; specs.md -> Local publish 3/3)
     system-prompt.md    Claude worker operating rules
     workspace/          outputs/{task-id}/ and notes/{task-id}.md
     logs/               Per-run logs + cron.log
@@ -330,11 +330,11 @@ command-center/
     specs.md            Feature log: one summary per shipped feature + spec process
     ad-posting.md       Feature PRD: auto-post approved ads (implemented)
     ad-photos.md        Feature PRD: photo upload/ordering + failure UX (implemented)
-    live-view-browser.md  Feature PRD: in-dashboard live-view login capture (implemented)
+    live-view-browser.md  Feature PRD: in-dashboard live-view login capture (superseded — stack deleted by Local publish 3/3)
     auth-research.md    Research-spike PRD: marketplace auth-capture proposal (implemented)
     land-com-connect.md Research-spike PRD: Land.com access after the Akamai block (implemented)
     job-model-agent-facing-api.md    Feature PRD: Local publish 1/3 — publish jobs + agent API (implemented)
     local-publish-2-local-agent.md   Feature PRD: Local publish 2/3 — local poster agent (implemented)
-    local-publish-3-decommission.md  Feature PRD: Local publish 3/3 — decommission server posting (queued)
+    local-publish-3-decommission.md  Feature PRD: Local publish 3/3 — decommission server posting (implemented)
   *.md                  Original design docs (Blueprint, TLDR, Worker System Spec)
 ```

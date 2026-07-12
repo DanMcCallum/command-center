@@ -84,3 +84,13 @@
   - Hunk-level selective staging (build staged content from `git show HEAD:<file>` + your edits, write, `git add`, restore working copy) cleanly commits your changes to a file carrying unrelated pre-existing dirt (config/posting-platforms.json land_com URL edit and specs/live-view-browser.md's uncommitted paste-relay AC line both stay uncommitted in the working tree — someone should still triage them).
   - The specs.md "Local publish 3/3" entry added here doubles as the Ship-step feature-log summary — the Ship iteration only needs the readme.md fixes (repo map still lists capture/, capture-server.ts, PostingAuthPanel Connect, /settings live-view text, worker-deps xvfb/x11vnc line) + PRD header flip to Implemented + commit.
 ---
+## Iteration 7 - Ship (feature log + readme updates)
+- Ship step per specs/specs.md: the specs.md feature-log entry already existed (added in US-006), so this iteration fixed specs/readme.md and flipped the PRD header.
+- readme.md fixes (statements Part 3 made false): /settings row now describes the read-only agent-reported PostingAuthPanel + online indicator (was live-view Connect); worker-deps line dropped the optional xvfb/x11vnc/websockify/noVNC set; repo map — PostingAuthPanel annotation, dashboard lib/ line (capture-server.ts → agent-auth.ts + agent-liveness.ts), workers capture/ line (detect.ts only), live-view-browser.md marked superseded, local-publish-3-decommission.md queued → implemented.
+- PRD header: **Status:** Implemented (2026-07-12).
+- Files changed: specs/readme.md, specs/local-publish-3-decommission.md, progress-local-publish-3-decommission.txt.
+- Verified: dashboard `npx tsc --noEmit` clean; workers/posting `npm run typecheck` clean (docs-only change).
+- Learnings for future iterations:
+  - When a mid-feature story (US-006 here) already writes the specs.md entry, the Ship iteration reduces to readme.md repair + header flip + commit — check before rewriting the feature log.
+  - The operator action items from Iteration 6 (delete CAPTURE_* env vars, tear down live-view tunnel ingress + capture systemd units, delete stale server-side auth/*.json) remain open — they are operator tasks, not code.
+---

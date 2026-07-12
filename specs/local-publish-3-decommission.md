@@ -1,6 +1,6 @@
 # PRD: Local Publish — Part 3 of 3: Decommission Server-Side Posting & Live-View
 
-**Status:** Draft
+**Status:** Implemented (2026-07-12)
 
 > Series: Part 1 = publish job model · Part 2 = [local-publish-2-local-agent.md](local-publish-2-local-agent.md) · **Part 3 = this file** — implementation started 2026-07-12, after Part 2 shipped.
 
