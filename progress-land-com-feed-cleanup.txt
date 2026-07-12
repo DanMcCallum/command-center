@@ -1,0 +1,17 @@
+# Progress: land-com-feed-cleanup
+
+## Iteration 1 - US-001: Add the decision note and rewrite the recommendation in specs/specs.md
+- What was implemented:
+  - Added the canonical decision note (verbatim from the PRD, single blockquote line) right after the PRD/Shipped line of the "Land.com access — research spike" entry in specs/specs.md.
+  - Rewrote the Recommendation line: cookie export via extension (OT-B) + Tailscale exit node is primary; fallback chain "cookie export + Tailscale → run poster locally → commercial residential proxy".
+  - Removed OT-C from the open operator tasks bullet; dropped the "sanctioned (LandFeed)" parenthetical from the bot-evasion bullet; rewrote the Extending paragraph without the LandFeed-PRD promotion.
+  - Removed the Akamai `/LandFeed/`-exemption clause from the block-scope bullet.
+  - Auth-capture spike entry: replaced the LandFeed key-findings bullet with a one-line "evaluated and later rejected (Corporate Account with a large number of ads required)" pointer to the decision note (this also removed the loa_* credential-field mentions); reworded the land_com recommendation to cookie export + Tailscale; dropped US-101–104 and the "email Land.com" prerequisite from the §7 paragraph.
+- Files changed: specs/specs.md, specs/land-com-feed-cleanup.md (checkboxes), this file.
+- Learnings for future iterations:
+  - `grep -c` counts matching LINES, not occurrences — the decision note is one line, so `grep -ci landfeed specs/specs.md` == 1 is the pass condition. Keep the note on a single line when copying it anywhere.
+  - specs.md LandFeed lines were exactly 8 (found via `grep -ni landfeed`); locate by quoted text, line numbers drift.
+  - Typecheck is `cd workers/posting && npm run typecheck` (tsc -p tsconfig.json), passes trivially for markdown-only stories (~30 s).
+  - The working tree has many unrelated modified files (other in-flight work) — stage only this feature's files explicitly, never `git add -A`.
+  - When rewording historical "key verified findings" bullets, point at the specs.md decision note without using the word LandFeed so the one-reference rule holds for later stories (US-007 sweep).
+---
