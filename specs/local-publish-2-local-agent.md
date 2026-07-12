@@ -35,12 +35,12 @@ The agent lives in this repo (`workers/posting/agent.ts`) so it typechecks and e
 **Description:** As the agent, I need the ad copy and photos locally before I can post, since the server's filesystem isn't mine.
 
 **Acceptance Criteria:**
-- [ ] On seeing a queued job: `POST /api/publish-jobs/claim`; on 409, skip (someone else got it)
-- [ ] Downloads `publish-bundle` ad copy and every photo into a local cache dir (`workers/posting/.agent-cache/<taskId>/`, gitignored) mirroring the `outputs/<taskId>/` layout (`<platform>.md`, `photos/`)
-- [ ] Photo downloads verified byte-identical to the server files (size check is sufficient)
-- [ ] On any download failure: PATCH the posting to `failed` with a `lastError` naming what failed, and continue the loop
-- [ ] Verified end-to-end against a local dashboard with a real task from `outputs/`
-- [ ] Typecheck passes
+- [x] On seeing a queued job: `POST /api/publish-jobs/claim`; on 409, skip (someone else got it)
+- [x] Downloads `publish-bundle` ad copy and every photo into a local cache dir (`workers/posting/.agent-cache/<taskId>/`, gitignored) mirroring the `outputs/<taskId>/` layout (`<platform>.md`, `photos/`)
+- [x] Photo downloads verified byte-identical to the server files (size check is sufficient)
+- [x] On any download failure: PATCH the posting to `failed` with a `lastError` naming what failed, and continue the loop
+- [x] Verified end-to-end against a local dashboard with a real task from `outputs/`
+- [x] Typecheck passes
 
 ### US-003: Reusable, hardened login detection
 **Description:** As a developer, I need `isLoggedIn` usable outside the capture server, and hardened so error pages can never read as success — the exact failure mode from the land-com spike.

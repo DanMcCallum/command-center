@@ -47,3 +47,56 @@
     (task-1783741270364-bo28kt, task-1783741999340-sfsooi), both needs_review with
     real outputs under workers/workspace/outputs/.
 ---
+## Iteration 2 - US-002: Claim job and download the publish bundle
+- Implemented claim + bundle download in workers/posting/agent.ts: claimJob()
+  (409 -> skip), downloadBundle() into workers/posting/.agent-cache/<taskId>/
+  (<platform>.md + photos/, mirroring outputs/ layout; photo size verified
+  against Content-Length AND post-write stat), reportPosting() helper (never
+  throws — a failed report is logged and the loop continues). On any download
+  failure the posting is reported `failed` with a one-line lastError naming
+  what failed. After a successful download the job is ALSO reported failed
+  with "posting not implemented yet (US-005)" — deliberate stub so jobs never
+  strand in `posting` (which would block re-publish); US-005 replaces that
+  block (see the TODO(US-004/US-005) comment in processJob).
+- NEW SERVER ROUTE (the status-report endpoint Part 1 deferred to Part 2):
+  POST /api/publish-jobs/report {taskId, platform, status, lastError?,
+  listingUrl?, screenshotPath?} — agent-token guarded, mutateTask inside.
+  Guards: status must be posting|awaiting_auth|posted|failed (never queued);
+  the existing posting must currently be agent-owned (posting|awaiting_auth),
+  else 409 — so US-004/US-005 can use it as-is for awaiting_auth/posted/failed
+  flips. `posted` stamps postedAt server-side.
+- Files changed: workers/posting/agent.ts,
+  dashboard/app/api/publish-jobs/report/route.ts (new), .gitignore
+  (workers/posting/.agent-cache/), specs/local-publish-2-local-agent.md
+- Verified: both typechecks clean (workers/posting npm run typecheck; dashboard
+  npx tsc --noEmit). npm test 19/20 (the 1 failure is the pre-existing
+  parse-ad-output fixture issue from iteration 1 — still not ours). E2E on
+  next dev -p 3001: happy path with task-1783741999340-sfsooi (15 photos) —
+  claimed, cached, every file cmp-verified byte-identical to outputs/, posting
+  ends failed with the US-005 stub message; failure path with
+  task-1783741270364-bo28kt after hiding its landmodo.md — posting failed with
+  lastError naming outputs/<id>/landmodo.md and the loop kept polling. Report
+  route: 401 without token, 409 when the posting is already failed.
+- Learnings for future iterations:
+  - RUN THE AGENT FROM workers/posting/. The Bash cwd persists across calls;
+    `npx tsx agent.ts` from dashboard/ hangs (npx fetches tsx from the
+    registry). Best invocation for tests:
+    `timeout --signal=INT 12 node node_modules/tsx/dist/cli.mjs agent.ts`
+    — node directly (no npx/sh wrappers), so timeout's SIGINT actually reaches
+    the agent and the clean-shutdown path runs (exit 124 after "agent
+    stopped").
+  - AGENT_CACHE_DIR is __dirname-based (like AUTH_DIR in post-common), so the
+    cache lands in workers/posting/.agent-cache regardless of cwd.
+  - US-004/US-005: reportPosting() and the report route already support the
+    transitions you need (posting <-> awaiting_auth, -> posted with listingUrl
+    / server-stamped postedAt, -> failed). Replace the stub failure at the end
+    of processJob(). screenshotPath goes via POST /api/tasks/[id]/proof (which
+    writes the file) — report's screenshotPath field only records the path on
+    the posting.
+  - The publish-bundle 404 message ("No ad copy found at outputs/...") passes
+    through apiError() into lastError verbatim — keep server error strings
+    one-line for that reason.
+  - tasks.json updatedAt gets bumped by test publish/claim/report cycles;
+    iteration 1's cleanup precedent = strip the postings arrays (python
+    json.dump indent=2 ensure_ascii=False + trailing newline), leave updatedAt.
+---

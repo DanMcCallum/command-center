@@ -3,6 +3,7 @@
 .env.*
 !.env.example
 workers/posting/auth/
+workers/posting/.agent-cache/
 
 # Dependencies
 node_modules/

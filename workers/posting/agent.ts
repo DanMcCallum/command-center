@@ -110,7 +110,7 @@ function sleep(ms: number): Promise<void> {
   })
 }
 
-// --- poll loop ---------------------------------------------------------------
+// --- agent API calls ----------------------------------------------------------
 
 async function fetchQueuedJobs(config: AgentConfig): Promise<PublishJob[]> {
   const res = await fetch(`${config.dashboardUrl}/api/publish-jobs`, {
@@ -121,6 +121,157 @@ async function fetchQueuedJobs(config: AgentConfig): Promise<PublishJob[]> {
   }
   const body = (await res.json()) as { jobs: PublishJob[] }
   return body.jobs
+}
+
+/** Best-effort error message out of an API response body. */
+async function apiError(res: Response): Promise<string> {
+  try {
+    const body = (await res.json()) as { error?: string }
+    if (body.error) return body.error
+  } catch {
+    // Non-JSON body — fall through to the status line.
+  }
+  return `HTTP ${res.status}`
+}
+
+/** Atomically claim a queued job. 'conflict' = someone else got it (409). */
+async function claimJob(config: AgentConfig, job: PublishJob): Promise<'claimed' | 'conflict'> {
+  const res = await fetch(`${config.dashboardUrl}/api/publish-jobs/claim`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${config.agentToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ taskId: job.taskId, platform: job.platform }),
+  })
+  if (res.status === 409) return 'conflict'
+  if (!res.ok) {
+    throw new Error(`claim failed: ${await apiError(res)}`)
+  }
+  return 'claimed'
+}
+
+/**
+ * Report a claimed job's state back to the dashboard. Never throws — a failed
+ * report is logged and the loop moves on (the posting stays agent-owned and
+ * the operator can see it on the dashboard).
+ */
+async function reportPosting(
+  config: AgentConfig,
+  job: PublishJob,
+  patch: { status: 'posting' | 'awaiting_auth' | 'posted' | 'failed'; lastError?: string; listingUrl?: string }
+): Promise<void> {
+  try {
+    const res = await fetch(`${config.dashboardUrl}/api/publish-jobs/report`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${config.agentToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ taskId: job.taskId, platform: job.platform, ...patch }),
+    })
+    if (!res.ok) {
+      log(`report ${patch.status} for ${job.platform}/${job.taskId} failed: ${await apiError(res)}`)
+    }
+  } catch (err) {
+    log(
+      `report ${patch.status} for ${job.platform}/${job.taskId} failed: ` +
+        (err instanceof Error ? err.message : String(err))
+    )
+  }
+}
+
+// --- publish bundle download ---------------------------------------------------
+
+// Local mirror of the server's outputs/<taskId>/ layout: ad copy at
+// <taskId>/<platform>.md, photos under <taskId>/photos/. Gitignored.
+const AGENT_CACHE_DIR = path.resolve(__dirname, '.agent-cache')
+
+// Both become path segments in the cache dir — refuse anything that could
+// escape it. The server enforces the same platform pattern on its side.
+const TASK_ID_PATTERN = /^[A-Za-z0-9_-]+$/
+const PLATFORM_PATTERN = /^[a-z0-9_]+$/
+
+/**
+ * Download the ad copy + photos for a claimed job into the local cache.
+ * Photos are size-checked against the server's Content-Length after writing.
+ * Throws with a one-line message naming what failed.
+ */
+async function downloadBundle(config: AgentConfig, job: PublishJob): Promise<string> {
+  if (!TASK_ID_PATTERN.test(job.taskId) || !PLATFORM_PATTERN.test(job.platform)) {
+    throw new Error(`refusing unsafe job identifiers (taskId "${job.taskId}", platform "${job.platform}")`)
+  }
+
+  const bundleUrl =
+    `${config.dashboardUrl}/api/tasks/${encodeURIComponent(job.taskId)}` +
+    `/publish-bundle?platform=${encodeURIComponent(job.platform)}`
+  const res = await fetch(bundleUrl, {
+    headers: { Authorization: `Bearer ${config.agentToken}` },
+  })
+  if (!res.ok) {
+    throw new Error(`publish-bundle download failed: ${await apiError(res)}`)
+  }
+  const bundle = (await res.json()) as { adCopy: string; photos: string[] }
+
+  const taskDir = path.join(AGENT_CACHE_DIR, job.taskId)
+  const photosDir = path.join(taskDir, 'photos')
+  fs.mkdirSync(photosDir, { recursive: true })
+  fs.writeFileSync(path.join(taskDir, `${job.platform}.md`), bundle.adCopy)
+
+  for (const photoPath of bundle.photos) {
+    const name = path.posix.basename(photoPath)
+    const fileUrl =
+      `${config.dashboardUrl}/api/files/` +
+      photoPath.split('/').map(encodeURIComponent).join('/')
+    const photoRes = await fetch(fileUrl, {
+      headers: { Authorization: `Bearer ${config.agentToken}` },
+    })
+    if (!photoRes.ok) {
+      throw new Error(`photo download failed: ${name} (${await apiError(photoRes)})`)
+    }
+    const bytes = Buffer.from(await photoRes.arrayBuffer())
+    const contentLength = photoRes.headers.get('content-length')
+    if (contentLength !== null && Number(contentLength) !== bytes.length) {
+      throw new Error(
+        `photo download truncated: ${name} (got ${bytes.length} bytes, server said ${contentLength})`
+      )
+    }
+    const dest = path.join(photosDir, name)
+    fs.writeFileSync(dest, bytes)
+    if (fs.statSync(dest).size !== bytes.length) {
+      throw new Error(`photo write incomplete: ${name}`)
+    }
+  }
+  log(`bundle cached: ${job.platform}.md + ${bundle.photos.length} photo(s) in .agent-cache/${job.taskId}/`)
+  return taskDir
+}
+
+/** Claim, download, and (in US-004/US-005) auth + post one job. */
+async function processJob(config: AgentConfig, job: PublishJob): Promise<void> {
+  const claim = await claimJob(config, job)
+  if (claim === 'conflict') {
+    log(`claim conflict for ${job.platform}/${job.taskId} — someone else got it, skipping`)
+    return
+  }
+  log(`claimed ${job.platform}/${job.taskId}`)
+
+  try {
+    await downloadBundle(config, job)
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    log(`job ${job.platform}/${job.taskId} failed: ${message}`)
+    await reportPosting(config, job, { status: 'failed', lastError: `agent: ${message}` })
+    return
+  }
+
+  // TODO(US-004/US-005): headed auth + posting happen here in the same pass.
+  // Until then, fail the job explicitly rather than stranding it in `posting`
+  // (a stranded job blocks re-publish; `failed` keeps the Publish-again path
+  // open on the dashboard).
+  await reportPosting(config, job, {
+    status: 'failed',
+    lastError: 'agent: bundle downloaded — posting not implemented yet (US-005)',
+  })
 }
 
 async function main(): Promise<void> {
@@ -142,7 +293,7 @@ async function main(): Promise<void> {
             queue.map((j) => `${j.platform}/${j.taskId}`).join(', ') +
             ` — next up: ${next.platform}/${next.taskId} ("${next.taskTitle}")`
         )
-        // Claiming and processing land in US-002…US-005.
+        await processJob(config, next)
       }
     } catch (err) {
       log(`poll failed: ${err instanceof Error ? err.message : String(err)}`)
