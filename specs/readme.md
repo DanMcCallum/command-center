@@ -21,8 +21,9 @@ Operator creates a task (Ad Builder form, task form, or automated script)
   -> Claude does the work, writes deliverables to a workspace
   -> Task lands in "needs review"
   -> Operator reviews, approves, or sends back with feedback
-  -> On approve (ad tasks): poster auto-posts to enabled marketplaces
-     (specs.md -> Ad posting)
+  -> Ad tasks: per-platform Publish buttons queue publish jobs, consumed
+     by a poster agent on the operator's machine via a token-authed API
+     (specs.md -> Local publish 1/3)
 ```
 
 ### Problem statement
@@ -37,7 +38,7 @@ An autonomous Claude worker with three grounding corpora:
 2. **Voice corpus** — cleaned phone-call transcripts that prime Claude on the operator's speaking cadence and word choice.
 3. **Skills** — reusable prompt fragments (e.g., an anti-slop writing-quality enforcer) that slash-command workflows load at runtime.
 
-Everything runs on one machine. No database, no auth, no cloud services, no queue infrastructure.
+Everything runs on one machine. No database, no cloud services, no queue infrastructure; the only in-app auth is a bearer token on the agent-facing publish-job endpoints (specs.md → Local publish 1/3).
 
 ---
 
@@ -53,8 +54,8 @@ Everything runs on one machine. No database, no auth, no cloud services, no queu
 
 ### Non-goals
 
-- Multi-user access or in-app authentication (single user; the dashboard binds to localhost, with remote access provided by a Cloudflare Access-protected tunnel at `dashboard.ownaloha.land` — auth happens at the edge, not in the app).
-- Direct API posting to ad platforms — enabled platforms are instead posted via Playwright browser automation on approval (see specs.md → Ad posting); the remaining platforms are manual. Platform caps are enforced at generation time either way.
+- Multi-user access or in-app authentication (single user; the dashboard binds to localhost, with remote access provided by a Cloudflare Access-protected tunnel at `dashboard.ownaloha.land` — auth happens at the edge, not in the app; the one exception is the bearer-token guard on the agent-facing publish-job endpoints, defense in depth for the local poster agent).
+- Direct API posting to ad platforms — enabled platforms are instead posted via per-site Publish jobs, executed by Playwright on the operator's machine (see specs.md → Local publish 1/3); the remaining platforms are manual. Platform caps are enforced at generation time either way.
 - A general project-management tool. The task queue exists to feed the Claude worker.
 - Parallel task execution (one worker at a time, by design — global lockfile).
 
@@ -165,7 +166,7 @@ completed    -> pending        (operator reopens)
 | Route | Purpose |
 |---|---|
 | `/` | Redirects to `/tasks`. |
-| `/tasks` | Primary view. Task list polling every 30 s; filter tabs (All / Pending / In progress / Needs review / Completed) with counts; inline create form; expandable task rows showing priority dot, status badge, Claude's notes, links to output files. Actions per task: approve, request revision, delete, edit output files in a modal (`FileEditorModal`), and **Save to knowledge base** (`SaveToKbModal`). A dismissible banner surfaces permanently failed marketplace postings (specs.md → Ad photos). Supports `?focus={id}` deep links. |
+| `/tasks` | Primary view. Task list polling every 30 s; filter tabs (All / Pending / In progress / Needs review / Completed) with counts; inline create form; expandable task rows showing priority dot, status badge, Claude's notes, links to output files. Actions per task: approve, request revision, delete, edit output files in a modal (`FileEditorModal`), **Save to knowledge base** (`SaveToKbModal`), and — on ad tasks — per-platform **Publish** buttons (specs.md → Local publish 1/3). A dismissible banner surfaces permanently failed marketplace postings (specs.md → Ad photos). Supports `?focus={id}` deep links. |
 | `/ad-builder` | Structured property form: location, acreage, price, access (paved / dirt-year-round / dirt-seasonal / none), utilities (power/water/septic/internet as yes/no/unknown), terrain, zoning, comps, must-include notes, buyer hint (retiree / off-gridder / investor / builder / hunter / remote-worker), target platforms, and photos (at least 1 required; drag-and-drop ordering with one starred primary). Submit creates a priority-1 opus `generate-ad` task with the form as `metadata`, uploads the photos into the task's outputs dir, then fires the worker and routes to `/tasks?focus={id}` (specs.md → Ad photos). |
 | `/roadmap` | Read-only list of future-work items from `data/todos.json`; each is a ready-to-run prompt brief. |
 | `/settings` | Worker scheduling via `CronConfigPanel`: on/off toggle, interval picker (over the cron-config/worker-status APIs), and a status card (last run, last task, crontab installed). Also marketplace login management via `PostingAuthPanel`: per-platform saved-session status plus an in-dashboard live-view **Connect** login flow (specs.md → Self-hosted live-view login capture). |
@@ -250,7 +251,7 @@ Notion-inspired dark minimalism. The principle: **the UI is a document, not an a
 - **Runtime:** Node.js 20+, Linux (WSL-compatible). Dashboard on localhost (started via `start.sh` from an `@reboot` cron entry in production mode).
 - **Remote access:** a Cloudflare tunnel (`cloudflared`, also started `@reboot`) publishes the dashboard at `dashboard.ownaloha.land`, gated by Cloudflare Access. The app itself has no auth — the edge is the only gate.
 - **Worker deps:** `claude` CLI, `curl`, `jq`, `flock`, `timeout`, `fuser`. Optional (live-view login capture only, fail-closed when absent): `xvfb`, `x11vnc`, `websockify`, and the noVNC static client (specs.md → Self-hosted live-view login capture).
-- **No database, no in-app auth, no external services** except the Dialpad API for transcript fetch and the Cloudflare tunnel for remote access. Ad platforms have no API integration — enabled ones are posted via browser automation, the rest manually (specs.md → Ad posting).
+- **No database, no external services** except the Dialpad API for transcript fetch and the Cloudflare tunnel for remote access; the only in-app auth is the agent-API bearer token (`AGENT_TOKEN` in root `.env.local`). Ad platforms have no API integration — enabled ones are posted via publish jobs run from the operator's machine, the rest manually (specs.md → Local publish 1/3).
 - **Timeout budget:** 30 min per task; 35 min stale-lock threshold.
 - **Config:** `config/paths.json` (external directory roots — never hardcode paths) and `config/ad-platforms.json`.
 
@@ -296,7 +297,6 @@ command-center/
     start.sh            Production start (called from @reboot cron)
   workers/
     run-worker.sh       The execution engine (cron / on-demand entry point)
-    run-poster.sh       Marketplace posting orchestrator (specs.md -> Ad posting)
     posting/            Playwright posting scripts; auth/ holds login sessions (secret)
       capture/          Live-view login capture: session/stream/detect/server
                         (specs.md -> Self-hosted live-view login capture)
@@ -330,5 +330,8 @@ command-center/
     live-view-browser.md  Feature PRD: in-dashboard live-view login capture (implemented)
     auth-research.md    Research-spike PRD: marketplace auth-capture proposal (implemented)
     land-com-connect.md Research-spike PRD: Land.com access after the Akamai block (implemented)
+    job-model-agent-facing-api.md    Feature PRD: Local publish 1/3 — publish jobs + agent API (implemented)
+    local-publish-2-local-agent.md   Feature PRD: Local publish 2/3 — local poster agent (queued)
+    local-publish-3-decommission.md  Feature PRD: Local publish 3/3 — decommission server posting (queued)
   *.md                  Original design docs (Blueprint, TLDR, Worker System Spec)
 ```

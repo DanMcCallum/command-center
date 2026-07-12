@@ -1,5 +1,7 @@
 # PRD: Local Publish — Part 1 of 3: Publish Job Model & Agent-Facing API
 
+**Status:** Implemented (2026-07-12)
+
 > **Series:** This is the first of three PRDs that move ad posting off the worker box and onto the operator's machine.
 > - **Part 1 (this file):** server-side publish-job model, agent-facing API, per-site Publish buttons.
 > - **Part 2 (queued):** [specs/local-publish-2-local-agent.md](specs/local-publish-2-local-agent.md) — the local poster agent (headed auth + post as one transaction).

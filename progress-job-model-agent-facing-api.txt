@@ -322,3 +322,34 @@
     summary, readme fixes incl. the run-poster.sh repo-map entry + the
     approve->poster data-flow line, header to Implemented).
 ---
+## Iteration 11 - Ship (feature log + readme + PRD header)
+- Added the "Local publish 1/3 — publish-job model & agent-facing API"
+  summary to specs/specs.md (top of the log): data model (awaiting_auth,
+  agent-status.json, mutateTask), agent-auth helper + AGENT_TOKEN secret,
+  all five API routes + the /api/files conditional token check, UI
+  (PublishButtons, Approve-only-approves, chip changes), the run-poster
+  removals, invariants, and the Part 2 extension path.
+- Added a "Superseded in part" blockquote to the old Ad posting entry so
+  its approve-time-queueing / run-poster / auto-retry description can't
+  mislead future work (precedent: land_com note in the live-view entry).
+- specs/readme.md fixes: overview data-flow arrow (approve->auto-post
+  replaced with Publish-buttons->publish jobs->local agent), the two
+  "no in-app auth" claims (Solution blurb + non-goal + section 7) now
+  carve out the agent-API bearer token, the direct-posting non-goal
+  points at Local publish 1/3, /tasks actions mention Publish buttons,
+  repo map drops workers/run-poster.sh and lists the three local-publish
+  PRDs.
+- specs/job-model-agent-facing-api.md header: **Status:** Implemented
+  (2026-07-12) inserted (the PRD never had a Status line — the grep for
+  one returns nothing on this file's original form).
+- Files changed: specs/specs.md, specs/readme.md,
+  specs/job-model-agent-facing-api.md
+- Learnings for future iterations:
+  - specs/local-publish-2-local-agent.md and -3-decommission.md exist on
+    disk but are UNTRACKED — deliberately not committed here (ship step
+    commits only its own doc changes); Part 2 kickoff should commit its
+    PRD first.
+  - Part 1 ships with NO status-report endpoint for posting->posted/
+    failed/awaiting_auth — flagged in the new entry's Extending section
+    so Part 2 knows to add it.
+---

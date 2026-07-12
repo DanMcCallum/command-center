@@ -15,6 +15,35 @@ One summary per shipped feature. Read this **and** [readme.md](readme.md) (the c
 
 ---
 
+## Local publish 1/3 — publish-job model & agent-facing API
+
+**PRD:** [job-model-agent-facing-api.md](job-model-agent-facing-api.md) · **Shipped:** 2026-07-12 · **Series:** Part 1 of 3 — Part 2 ([local-publish-2-local-agent.md](local-publish-2-local-agent.md)) builds the local poster agent; Part 3 ([local-publish-3-decommission.md](local-publish-3-decommission.md)) deletes the live-view/VNC stack and server-posting remnants.
+
+Moves posting off the worker box (its datacenter IP is Akamai-blocked pre-auth — see the Land.com spike). The approve-time queue-everything flow and every server-side poster kickoff are **gone**: each enabled platform now gets a per-task **Publish** button that queues exactly one publish job, and a token-authed agent API lets a poster agent on the operator's machine list, claim, download, and complete jobs via outbound-only polling (no inbound port to the laptop). After Part 1, the full lifecycle is drivable with `curl`; nothing consumes jobs automatically — that is the intended state until Part 2 ships the agent.
+
+**Data model:** `AdPosting.status` gains `'awaiting_auth'` (full set: `queued | posting | awaiting_auth | posted | failed`) for "agent has a headed browser open, waiting for operator login". New `dashboard/data/agent-status.json` `{lastSeenAt}` (gitignored runtime state, written under the data.ts mutex) records the agent's last authorized poll — for a future online/offline indicator; nothing reads it yet. New `mutateTask(id, fn)` in `dashboard/lib/data.ts`: atomic read-modify-write of one task under the existing write mutex, returning `{outcome: 'updated'|'rejected'|'not_found'}` — **all postings mutations must go through it** (`updateTask` is check-then-write and races).
+
+**Auth:** `dashboard/lib/agent-auth.ts` exports `requireAgentToken(request): NextResponse | null` (null = authorized) — `Authorization: Bearer <AGENT_TOKEN>`, timing-safe compare over sha256 digests, env read with the same root-`.env.local` fallback as `capture-server.ts`; fails closed with 503 when `AGENT_TOKEN` is unset, 401 otherwise. `AGENT_TOKEN` is set in root `.env.local` (chmod 600, generated 2026-07-12) — same secret class as `auth/*.json`, never logged.
+
+**API:**
+- `POST /api/tasks/[id]/publish` `{platform}` — browser-called, no token. Replaces that platform's posting with `{platform, status:'queued', attempts: prev+1, queuedAt}` (stale `lastError`/`listingUrl`/`screenshotPath` intentionally dropped), preserving other platforms' entries. 400 unknown/disabled platform, 404 task, 409 while `queued`/`posting`/`awaiting_auth`; re-publishing `failed`/`posted` is the retry/repost path.
+- Agent-token guarded: `GET /api/publish-jobs` → `{jobs: [{taskId, taskTitle, platform, queuedAt, attempts}]}` for all `queued` postings (stamps `lastSeenAt`); `POST /api/publish-jobs/claim` `{taskId, platform}` — atomic `queued → posting`, returns the full task, 409 if not currently queued; `GET /api/tasks/[id]/publish-bundle?platform=` → `{adCopy, photos: [repo-relative paths]}` (404 naming the path if the ad file is missing, `photos: []` when none); `POST /api/tasks/[id]/proof?platform=` body = raw PNG → writes `outputs/<taskId>/postings/<platform>.png` (validates the full 8-byte PNG magic). Platform keys must match `/^[a-z0-9_]+$/` everywhere they become filenames (traversal guard).
+- `GET /api/files/[...path]`: unchanged when no `Authorization` header is sent (dashboard `<img>`/editor keep working); when one is present it must pass `requireAgentToken` — so the agent fetches photos through it with the token.
+
+**UI:** new `dashboard/components/PublishButtons.tsx` on expanded ad-builder cards — one button per `enabled` platform: "Publish" (no entry / failed), disabled while in flight, "Publish again" when posted; errors render inline. **Approve now only approves** — `buildQueuedPostings()` and the run-poster fire are deleted from `TaskCard.tsx`. `PostingChips.tsx`: `awaiting_auth` renders as an amber "Waiting for login…" chip; Retry re-publishes via the publish route and is offered on every failed chip (the `MAX_ATTEMPTS`/auto-retry copy is gone — retries are manual).
+
+**Removed:** `dashboard/app/api/run-poster/route.ts`, `workers/run-poster.sh`, the `# COMMAND-CENTER-POSTER` crontab install in `cron.ts` (a `LEGACY_POSTER_MARKER` strip remains so pre-retirement crontabs get scrubbed on the next install/remove), and the live crontab line itself.
+
+**Invariants / gotchas:**
+- `attempts` increments at publish (queue) time; claim never touches it, and claim does not stamp `lastSeenAt` (only the US-004 poll does).
+- `PostingFailureBanner.tsx` still filters on a private `MAX_ATTEMPTS = 3` — of questionable meaning under manual re-publish; deliberately left for Part 2/3 to decide.
+- Deleting a Next route breaks `tsc` via stale generated `.next/dev/types/validator.ts` + `.next/types/validator.ts` — `rm` both (typegen only, regenerated by next dev/build).
+- `cron.ts` edits never retro-edit the live crontab — already-installed lines must be removed by hand.
+- `workers/posting/post.ts` / `post-*.ts` are untouched — Part 2 reworks how they're invoked.
+- Useful test patterns: route handlers run without a dev server (sandbox dir + `process.chdir` before dynamic import, `npx tsx --tsconfig dashboard/tsconfig.json`); kill dev servers with `fuser -k 3001/tcp`, never `pkill -f`.
+
+**Extending:** Part 2 adds the agent loop (poll → claim → bundle → headed login+post → proof upload) plus whatever status-report endpoint the agent needs to flip `posting → awaiting_auth/posted/failed` (not built in Part 1). New agent-facing routes follow the pattern: `const denied = requireAgentToken(request); if (denied) return denied;` then `mutateTask` for any postings write.
+
 ## Land.com access — research spike (Akamai block, proposal + converter, no production changes)
 
 **PRD:** [land-com-connect.md](land-com-connect.md) · **Shipped:** 2026-07-11 · **Type:** research spike (deliverable is a report plus a throwaway converter script; the spec'd validated session artifact is pending an operator task)
@@ -120,6 +149,8 @@ The Ad Builder form now requires at least one photo per ad request. Users attach
 ## Ad posting — auto-post approved ads to marketplaces
 
 **PRD:** [ad-posting.md](ad-posting.md) · **Shipped:** 2026-07-10 · **v1 platforms:** Landmodo, Land.com
+
+> **Superseded in part (2026-07-12, Local publish 1/3):** approve-time queueing, `run-poster.sh`, `POST /api/run-poster`, the poster crontab line, and the auto-retry policy described below are retired — posting is now per-site Publish jobs consumed by a local agent. The `AdPosting` data model, config, posting scripts (`capture-login`/`post`), UI chips, and secrets invariants still stand.
 
 When an ad-builder task (`slashCommand === 'generate-ad'` or tag `ad-builder`) is **approved**, the dashboard queues one posting per platform that is both selected in the task's `metadata.platforms` and `enabled` in config, then fires the poster. Postings are executed by Playwright driving a real browser with a saved login session — no marketplace APIs, no stored passwords.
 
