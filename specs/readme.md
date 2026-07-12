@@ -336,5 +336,6 @@ command-center/
     job-model-agent-facing-api.md    Feature PRD: Local publish 1/3 — publish jobs + agent API (implemented)
     local-publish-2-local-agent.md   Feature PRD: Local publish 2/3 — local poster agent (implemented)
     local-publish-3-decommission.md  Feature PRD: Local publish 3/3 — decommission server posting (implemented)
+    land-com-feed-cleanup.md         Feature PRD: repo-wide Land.com feed-API scrub -> one decision note (implemented)
   *.md                  Original design docs (Blueprint, TLDR, Worker System Spec)
 ```

@@ -15,6 +15,20 @@ One summary per shipped feature. Read this **and** [readme.md](readme.md) (the c
 
 ---
 
+## Land.com feed-API cleanup — repo-wide scrub, one decision note
+
+**PRD:** [land-com-feed-cleanup.md](land-com-feed-cleanup.md) · **Shipped:** 2026-07-12 · **Type:** documentation cleanup (no runtime code changed)
+
+Enforces the decision recorded in the Land.com access spike entry below: the Land.com bulk XML feed API is rejected (it requires a Corporate Account with a large number of ads, which we don't have), so every reference to it was removed repo-wide — 12 files across specs, both research reports (auth-capture PDF regenerated), progress logs, and the probe scripts — leaving exactly **one** record: the dated decision note in that spike entry. Everywhere the feed path had been recommended as primary, the former fallback chain is promoted: cookie export via extension + Tailscale exit node → run poster locally → commercial residential proxy. The shared-key operator task (OT-C) is removed everywhere; OT-A/OT-B remain open.
+
+**Invariants / gotchas:**
+- **One-reference rule:** the decision note is the only place in the repo (outside git history and the feature's own PRD) allowed to name the feed product. `grep -ci` of the product name over this file must equal the note's line count — the note is a single line; keep it that way if it ever moves. New docs referring to the rejection should say "feed API" / "bulk XML feed API" and point at the decision note, never use the product name.
+- Sweep exemptions (documented in the PRD under US-007): the top-level `operator-input/home-probes.txt` (untracked operator artifact — and **not** gitignored; only the spike's `research/land-com-connect-spike/operator-input/` has a scoped `.gitignore`) and the PRD itself.
+- Removed research-report sections were replaced with one-paragraph rejection stubs, not deleted silently, so section numbering and "(§2)"-style cross-references still resolve; git history keeps the full pre-cleanup text.
+- The auth-capture PDF is a render of its report.md — regenerate with `cd workers/posting && npx tsx render-pdf.ts` after any report edit (its uncompressed streams keep text greppable, so a stale PDF fails a raw-bytes sweep).
+
+**Extending:** if the feed path is ever revisited (e.g. ad volume grows to qualify for a Corporate Account), the removed research lives in git history before 2026-07-12; treat a revisit as a fresh spike, and retire the decision note in the same change that reintroduces the option.
+
 ## Local publish 3/3 — decommission server-side posting & live-view
 
 **PRD:** [local-publish-3-decommission.md](local-publish-3-decommission.md) · **Shipped:** 2026-07-12 · **Series:** Part 3 of 3 — closes the local-publish series (Part 1: [job-model-agent-facing-api.md](job-model-agent-facing-api.md), Part 2: [local-publish-2-local-agent.md](local-publish-2-local-agent.md)).

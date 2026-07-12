@@ -103,3 +103,14 @@
   - The Bash working directory persists between calls — a `cd workers/posting && npm run typecheck` leaves later relative-path greps running from workers/posting (they fail with "No such file"). cd back to the repo root explicitly.
   - All acceptance criteria are now [x]; next iteration is the Ship step (feature-log entry + readme sweep + Status: Implemented).
 ---
+## Iteration 8 - Ship: feature log + readme updates + Status header
+- What was implemented:
+  - Added the feature-log entry "Land.com feed-API cleanup — repo-wide scrub, one decision note" at the top of specs/specs.md, written entirely keyword-free so the decision note stays the file's single match (verified: grep -ci = 1, the note line only).
+  - specs/readme.md needed no claim fixes (zero feed-API mentions); added the PRD to the Appendix repo map as implemented.
+  - Added "**Status:** Implemented (2026-07-12)" to the PRD header (the PRD had no Status line at all — treated as Draft per the ship rule's spirit).
+  - Typecheck passes.
+- Files changed: specs/specs.md, specs/readme.md, specs/land-com-feed-cleanup.md, this file.
+- Learnings for future iterations:
+  - A cleanup feature's own feature-log entry is a fresh chance to break its one-reference rule — write it keyword-free and re-grep specs/specs.md immediately after adding it.
+  - This PRD was created without a Status header; the ship-step trigger keys off "Status: Draft", so PRDs should always start with one.
+---

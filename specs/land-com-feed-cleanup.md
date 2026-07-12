@@ -1,5 +1,7 @@
 # PRD: Remove LandFeed References (Decision: No LandFeed)
 
+**Status:** Implemented (2026-07-12)
+
 ## Introduction
 
 We have made a conscious decision **not** to use the Land.com LandFeed XML API: it requires a Corporate Account with a large number of ads, which we don't have. Today LandFeed is referenced across 12 files — specs, research reports, progress logs, and one research script — and `specs/specs.md` still recommends it as the *primary* Land.com path with an open operator task (OT-C: email Land.com for a shared key).
