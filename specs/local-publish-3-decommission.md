@@ -51,9 +51,9 @@ Deletion is the point: every line of the VNC stack that survives is a line someo
 **Description:** As a developer, I want the capture proxy routes gone so the dashboard has no path to a capture server that no longer exists.
 
 **Acceptance Criteria:**
-- [ ] Delete `dashboard/app/api/posting-auth/connect/`, `.../status/`, `.../type/` routes and `dashboard/lib/capture-server.ts`
-- [ ] `grep -r "capture-server\|CAPTURE_SERVER_URL\|liveViewUrl" dashboard/` returns no live references
-- [ ] Typecheck passes
+- [x] Delete `dashboard/app/api/posting-auth/connect/`, `.../status/`, `.../type/` routes and `dashboard/lib/capture-server.ts`
+- [x] `grep -r "capture-server\|CAPTURE_SERVER_URL\|liveViewUrl" dashboard/` returns no live references
+- [x] Typecheck passes
 
 ### US-005: Delete the capture/VNC stack from workers
 **Description:** As a developer, I want the server-side capture apparatus removed at the root.

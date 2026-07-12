@@ -15,9 +15,8 @@ const PROJECT_ROOT = path.resolve(process.cwd(), '..');
 
 /**
  * Reads a var from process.env, falling back to the project-root .env.local
- * (Next.js only auto-loads dashboard/.env.local — same fallback as
- * lib/capture-server.ts, so every secret lives in one file). Returns null
- * when absent.
+ * (Next.js only auto-loads dashboard/.env.local; the root file is the one
+ * source of secrets). Returns null when absent.
  */
 function readProjectEnvVar(name: string): string | null {
   const fromEnv = process.env[name];

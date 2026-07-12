@@ -41,3 +41,14 @@
   - toLocaleDateString() in checks: Playwright's chromium here renders en-US (7/10/2026) — harness date assertions must match that format.
   - US-004 can now delete posting-auth/connect|status|type + dashboard/lib/capture-server.ts; nothing in components references them anymore (PostingAuthPanel was the last consumer).
 ---
+
+## Iteration 4 - US-004: Delete the dashboard live-view proxy layer
+- Deleted the entire dashboard/app/api/posting-auth/ tree (connect/, status/, type/ routes) and dashboard/lib/capture-server.ts. Fixed the one remaining textual reference: a doc comment in dashboard/lib/agent-auth.ts that cited capture-server.ts as the env-fallback pattern source.
+- Files changed: dashboard/app/api/posting-auth/{connect,status,type}/route.ts (deleted), dashboard/lib/capture-server.ts (deleted), dashboard/lib/agent-auth.ts (comment only), specs/local-publish-3-decommission.md.
+- Verified: grep -r "capture-server\|CAPTURE_SERVER_URL\|liveViewUrl" over dashboard/ (excluding node_modules/.next) returns nothing; dashboard `npx tsc --noEmit` clean; workers/posting `npm run typecheck` clean.
+- Learnings for future iterations:
+  - status/route.ts had uncommitted paste-relay working-tree edits (pre-feature dirt, flagged in Iteration 3) — `git rm` refuses on locally-modified files; `git rm -rf` was the right call since US-004 discards that route entirely.
+  - The stale-.next-validator gotcha from Part 1 still applies: `rm dashboard/.next/dev/types/validator.ts dashboard/.next/types/validator.ts` right after deleting routes, BEFORE tsc.
+  - Comment-only references count against the grep AC — sweep doc comments, not just imports.
+  - US-005 next: delete capture/stream.ts + capture/server.ts + capture-server npm script + capture-login.ts, strip VNC glue from session.ts, keep detect.ts. Note session.ts/server.ts/stream.ts ALSO carry uncommitted working-tree edits (paste relay) — same discard-by-deletion situation.
+---
