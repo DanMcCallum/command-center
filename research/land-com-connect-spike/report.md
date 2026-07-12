@@ -1,6 +1,6 @@
 # Land.com Access — Research Spike Report
 
-**Spec:** [specs/land-com-connect.md](../../specs/land-com-connect.md) · **Started:** 2026-07-11 · **Status:** Complete (US-007 validation run pending OT-B)
+**Spec:** [specs/land-com-connect.md](../../specs/land-com-connect.md) · **Started:** 2026-07-11 · **Status:** Complete · **Open operator gates:** OT-A/OT-A′ **resolved 2026-07-12** — home browser reaches land.com, so residential egress + capture-from-browser are confirmed viable (block = datacenter-IP + curl-fingerprint, not the home IP); OT-B landed 2026-07-12 — land.com's session is **two host-only cookies** (`MarketPlaces`@www.land.com + `MarketingHub`@market.land.com, both ASP.NET Data Protection); both now merged into `auth/land_com.json`, but real-session validation is still owed (needs an unblocked egress — this box is IP-blocked)
 
 On 2026-07-11 the live-view login capture for `land_com` stopped working: Land.com's
 Akamai edge hard-blocks the worker box's Linode datacenter IP pre-auth. This report
@@ -104,46 +104,87 @@ and/or teaching detection to recognize the Akamai denial page as a hard failure.
 
 Probes run from the worker box (same Linode datacenter IP as The Block section)
 with `curl -s -o /dev/null -w "%{http_code} %{size_download}" --max-time 30`.
-Sizes are response-body bytes; bodies were inspected only to the first line, to
-classify 200s as real content vs. a disguised denial page.
+Sizes are response-body bytes.
 
-| URL | Worker box (2026-07-11T05:58:36–37Z) | Home IP (OT-A) |
+| URL | Worker box (2026-07-11T05:58:36–37Z) | Home IP curl (OT-A, 2026-07-12T05:21Z) |
 |---|---|---|
-| `https://www.land.com/` | **403** · 366 B | awaiting OT-A |
-| `https://www.land.com/login` | **403** · 371 B | awaiting OT-A |
-| `https://www.land.com/LandFeed/` | **200** · 30,894 B | awaiting OT-A |
-| `https://www.land.com/LandFeed/Docs/` | **200** · 85,138 B | awaiting OT-A |
-| `https://www.land.com/LandFeed/schemas/LandFeedSchema1.0.xsd` | **200** · 8,080 B | awaiting OT-A |
-| `https://www.landsofamerica.com/` | **403** · 376 B | awaiting OT-A |
-| `https://www.landwatch.com/` | **403** · 371 B | awaiting OT-A |
+| `https://www.land.com/` | **403** · 366 B | **403** · 366 B |
+| `https://www.land.com/login` | **403** · 371 B | **403** · 371 B |
+| `https://www.landsofamerica.com/` | **403** · 376 B | **403** · 376 B |
+| `https://www.landwatch.com/` | **403** · 371 B | **403** · 371 B |
 
-First-line checks of the three 200s: the two `/LandFeed/` HTML pages return a
-normal `<!DOCTYPE html>` document (not the Akamai `Access Denied` page — its
-~370-byte body and `<TITLE>Access Denied</TITLE>` are unmistakable), and the
-`.xsd` returns the actual schema (`<?xml version="1.0" …><xs:schema …>`).
-
-**Conclusion: the LandFeed endpoints are NOT blocked from the datacenter IP.**
-The Akamai block covers the consumer site — `www.land.com` pages and the sister
-brands `landsofamerica.com` and `landwatch.com` (all 403 with the same
-edge-denial body) — but the `/LandFeed/` path is exempt, consistent with the
-2026-07-10 probes from the prior spike. This means the sanctioned LandFeed API
-route survives the block intact: if the operator obtains a shared key (OT-C),
-the worker box can push listings to Land.com directly, with no egress work at
-all. The block only kills browser-based capture and posting from this box.
+**Conclusion: the Akamai block covers the whole consumer surface from this
+box.** `www.land.com` pages and the sister brands `landsofamerica.com` and
+`landwatch.com` all return 403 with the same ~370-byte edge-denial body
+(`<TITLE>Access Denied</TITLE>` is unmistakable). No browser-based capture or
+posting can run from this box.
 
 The 403s on `landsofamerica.com`/`landwatch.com` also close a loophole worth
 noting: logging in via a sister brand instead of `www.land.com` is not an
 escape hatch — the whole consumer surface is behind the same edge policy.
 
-### Home-IP probes (OT-A)
+### Home-IP probes (OT-A / OT-A′) — resolved 2026-07-12: home IP is clean, the block is datacenter-IP + curl-fingerprint
 
-A copy-pasteable probe script for the same URL list is at
-[`home-probe.sh`](home-probe.sh) (plain `curl` loop, no dependencies, prints no
-response bodies). **OT-A:** run it from a home/residential connection and paste
-the output into `operator-input/home-probes.txt` (see the
-[operator-input README](operator-input/README.md)). The Home IP column above is
-pending until OT-A lands; the working assumption — the operator browses
-land.com normally from home — is unverified until then.
+OT-A ran from the operator's home/residential connection on 2026-07-12T05:21Z
+(raw output: [`operator-input/home-probes.txt`](../../operator-input/home-probes.txt)).
+The Home IP column above is now filled, and it is a **byte-for-byte match** to the
+worker box: the consumer pages (`www.land.com/`, `/login`) and both sister brands
+`landsofamerica.com`/`landwatch.com` all return **403** with the same ~370-byte
+Akamai denial body. The residential IP is treated exactly like the datacenter IP
+by this probe.
+
+**This does not by itself kill the residential-egress premise — because OT-A is a
+`curl` probe, and the thing that premise depends on is a real *browser*.** The two
+are not interchangeable to Akamai:
+
+- **The box block is IP-based** (verified 2026-07-12 from the box): sending a full
+  Chrome `User-Agent` + browser `Accept*` headers changes nothing — still `403`,
+  same 371-byte body, `server: AkamaiGHost`. Combined with the prior finding that
+  the capture stack's headed Chromium is also blocked from the box, the datacenter
+  IP is denied regardless of client.
+- **The home block is, so far, only proven against `curl`.** curl and real Chrome
+  present different TLS/JA3 and HTTP/2 fingerprints and header ordering; Akamai Bot
+  Manager routinely 403s the curl fingerprint on a *good* IP while serving the same
+  IP's real browser normally. So the home `403` is consistent with **both**:
+  (i) the home IP is genuinely blocked — residential egress and capture-from-browser
+  are dead, or (ii) Akamai blocks curl's fingerprint from everywhere and the
+  operator's actual browser loads land.com fine from home — premise intact, and OT-A
+  simply used the wrong instrument.
+
+**OT-A′ — RESOLVED 2026-07-12, and it lands on interpretation (ii): the residential
+premise holds.** The operator ran the disambiguating check from the same home
+connection and reported:
+
+- **Home browser → `https://www.land.com/login` renders the real login page** (not
+  Access Denied). The operator browses land.com normally from home.
+- **Local browser on the worker box → still the Akamai Access Denied page** (re-confirmed).
+
+Putting the three data points together settles the mechanism cleanly:
+
+| Client | From home (residential IP) | From worker box (datacenter IP) |
+|---|---|---|
+| `curl` | **403** (OT-A) | **403** |
+| Real browser | **200 — renders** (OT-A′) | **403 — Access Denied** (OT-A′) |
+
+The block is therefore **two independent layers**: (1) a **datacenter-IP-reputation**
+block that denies *everything* from the Linode range — real browser included — which
+is why the worker box is unreachable for browser posting no matter the client; and
+(2) a **curl/automation-fingerprint** block that denies curl's TLS/HTTP signature
+even from a clean residential IP, which is the *only* reason OT-A's home probe came
+back 403. The home IP itself is **not** blocked — a real browser sails through.
+
+**Consequence: the residential-egress and capture-from-browser families are
+CONFIRMED viable, not merely assumed.** The operator's browser holds a real,
+servable land.com session on the home IP; the remaining work is exactly what the
+rest of this report scoped — export that session (OT-B, capture-from-browser §a) and
+give the *poster* a residential egress (Tailscale exit node, Residential Egress §b)
+so replay leaves from an IP Akamai serves. OT-A's scary-looking 403 was the wrong
+instrument (curl), not a dead premise. The only caveat this leaves for downstream
+tooling: any *automation* hitting land.com from home — a headless/scripted
+Playwright run on the operator's machine, not just the box — may itself trip the
+fingerprint layer that blocked curl, so capture should use a real/headed browser
+profile, and a residential proxy's success depends on presenting a browser-grade
+fingerprint too.
 
 ## Capture From the User's Browser
 
@@ -314,9 +355,10 @@ for the poster.** The pairings, spelled out:
    be explicit: exported session, replayed from the blocked datacenter IP, still
    `403`s. This is the combination to avoid.
 
-The alternative that sidesteps the whole capture+egress problem is the LandFeed API
-(US-006), whose endpoint is *not* blocked from the box — no session, no egress. The
-comparison matrix (US-008) weighs that against these pairings.
+The comparison matrix (US-008) weighs these pairings against each other. (The
+official Land.com feed API would have sidestepped the capture+egress problem
+entirely, but that option was evaluated and rejected — see the decision note in
+[specs/specs.md](../../specs/specs.md).)
 
 ## Residential Egress
 
@@ -530,125 +572,69 @@ platform depend on the operator's machine being up.
   Residential Egress tunnel (which keeps posting on the box and automatic) unless
   the operator specifically wants land.com handled from their own machine.
 
-## LandFeed API
+## Land.com Feed API (evaluated and rejected)
 
-Land.com publishes an official **LandFeed XML API** — the sanctioned, no-browser
-way to manage listings. The prior spike verified it in depth
-([research/auth-capture-spike/report.md](../auth-capture-spike/report.md) §2, all
-sources fetched 2026-07-10); this section **summarizes** those findings and
-re-anchors them against the new Akamai block, rather than re-researching. The
-headline for this spike: **the block does not touch the feed** (see Block Scope
-above), so the one option here that needs no capture, no session, and no egress is
-the same option that survives the block intact.
-
-### What it is (summary of the prior spike's §2 findings)
-
-- **Auth model — no login, no session, no cookies.** Credentials travel *inside*
-  the XML body's `<channel>` element: `loa_account_id` (integer, from the Land.com
-  Admin area), `loa_account_email` (the parent-account email), and
-  `loa_shared_key` (a secret issued by Land.com technical staff when LandFeed is
-  enabled). There is no OAuth, no browser, no cookie to expire — the shared key is
-  stored the same way `workers/posting/auth/*.json` are today (gitignored, chmod
-  600, never logged) but, unlike a captured session, **never needs recapturing**.
-  `loa_account_password` exists in the schema but is deprecated.
-- **Full-inventory-diff gotcha.** One HTTPS POST to `https://www.land.com/LandFeed/`
-  carries the operator's *entire* active inventory each time. Land.com diffs it by
-  the operator's own listing ID (`item.id`; `task.id` is a natural fit): a new ID
-  INSERTs, an existing ID UPDATEs, and **any previously-sent ID that is absent from
-  the new feed is DELETED**. The feed is authoritative — omit a listing (or a
-  photo) and it disappears — so a feed integration must always send the complete
-  set, not a single new ad. A `mode=test` runs full validation without touching
-  live data. Listings go live in 5 min–1 hr; images in 10 min–6 hr.
-- **Photo-by-URL requirement.** Photos are referenced by **public URL** —
-  `item.image_link` (main) and `item.loa_photo_tour_images.image_link` (0–200 tour
-  images), JPEG/GIF/PNG/BMP, ≤2 MB each, which Land.com *pulls*. This is a real
-  divergence from the current poster, which uploads local files from
-  `outputs/<taskId>/photos/`; adopting LandFeed means those photos must be
-  reachable at a public HTTPS URL (a public photo-hosting decision the prior spike
-  already flagged as an operator task, not a Ralph story).
-- **Corporate Account prerequisite.** The spec lists "an active Land.com Corporate
-  Account" with named Primary/Alternate technical contacts as a prerequisite — the
-  single biggest unknown, since the operator's account may be a plain advertiser
-  tier. This is what OT-C's email resolves.
-- **Cost:** $0 beyond the existing Land.com plan — a feature of the account, not a
-  metered API.
-
-### The block does not change LandFeed's viability
-
-The US-002 probes settle the one question the block raised. From the worker box
-(the same Linode datacenter IP that gets `403 Access Denied` on every consumer
-page), on 2026-07-11 the LandFeed endpoints all returned **HTTP 200 with real
-content**:
-
-| LandFeed endpoint | Worker box (2026-07-11T05:58Z) |
-|---|---|
-| `https://www.land.com/LandFeed/` (POST target) | **200** · 30,894 B |
-| `https://www.land.com/LandFeed/Docs/` | **200** · 85,138 B |
-| `https://www.land.com/LandFeed/schemas/LandFeedSchema1.0.xsd` | **200** · 8,080 B (real `<xs:schema>`) |
-
-This matches the prior spike's 2026-07-10 result (all 200 from this same box, one
-day *before* the login block appeared), so the exemption is not a fluke of timing.
-**The `/LandFeed/` path is exempt from the Akamai block that kills
-`www.land.com`, `/login`, and the sister brands.** Concretely: if the operator
-gets a shared key, the worker box can POST the feed and manage Land.com listings
-**directly, with zero egress work** — no residential tunnel, no captured session,
-no run-locally split. The block that broke browser capture is simply irrelevant to
-the sanctioned path. That is the strongest single fact in this report for the
-land.com decision, and it is why the comparison matrix (US-008) ranks LandFeed
-first when eligibility allows.
-
-### OT-C — the shared-key email
-
-**The ask (OT-C):** send the ready-to-go shared-key request email in
-[research/auth-capture-spike/report.md](../auth-capture-spike/report.md) §2 ("Draft
-email to Land.com support") to `support@land.com` (cc `sales@land.com`). It asks
-four things: LandFeed eligibility on the current account tier (or whether a
-Corporate Account must be created), how the `loa_shared_key` and `loa_account_id`
-are issued, any cost, and schema currency.
-
-**Status:** *not yet reported by the operator* — no OT-C confirmation has landed as
-of this writing (2026-07-11). Until Land.com replies, feed access is **gated on
-eligibility**: the account may already qualify, or it may need a Corporate Account
-upgrade the operator has to decide on.
-
-**Fallback chain if feed access is denied.** If LandFeed turns out to be gated to a
-corporate tier the operator can't reach, land.com does *not* fall back to "nothing"
-— it falls back to browser posting, which is exactly what the rest of this report
-costs out:
-
-1. **Browser capture + residential egress** — capture the session in the operator's
-   own browser (Capture From the User's Browser §a), and route the poster through a
-   **Tailscale exit node** on a home device (Residential Egress §b, the recommended
-   egress). This keeps land_com posting server-side and automatic while making the
-   box's traffic egress residential, past the block.
-2. **Run the poster locally** — if no always-on home device exists for an exit node,
-   move land_com posting to the operator's own (residential) machine (Run Locally
-   §2), accepting the loss of server-side always-on posting.
-3. **Commercial residential proxy** — last resort, only if there is no usable home
-   device at all (Residential Egress §c), accepting the trust cost of routing an
-   authenticated session through a third party.
-
-LandFeed remains the **strict upgrade** the operator adopts the moment the account
-qualifies: it removes the login-capture problem *and* the egress problem in one
-move, at $0. The full head-to-head against the browser-posting pairings is the
-comparison matrix (US-008).
+Land.com publishes an official bulk XML feed API — a sanctioned, no-browser way
+to manage listings, which would have sidestepped the capture and egress
+problems entirely. It was evaluated in the prior spike and re-anchored here,
+and subsequently **rejected (2026-07-12)**: it requires an account with a large
+number of ads, which we don't have. See the decision note in
+[specs/specs.md](../../specs/specs.md) — the single remaining record of that
+evaluation. The browser-posting pairings above are the plan of record for
+land.com.
 
 ## Session Capture & Validation (US-007)
 
-**Status: BLOCKED on OT-B — no validation has run.** Checked
-2026-07-11T06:14:27Z: `operator-input/` contains only its README and
-`.gitignore`; the OT-B export (`operator-input/land_com-cookies.json`) has not
-landed. Per the spike's rules, nothing here is fabricated — there is no
-captured session, no `auth/land_com.json`, and no validation outcome to report
-yet.
+**Status: OT-B landed 2026-07-12; after a two-domain merge the session cookies are
+captured and `auth/land_com.json` is built. Real-session validation still pending an
+unblocked egress.** Getting here took two passes and corrected a naming-based
+misread — recorded honestly below because the lesson (land.com's auth spans two
+host-only cookies on two subdomains) is load-bearing for anyone who redoes this.
 
-**The exact ask (OT-B):** in your own browser, log in to `www.land.com` and
-export the site's cookies with a cookie-export extension, saving the file as
-`operator-input/land_com-cookies.json` — the numbered steps, the
-HttpOnly sanity check, and the safety rules are in the
-[operator-input README](operator-input/README.md#ot-b--landcom-cookie-export).
-(OT-A, the home-probe run, is also still pending and can be done in the same
-sitting — see Block Scope.)
+**Land.com's session is TWO host-only ASP.NET Core Data Protection cookies, one per
+subdomain:**
+
+| Cookie | Domain (host-only) | Role | Format |
+|---|---|---|---|
+| `MarketPlaces` | `www.land.com` | Session for `www.land.com` — the poster's configured target (`login_url`/`new_listing_url` both `www.land.com`) | `CfDJ8…` (ASP.NET Core Data Protection encrypted) |
+| `MarketingHub` | `market.land.com` | Session for `market.land.com` — the operator's actual ad-posting dashboard | `CfDJ8…` (ASP.NET Core Data Protection encrypted) |
+
+Because both are **host-only**, neither appears in an export taken on the *other*
+subdomain. The first OT-B export was taken on `market.land.com`, so it contained
+`MarketingHub` (+ Stripe + the shared `.land.com` Akamai `bm_*`/`ak_bmsc` cookies)
+but **not** `MarketPlaces`. My first-pass writeup wrongly called that export
+"session-less" — it dismissed `MarketingHub` as a marketing cookie on its *name*.
+That was wrong: `MarketingHub`'s value is a `CfDJ8…` Data Protection token (the same
+format as `MarketPlaces`), i.e. a real session cookie. The HttpOnly guard is still
+only necessary-not-sufficient (Akamai's own `bm_*` cookies are HttpOnly), but the
+correct disqualifier here was never "no HttpOnly cookie" — it was "wrong subdomain,
+so the *other* session cookie is missing."
+
+**Resolution (what's now in place):** the operator supplied the `www.land.com`
+export too (`MarketPlaces` + `.land.com` Akamai cookies). The two exports were
+**merged** — deduping by `(name, domain, path)`, preferring the fresher `www` values
+on the shared Akamai cookies — into a single 12-cookie
+`operator-input/land_com-cookies.json`, then converted. `auth/land_com.json`
+(chmod 600) now holds a Playwright storageState carrying **both** session cookies:
+`MarketPlaces` (expires 2026-08-09, ~28 d) and `MarketingHub` (session cookie,
+`expires: -1` — Playwright restores session cookies on replay). Structural checks
+pass: storageState shape valid, all `sameSite` normalized to Playwright's accepted
+set (`no_restriction`→`None`), `httpOnly`/`secure` preserved, `origins: []`.
+
+**Still open — the two real caveats:**
+
+1. **Not yet authenticated against a live land.com.** This box can't test it
+   (datacenter-IP block; validation needs the operator's machine or a home tunnel,
+   per the Replay caveat). Everything above is capture + structural validation, not
+   proof the session is accepted. The validation run below is unchanged and still owed.
+2. **A config/target question surfaced.** The poster targets
+   `www.land.com/account/listings/new`, but the operator posts via the
+   `market.land.com` dashboard. Both sessions are now captured, so either target is
+   covered — but which one the poster *should* drive (and whether
+   `www.land.com/account/listings/new` still resolves to the real new-listing flow)
+   needs confirming before build. `origins: []` also means no `localStorage` was
+   captured; if validation shows either session needs a `localStorage` token, redo
+   that subdomain's capture via a DevTools/local-browser dump (Run Locally §1).
 
 **Everything not gated on the export is ready:**
 
@@ -687,11 +673,10 @@ sitting — see Block Scope.)
 Every option evaluated in this report, on one page. "Fixes capture?" = gets a
 working authenticated land.com session; "Fixes posting?" = lets the *poster*
 reach land.com past the block. Capture-only options must be **paired** with an
-egress row (the Replay caveat); LandFeed sidesteps both problems at once.
+egress row (the Replay caveat).
 
 | Option (section) | Fixes capture? | Fixes posting? | Operator friction | Build effort | Ops burden | Fragility | Security | $/mo |
 |---|---|---|---|---|---|---|---|---|
-| **LandFeed XML API** (LandFeed §) | **Yes — sidesteps it** (no login, no session; shared key never expires) | **Yes** (endpoint exempt from the block — POSTs work from the box today) | Lowest steady-state: none after OT-C; one-time email + possible account upgrade | Highest: new feed integration (full-inventory XML diff, public photo hosting) | Low — no browser, no tunnel, no session refresh | Lowest — no cookie expiry, no IP dependence; feed-is-authoritative gotcha is the one sharp edge | Best: one static secret, no session transits anything | **$0** (gated on eligibility) |
 | **Cookie export — manual extension** (§a) | Yes (`HttpOnly` covered via `chrome.cookies`) | **No — must pair with egress** | Copy-paste per session expiry | ~Done: converter built (US-007); needs only OT-B | None | Session expiry cadence unknown until US-007 validates | Good: cookies transit only operator→repo, deleted after conversion | $0 |
 | **Cookie export — MV3 extension** (§b) | Yes | **No — must pair with egress** | One click per refresh (best UX of the family) | 1–3 days (extension + dashboard receive route — production code) | Low | Same session-expiry exposure as §a | Good: TLS POST with signed upload token | $0 |
 | **Bookmarklet** (§c) | **No — rejected** (page JS cannot read `HttpOnly` session cookies) | No | — | — | — | — | — | — |
@@ -703,15 +688,9 @@ egress row (the Replay caveat); LandFeed sidesteps both problems at once.
 
 ### Recommendation
 
-**Primary: LandFeed XML API — send the OT-C email now.** It is the only option
-that fixes capture *and* posting at $0 with no egress work, because the feed
-endpoint is exempt from the very block that caused this spike; it replaces a
-perishable browser session with a never-expiring shared key. Its build cost is
-the highest in the matrix, but it is the sanctioned path and every other option
-is a workaround by comparison.
-
-**Until (or unless) the key is granted, the two halves of this spike's question
-get separate answers:**
+**Primary: cookie export via extension (§a) paired with a Tailscale exit node
+(Egress §b).** The two halves of this spike's question get separate answers
+that combine into one plan:
 
 - **Login capture (this spike's deliverable):** cookie export via extension
   (§a) — OT-B → `research-convert-cookies.ts` → `auth/land_com.json`. The
@@ -720,35 +699,35 @@ get separate answers:**
 - **Posting egress (the follow-up this implies):** a **Tailscale exit node** on
   a home device, route-level so capture browser and poster are fixed in one
   move with zero code change. Capture without this pairing is explicitly not a
-  solution (Replay caveat).
+  solution (Replay caveat). **OT-A′ confirmed the premise (2026-07-12):** the
+  operator's home browser reaches land.com, so a home exit node egresses from a
+  clean, servable IP — this branch and its fallback chain are viable. (One
+  practical note carried from the fingerprint layer: the exit node must carry the
+  *browser's* traffic; scripted/headless automation from home can still trip the
+  same fingerprint block that 403'd curl in OT-A.)
 
-**Fallback chain:** LandFeed (when eligible) → cookie export §a + Tailscale
-exit node → run the whole poster locally (no always-on home device) →
-commercial residential proxy (last resort — trust cost). Bookmarklet capture is
-rejected outright; cookie export replayed from the unpaired worker box is the
-known-bad combination that must never ship.
+**Fallback chain:** cookie export §a + Tailscale exit node → run the whole
+poster locally (no always-on home device) → commercial residential proxy (last
+resort — trust cost). Bookmarklet capture is rejected outright; cookie export
+replayed from the unpaired worker box is the known-bad combination that must
+never ship.
 
 ### What would change this decision
 
-- **LandFeed shared key granted (OT-C answered yes)** — LandFeed becomes the
-  build target immediately; the browser-capture path is demoted to a stopgap
-  until the feed integration ships, then retired to backup.
-- **LandFeed denied / gated to an unreachable Corporate tier** — the fallback
-  chain above becomes the permanent plan; §b (MV3 extension) becomes worth its
-  build cost if session expiry proves frequent in US-007.
-- **The `/LandFeed/` exemption closes** (Akamai starts 403ing the feed path
-  from the box) — LandFeed still works but now *also* needs the Tailscale
-  egress, weakening its "zero egress" advantage without changing its ranking.
-- **Akamai starts blocking the operator's home IP** (OT-A comes back 403) —
-  every residential-egress and capture-from-browser row dies at once; LandFeed
-  and commercial proxy become the only survivors.
+- **The operator's home browser is also blocked** — this trigger **did not fire**.
+  OT-A′ (2026-07-12) confirmed the home browser reaches `land.com/login` normally;
+  only curl is blocked from home (fingerprint layer), and the home IP is clean.
+  Were this ever to change (Akamai starts denying the home IP's real browser too),
+  every residential-egress and capture-from-browser row would die at once, leaving
+  commercial proxy as the only path — and only if *its* pool IPs present a clean
+  browser-grade fingerprint.
 - **land.com adds MFA or aggressive session/IP binding** — captured sessions
   stop replaying even from residential egress; run-whole-poster-locally (same
-  IP + fingerprint the session was minted on) or LandFeed become the only paths.
+  IP + fingerprint the session was minted on) becomes the only path.
 - **No always-on home device materializes** — Tailscale drops out; the egress
   choice falls to commercial proxy or run-locally per the fallback chain.
 - **US-007 validation reveals very short cookie lifetimes** — §a's per-refresh
-  friction multiplies; build §b (one-click extension) or accelerate LandFeed.
+  friction multiplies; build §b (one-click extension) to cut it to one click.
 
 ### Named follow-ups (out of this spike's scope)
 

@@ -57,3 +57,20 @@
   - Iteration 3's progress-notes entry was left uncommitted (in the working tree only) — it rode along in this commit. Check `git status` for the progress file at commit time.
   - For US-007's spot-read: specs/specs.md's auth-capture entry still says the §7 prerequisites include "decide public photo hosting" — that was OT-3, now removed from the report; specs.md may want that clause dropped for coherence (no LandFeed word involved, so grep still passes).
   - The PDF renderer prints "Wrote ... auth-capture-proposal.pdf" with an absolute path and exits 0; verify with a raw-bytes scan (uncompressed streams keep text greppable).
+
+## Iteration 5 - US-005: Scrub the land-com-connect spike report and home-probe.sh
+- What was implemented:
+  - report.md header: dropped the "; OT-C (LandFeed key email) pending" clause from the Open operator gates line.
+  - Block Scope: three /LandFeed/ rows removed from the probe table; the "first-line checks of the three 200s" paragraph deleted; conclusion rewritten as "the Akamai block covers the whole consumer surface from this box"; table caption's 200-classification clause dropped; home-IP-probe paragraph's "/LandFeed/ endpoints return 200" clause removed.
+  - Replay-caveat closer reworded: comparison matrix weighs the pairings; parenthetical notes the feed API was evaluated and rejected (points at specs/specs.md).
+  - "## LandFeed API" section (~100 lines: auth model/loa_* fields, feed mechanics, exemption table, OT-C email, fallback chain) replaced via python splice with a one-paragraph "## Land.com Feed API (evaluated and rejected)" stub pointing at the specs.md decision note.
+  - Comparison matrix: LandFeed row and the "sidesteps both problems" preamble clause removed. Recommendation rewritten: primary is cookie export §a + Tailscale exit node §b; fallback chain "cookie export + Tailscale → run poster locally → commercial residential proxy". First three "what would change this decision" bullets (all LandFeed) removed; three surviving bullets reworded.
+  - home-probe.sh AND the untracked zsh port home-probe.zsh: three /LandFeed/ URLs removed; bash -n and zsh -n both pass.
+  - Verified: grep -rci landfeed research/land-com-connect-spike/ → no output; no OT-C/US-006 refs left in report.md; typecheck passes.
+- Files changed: research/land-com-connect-spike/{report.md,home-probe.sh,home-probe.zsh}, specs/land-com-feed-cleanup.md (checkboxes), this file.
+- Learnings for future iterations:
+  - report.md carried large UNCOMMITTED foreign hunks (2026-07-12 OT-A'/OT-B resolution content — home probes, two-cookie session capture). My scrub edits are interleaved with them (same header line), so the file was committed whole; that content rode along deliberately. operator-input/README.md is also modified (foreign, non-goal area) — left unstaged.
+  - home-probe.zsh (untracked zsh port) isn't named by any US-005 criterion but the directory-wide grep criterion forces cleaning it; it was added to the commit.
+  - For US-007: the top-level operator-input/home-probes.txt (OT-A raw output) likely contains /LandFeed/ URLs — it's gitignored and a non-goal area, but the US-007 repo grep may hit it; exclude operator-input/ or note the exemption.
+  - US-006 next: initial-research.md (10), progress-auth-research.txt (13), progress-land-com-connect.txt (18).
+---

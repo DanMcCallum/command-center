@@ -68,10 +68,10 @@ This feature removes every LandFeed reference repo-wide and leaves exactly **one
 **Description:** As the operator, I want the Land.com connect spike report (35 matches) and the probe script (3 matches) cleaned so the research artifacts match the decision.
 
 **Acceptance Criteria:**
-- [ ] `research/land-com-connect-spike/report.md`: the LandFeed API option section is reduced to a one-paragraph "evaluated and rejected (account with a large number of ads required)" stub; LandFeed rows/entries removed from the block-scope table conclusions, comparison matrix, recommendation, and "what would change this decision" list
-- [ ] `research/land-com-connect-spike/home-probe.sh`: the `/LandFeed/` probe URLs are removed from the URL list; script still passes `bash -n`
-- [ ] `grep -rci landfeed research/land-com-connect-spike/ | grep -v ':0'` returns nothing
-- [ ] Typecheck passes
+- [x] `research/land-com-connect-spike/report.md`: the LandFeed API option section is reduced to a one-paragraph "evaluated and rejected (account with a large number of ads required)" stub; LandFeed rows/entries removed from the block-scope table conclusions, comparison matrix, recommendation, and "what would change this decision" list
+- [x] `research/land-com-connect-spike/home-probe.sh`: the `/LandFeed/` probe URLs are removed from the URL list; script still passes `bash -n` (the untracked `home-probe.zsh` port was cleaned the same way to satisfy the directory grep)
+- [x] `grep -rci landfeed research/land-com-connect-spike/ | grep -v ':0'` returns nothing
+- [x] Typecheck passes
 
 ### US-006: Scrub initial-research.md and the progress logs
 **Description:** As the operator, I want the remaining historical artifacts (seeded research + two progress logs) cleaned to complete the repo-wide sweep.
