@@ -46,11 +46,11 @@ The agent lives in this repo (`workers/posting/agent.ts`) so it typechecks and e
 **Description:** As a developer, I need `isLoggedIn` usable outside the capture server, and hardened so error pages can never read as success — the exact failure mode from the land-com spike.
 
 **Acceptance Criteria:**
-- [ ] `workers/posting/capture/detect.ts`'s `isLoggedIn` is importable and used by the agent without pulling in the capture server/stream modules
-- [ ] New hard-failure check: a page whose title is `Access Denied` (the Akamai denial signature) is reported as a distinct `blocked` result, never as logged-in
-- [ ] `redirect_off` is only honored after the session has actually been observed on the login page (`sawLoginPage` semantics), and this is unit-tested with the Akamai denial flow (`/login` → denial → `/`) asserting NOT logged in
-- [ ] `login_success` supporting `cookie` AND `redirect_off` together still works (config schema already supports it)
-- [ ] Typecheck passes
+- [x] `workers/posting/capture/detect.ts`'s `isLoggedIn` is importable and used by the agent without pulling in the capture server/stream modules
+- [x] New hard-failure check: a page whose title is `Access Denied` (the Akamai denial signature) is reported as a distinct `blocked` result, never as logged-in
+- [x] `redirect_off` is only honored after the session has actually been observed on the login page (`sawLoginPage` semantics), and this is unit-tested with the Akamai denial flow (`/login` → denial → `/`) asserting NOT logged in
+- [x] `login_success` supporting `cookie` AND `redirect_off` together still works (config schema already supports it)
+- [x] Typecheck passes
 
 ### US-004: Auth as part of the transaction (headed login)
 **Description:** As an operator, when I click Publish and my session is stale, I want a browser window to just pop up on my machine; I log in, and posting continues automatically.
