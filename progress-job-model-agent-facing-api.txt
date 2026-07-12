@@ -22,3 +22,30 @@
   - The chip label "Waiting for login…" already matches what US-009 asks
     for, so US-009 can focus on the Retry-action rewiring.
 ---
+
+## Iteration 2 - US-002: Agent token auth helper
+- Created dashboard/lib/agent-auth.ts exporting
+  requireAgentToken(request): NextResponse | null (null = authorized).
+  Reads AGENT_TOKEN via process.env with the root-.env.local fallback
+  (readProjectEnvVar copied from lib/capture-server.ts — PROJECT_ROOT is
+  path.resolve(process.cwd(), '..'), so it depends on the dashboard running
+  from dashboard/). 503 when AGENT_TOKEN unset (fail closed), 401 on
+  missing/wrong Bearer token, timing-safe compare over sha256 digests of
+  both sides (fixed length, so timingSafeEqual can't throw and token length
+  isn't observable).
+- Files changed: dashboard/lib/agent-auth.ts (new)
+- Verified: `npx tsc --noEmit` in dashboard/ exits 0; runtime check via a
+  throwaway tsx script constructing Request objects: unset→503, wrong→401,
+  missing header→401, correct→null, 401 body = {"error":"Unauthorized"}.
+- Learnings for future iterations:
+  - tsx scripts in /tmp compile as CJS: no top-level await (wrap in async
+    main), and relative imports resolve from the script file — use absolute
+    paths to import dashboard modules.
+  - NextResponse works fine outside a Next server (it's a Response
+    subclass), so route guards are unit-testable with plain Request objects.
+  - Root .env.local has NO AGENT_TOKEN yet — US-004's curl verification
+    needs the operator (or the iteration) to add one first; add it as
+    AGENT_TOKEN=<random hex> to /home/mazer/claude/command-center/.env.local.
+  - US-004..US-007 usage pattern: `const denied = requireAgentToken(request);
+    if (denied) return denied;`
+---

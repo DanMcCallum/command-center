@@ -48,11 +48,11 @@ Operator's machine                        Linode server
 **Description:** As a developer, I need a shared auth guard for agent-facing endpoints, since the dashboard API will now be reachable from outside localhost.
 
 **Acceptance Criteria:**
-- [ ] New `dashboard/lib/agent-auth.ts` exporting `requireAgentToken(request): NextResponse | null` (null = authorized)
-- [ ] Reads `AGENT_TOKEN` from env with the same root-`.env.local` fallback pattern used in `dashboard/lib/capture-server.ts:31-45`
-- [ ] Compares `Authorization: Bearer <token>` using `crypto.timingSafeEqual`
-- [ ] Fails closed: if `AGENT_TOKEN` is unset, every guarded request gets 503 with a clear message
-- [ ] Typecheck passes
+- [x] New `dashboard/lib/agent-auth.ts` exporting `requireAgentToken(request): NextResponse | null` (null = authorized)
+- [x] Reads `AGENT_TOKEN` from env with the same root-`.env.local` fallback pattern used in `dashboard/lib/capture-server.ts:31-45`
+- [x] Compares `Authorization: Bearer <token>` using `crypto.timingSafeEqual`
+- [x] Fails closed: if `AGENT_TOKEN` is unset, every guarded request gets 503 with a clear message
+- [x] Typecheck passes
 
 ### US-003: Publish endpoint
 **Description:** As an operator, clicking Publish must create a queued publish job for exactly one platform on one task.
