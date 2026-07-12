@@ -15,6 +15,30 @@ One summary per shipped feature. Read this **and** [readme.md](readme.md) (the c
 
 ---
 
+## Local publish 2/3 — the local poster agent
+
+**PRD:** [local-publish-2-local-agent.md](local-publish-2-local-agent.md) · **Shipped:** 2026-07-12 · **Series:** Part 2 of 3 — consumes Part 1's publish jobs ([job-model-agent-facing-api.md](job-model-agent-facing-api.md)); Part 3 ([local-publish-3-decommission.md](local-publish-3-decommission.md)) deletes the live-view/VNC stack and server-posting remnants.
+
+The consumer of Part 1's job queue: `npm run agent` in `workers/posting/` runs a poll loop on the **operator's machine** (residential IP — what unblocks land_com past Akamai). One job at a time, FIFO by `queuedAt`: claim → download the publish bundle into a local cache → preflight (ad-copy parse, photos, poster lookup — all **before** any browser, so a doomed job never pops a login window) → headed auth → post in that same browser context → report results over the API. Stale session → a headed Chromium pops on the operator's real desktop (posting goes `awaiting_auth`), they log in, the fresh session is saved locally, and posting continues automatically. No VNC/streaming; the laptop stays outbound-only; the agent never touches the server's filesystem.
+
+**Agent config** (env-first, root-`.env.local` fallback): `DASHBOARD_URL` (required), `AGENT_TOKEN` (required, matches the server's), `AGENT_POLL_SECONDS` (default 15). Operator guide: `workers/posting/AGENT.md`. Sessions are minted and stored **only on the operator's machine** at `workers/posting/auth/<platform>.json` chmod 600 (`rm` to wipe a bad one); the bundle cache is `workers/posting/.agent-cache/<taskId>/` (gitignored, mirrors the `outputs/` layout).
+
+**API:** new `POST /api/publish-jobs/report` `{taskId, platform, status, lastError?, listingUrl?, screenshotPath?}` — the status-report endpoint Part 1 deferred. Agent-token guarded, `mutateTask` inside; `status` ∈ `posting|awaiting_auth|posted|failed` (**never** `queued` — re-queueing via report would bypass the Publish endpoint's `attempts` accounting); 409 unless the existing posting is currently agent-owned (`posting`/`awaiting_auth`); `posted` stamps `postedAt` server-side. This 409 rule is also the recovery path: a job stranded in `posting`/`awaiting_auth` by a crashed agent 409-blocks re-publish — reset it by reporting `failed` with the token.
+
+**Detection** (`workers/posting/capture/detect.ts`): new three-way `detectLogin(signal, snapshot, tracker) → 'logged_in' | 'not_logged_in' | 'blocked'`. A page titled `Access Denied` (the Akamai signature) returns `blocked` before anything else and never earns `sawLoginPage`; `redirect_off` is only honored after the tracker actually observed the login path; `cookie` + `redirect_off` together are ANDed (unit-tested, incl. the exact spike denial flow). Importable without pulling in session/stream/server/playwright — the agent imports it directly; the capture server's `checkSession` feeds it too and treats `blocked` as fail-closed.
+
+**Agent/poster surface** (`workers/posting/`): `agent.ts` (poll loop, claim, bundle download, reporting, graceful SIGINT/SIGTERM); `agent-auth.ts` `authenticate()` (headed launch, storageState probe of `new_listing_url`, 15-min login wait, window-close → `failed`/`login cancelled`, cookie **names+expiry** logged — never values); posters refactored to drive an injected, already-authenticated page via `PostContext {page, outputDir, platform?}` in `post-common.ts` — the caller owns the browser lifecycle. `post.ts` exports `POSTERS` + `Poster` (CLI `main()` guarded by `require.main`, still works headless against `outputs/` for local dev). Proof screenshots upload via `POST /api/tasks/[id]/proof`; the server-returned `{path}` is what gets reported as `screenshotPath` (never the local cache path). Committed harnesses `verify-agent-auth.ts` / `verify-agent-post.ts` (mock marketplace + Xvfb) are the template for driving browser flows without real sites.
+
+**Invariants / gotchas:**
+- Playwright's `chromium.launch` defaults `handleSIGINT/handleSIGTERM` to true and **force-exits the process on Ctrl-C** before graceful shutdown can report the job — anywhere the agent owns shutdown, launch with both set to `false`.
+- `redirect_off`-only signals can never pass the silent session probe (strict `sawLoginPage` semantics); `agent-auth` resolves valid sessions via a one-shot seeded tracker right after the deliberate `goto(login_url)` (~3 s, no operator). The denial flow can't hit it — `blocked` returns before any tracker state.
+- land_com must gain a `login_success.cookie` ANDed with `redirect_off` once the first real login's names-only log line identifies the session cookie (documented in `config/posting-platforms.json` `_doc`).
+- `attempts` is incremented only by the Publish endpoint; the agent never touches it. No auto-retry — a failed publish waits for the operator to click Publish again.
+- The agent must never import `capture/stream.ts` (Xvfb/VNC — dies in Part 3); shared env reading is deliberately duplicated into `agent.ts` for the same reason.
+- Server error strings surface verbatim as `lastError` (agent caps at one line / 300 chars) — keep them one-line.
+
+**Extending:** a new platform = a `Poster`-interface entry in `POSTERS` plus its config entry (same as before — the agent path needs nothing else). Part 3 deletes the capture/live-view stack; the agent path already depends on none of it.
+
 ## Local publish 1/3 — publish-job model & agent-facing API
 
 **PRD:** [job-model-agent-facing-api.md](job-model-agent-facing-api.md) · **Shipped:** 2026-07-12 · **Series:** Part 1 of 3 — Part 2 ([local-publish-2-local-agent.md](local-publish-2-local-agent.md)) builds the local poster agent; Part 3 ([local-publish-3-decommission.md](local-publish-3-decommission.md)) deletes the live-view/VNC stack and server-posting remnants.

@@ -1,8 +1,8 @@
 # PRD: Local Publish — Part 2 of 3: The Local Poster Agent
 
-> **Status: QUEUED — do not implement until Part 1 (publish job model & agent API) is complete.**
-> When Part 1 ships, copy this file's contents into `PRD.md` and reset `progress.txt`.
-> Series: Part 1 = publish job model (was `PRD.md`) · **Part 2 = this file** · Part 3 = [local-publish-3-decommission.md](local-publish-3-decommission.md)
+**Status:** Implemented (2026-07-12)
+
+> Series: Part 1 = [job-model-agent-facing-api.md](job-model-agent-facing-api.md) · **Part 2 = this file** · Part 3 = [local-publish-3-decommission.md](local-publish-3-decommission.md)
 
 ## Introduction
 

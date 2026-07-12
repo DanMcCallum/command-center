@@ -337,3 +337,31 @@
     flip header to Implemented). Remember the untracked
     specs/local-publish-3-decommission.md references and the dirty working
     tree: commit only the files the ship step touches.
+---
+## Iteration 8 - Ship step (feature log + readme + header flip)
+- Added the "Local publish 2/3 — the local poster agent" summary to specs/specs.md
+  (newest-first, above Part 1): agent loop + config, the new
+  POST /api/publish-jobs/report surface (incl. the 409/agent-owned rule doubling
+  as crash recovery), three-way detectLogin, PostContext poster refactor,
+  invariants (handleSIGINT:false, seeded-tracker probe, land_com cookie signal,
+  attempts ownership, no stream.ts imports, one-line server errors).
+- readme.md fixes: flow diagram + non-goals + §7 now say the local poster agent
+  exists (pointers widened to "Local publish 1/3 and 2/3"); repo map documents
+  agent.ts/agent-auth.ts/AGENT.md under workers/posting/ and flips
+  local-publish-2-local-agent.md to (implemented).
+- PRD header: replaced the QUEUED blockquote with **Status:** Implemented
+  (2026-07-12), kept the series line (Part 1 link now points at
+  job-model-agent-facing-api.md since PRD.md no longer holds it).
+- Files changed: specs/specs.md, specs/readme.md,
+  specs/local-publish-2-local-agent.md, progress-local-publish-2-local-agent.txt
+- Verified: workers/posting typecheck clean; npm test 26/27 (the 1 failure is
+  the pre-existing parse-ad-output fixture issue from iteration 1 — still not
+  ours). Docs-only change.
+- Learnings for future iterations:
+  - Working tree was dirty with unrelated WIP (capture-stack US-008 files,
+    tasks.json, ad-posting/live-view spec edits, untracked
+    local-publish-3-decommission.md) — committed by explicit path list only;
+    all four ship files were clean before this iteration so plain git add of
+    those paths was safe (no partial-stage dance needed this time).
+  - Part 3 (local-publish-3-decommission.md) is still untracked — whoever
+    starts it commits the PRD as their first act.

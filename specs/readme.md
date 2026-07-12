@@ -22,8 +22,8 @@ Operator creates a task (Ad Builder form, task form, or automated script)
   -> Task lands in "needs review"
   -> Operator reviews, approves, or sends back with feedback
   -> Ad tasks: per-platform Publish buttons queue publish jobs, consumed
-     by a poster agent on the operator's machine via a token-authed API
-     (specs.md -> Local publish 1/3)
+     by the local poster agent on the operator's machine via a token-authed
+     API (specs.md -> Local publish 1/3 and 2/3)
 ```
 
 ### Problem statement
@@ -55,7 +55,7 @@ Everything runs on one machine. No database, no cloud services, no queue infrast
 ### Non-goals
 
 - Multi-user access or in-app authentication (single user; the dashboard binds to localhost, with remote access provided by a Cloudflare Access-protected tunnel at `dashboard.ownaloha.land` — auth happens at the edge, not in the app; the one exception is the bearer-token guard on the agent-facing publish-job endpoints, defense in depth for the local poster agent).
-- Direct API posting to ad platforms — enabled platforms are instead posted via per-site Publish jobs, executed by Playwright on the operator's machine (see specs.md → Local publish 1/3); the remaining platforms are manual. Platform caps are enforced at generation time either way.
+- Direct API posting to ad platforms — enabled platforms are instead posted via per-site Publish jobs, executed by the local poster agent (Playwright) on the operator's machine (see specs.md → Local publish 1/3 and 2/3); the remaining platforms are manual. Platform caps are enforced at generation time either way.
 - A general project-management tool. The task queue exists to feed the Claude worker.
 - Parallel task execution (one worker at a time, by design — global lockfile).
 
@@ -251,7 +251,7 @@ Notion-inspired dark minimalism. The principle: **the UI is a document, not an a
 - **Runtime:** Node.js 20+, Linux (WSL-compatible). Dashboard on localhost (started via `start.sh` from an `@reboot` cron entry in production mode).
 - **Remote access:** a Cloudflare tunnel (`cloudflared`, also started `@reboot`) publishes the dashboard at `dashboard.ownaloha.land`, gated by Cloudflare Access. The app itself has no auth — the edge is the only gate.
 - **Worker deps:** `claude` CLI, `curl`, `jq`, `flock`, `timeout`, `fuser`. Optional (live-view login capture only, fail-closed when absent): `xvfb`, `x11vnc`, `websockify`, and the noVNC static client (specs.md → Self-hosted live-view login capture).
-- **No database, no external services** except the Dialpad API for transcript fetch and the Cloudflare tunnel for remote access; the only in-app auth is the agent-API bearer token (`AGENT_TOKEN` in root `.env.local`). Ad platforms have no API integration — enabled ones are posted via publish jobs run from the operator's machine, the rest manually (specs.md → Local publish 1/3).
+- **No database, no external services** except the Dialpad API for transcript fetch and the Cloudflare tunnel for remote access; the only in-app auth is the agent-API bearer token (`AGENT_TOKEN` in root `.env.local`). Ad platforms have no API integration — enabled ones are posted via publish jobs consumed by the local poster agent on the operator's machine, the rest manually (specs.md → Local publish 1/3 and 2/3).
 - **Timeout budget:** 30 min per task; 35 min stale-lock threshold.
 - **Config:** `config/paths.json` (external directory roots — never hardcode paths) and `config/ad-platforms.json`.
 
@@ -297,7 +297,10 @@ command-center/
     start.sh            Production start (called from @reboot cron)
   workers/
     run-worker.sh       The execution engine (cron / on-demand entry point)
-    posting/            Playwright posting scripts; auth/ holds login sessions (secret)
+    posting/            Playwright posting scripts; agent.ts + agent-auth.ts = the
+                        local poster agent run on the operator's machine (setup
+                        guide: AGENT.md; specs.md -> Local publish 2/3);
+                        auth/ holds login sessions (secret)
       capture/          Live-view login capture: session/stream/detect/server
                         (specs.md -> Self-hosted live-view login capture)
     system-prompt.md    Claude worker operating rules
@@ -331,7 +334,7 @@ command-center/
     auth-research.md    Research-spike PRD: marketplace auth-capture proposal (implemented)
     land-com-connect.md Research-spike PRD: Land.com access after the Akamai block (implemented)
     job-model-agent-facing-api.md    Feature PRD: Local publish 1/3 — publish jobs + agent API (implemented)
-    local-publish-2-local-agent.md   Feature PRD: Local publish 2/3 — local poster agent (queued)
+    local-publish-2-local-agent.md   Feature PRD: Local publish 2/3 — local poster agent (implemented)
     local-publish-3-decommission.md  Feature PRD: Local publish 3/3 — decommission server posting (queued)
   *.md                  Original design docs (Blueprint, TLDR, Worker System Spec)
 ```
