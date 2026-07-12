@@ -110,11 +110,11 @@ Operator's machine                        Linode server
 **Description:** As an operator, I want a Publish button per land site on each ad task so I control exactly what gets posted where, one site at a time.
 
 **Acceptance Criteria:**
-- [ ] `TaskCard.tsx`: for ad-builder tasks, render one Publish button per `enabled` platform (from `GET /api/posting-platforms`), each calling `POST /api/tasks/[id]/publish`
-- [ ] Approve no longer queues postings: remove `buildQueuedPostings()` and the `POST /api/run-poster` call from `approve()` — Approve only approves the ad copy
-- [ ] Button label reflects state: "Publish" (no entry / failed), disabled while `queued`/`posting`/`awaiting_auth`, "Publish again" when `posted`
-- [ ] Typecheck passes
-- [ ] Verify changes work in browser
+- [x] `TaskCard.tsx`: for ad-builder tasks, render one Publish button per `enabled` platform (from `GET /api/posting-platforms`), each calling `POST /api/tasks/[id]/publish`
+- [x] Approve no longer queues postings: remove `buildQueuedPostings()` and the `POST /api/run-poster` call from `approve()` — Approve only approves the ad copy
+- [x] Button label reflects state: "Publish" (no entry / failed), disabled while `queued`/`posting`/`awaiting_auth`, "Publish again" when `posted`
+- [x] Typecheck passes
+- [x] Verify changes work in browser
 
 ### US-009: Posting chips reflect the new lifecycle
 **Description:** As an operator, I want each site's chip to show where its publish job is, including "waiting for login".

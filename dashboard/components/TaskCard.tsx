@@ -1,10 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import type { AdPosting, Task } from '@/lib/types';
+import type { Task } from '@/lib/types';
 import { formatRelative } from '@/lib/utils';
 import FileEditorModal from './FileEditorModal';
 import PostingChips from './PostingChips';
+import PublishButtons from './PublishButtons';
 import PriorityIndicator from './PriorityIndicator';
 import SaveToKbModal from './SaveToKbModal';
 import StatusBadge from './StatusBadge';
@@ -34,22 +35,6 @@ function sortEntries(entries: WorkspaceEntry[]): WorkspaceEntry[] {
     if (sa !== sb) return sa - sb;
     return a.name.localeCompare(b.name);
   });
-}
-
-async function buildQueuedPostings(task: Task): Promise<AdPosting[]> {
-  const selected = task.metadata?.platforms;
-  if (!Array.isArray(selected)) return [];
-  const res = await fetch('/api/posting-platforms', { cache: 'no-store' });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  const { platforms } = (await res.json()) as {
-    platforms: Record<string, { enabled: boolean }>;
-  };
-  const queuedAt = new Date().toISOString();
-  return selected
-    .filter(
-      (p): p is string => typeof p === 'string' && platforms[p]?.enabled === true,
-    )
-    .map(platform => ({ platform, status: 'queued', attempts: 0, queuedAt }));
 }
 
 export default function TaskCard({ task, parentTitle, onChange }: Props) {
@@ -108,18 +93,10 @@ export default function TaskCard({ task, parentTitle, onChange }: Props) {
   }
 
   async function approve() {
-    const updates: Partial<Task> = {
+    await patch({
       status: 'completed',
       completedAt: new Date().toISOString(),
-    };
-    if (isAdBuilderTask) {
-      const postings = await buildQueuedPostings(task);
-      if (postings.length > 0) updates.postings = postings;
-    }
-    await patch(updates);
-    if (updates.postings) {
-      fetch('/api/run-poster', { method: 'POST' }).catch(() => {});
-    }
+    });
   }
 
   async function requestRevision() {
@@ -274,6 +251,10 @@ export default function TaskCard({ task, parentTitle, onChange }: Props) {
               )}
             </Section>
           ) : null}
+
+          {isAdBuilderTask && (
+            <PublishButtons task={task} onChange={onChange} />
+          )}
 
           <div className="flex items-center gap-2 pt-2">
             {task.status === 'needs_review' && (
