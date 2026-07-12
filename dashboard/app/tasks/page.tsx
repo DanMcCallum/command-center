@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import PostingFailureBanner from '@/components/PostingFailureBanner';
 import TaskCard from '@/components/TaskCard';
 import TaskForm from '@/components/TaskForm';
+import { useAgentLiveness } from '@/lib/agent-liveness';
 import type { Task, TaskStatus } from '@/lib/types';
 
 type Filter = 'all' | TaskStatus;
@@ -21,6 +22,7 @@ export default function TasksPage() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<Filter>('all');
   const [showForm, setShowForm] = useState(false);
+  const agent = useAgentLiveness();
 
   const load = useCallback(async () => {
     const res = await fetch('/api/tasks', { cache: 'no-store' });
@@ -55,7 +57,27 @@ export default function TasksPage() {
   return (
     <div className="space-y-6">
       <header className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Tasks</h1>
+        <div className="flex items-center gap-3">
+          <h1 className="text-3xl font-bold">Tasks</h1>
+          {agent.online !== null && (
+            <span
+              className="inline-flex items-center gap-1.5 text-xs text-[#6B6B6B]"
+              title={
+                agent.lastSeenAt
+                  ? `Agent last seen ${new Date(agent.lastSeenAt).toLocaleString()}`
+                  : 'Agent has never checked in'
+              }
+            >
+              <span
+                className={
+                  'w-2 h-2 rounded-full ' +
+                  (agent.online ? 'bg-[#4DAB9A]' : 'bg-[#D4A04D]')
+                }
+              />
+              Poster agent {agent.online ? 'online' : 'offline'}
+            </span>
+          )}
+        </div>
         <button
           type="button"
           onClick={() => setShowForm(v => !v)}

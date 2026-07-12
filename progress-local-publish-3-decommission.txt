@@ -15,3 +15,16 @@
   - Agent run for testing: stub dashboard with plain node http on 127.0.0.1, then `cd workers/posting && DASHBOARD_URL=... AGENT_TOKEN=... timeout 12 npx tsx agent.ts`. Note `cd x && cmd &` backgrounds the whole list — use a subshell. tsx must resolve from workers/posting (its node_modules), not repo root.
   - US-002 liveness rule: online = lastSeenAt within 3× poll interval; the agent's default poll is 15s but AGENT_POLL_SECONDS is operator-tunable and the SERVER can't see its value — pick a sensible fixed window (e.g. 3×15s=45s or a slightly forgiving 60s) and document it.
 ---
+
+## Iteration 2 - US-002: Publish buttons respect agent liveness
+- Implemented agent liveness surfacing on the tasks page:
+  - New `dashboard/lib/agent-liveness.ts`: `useAgentLiveness()` client hook returning `{online: boolean|null, lastSeenAt}` (null = first fetch not yet resolved). ONE shared module-level poller (subscriber set + refcounted setInterval) no matter how many components mount it. Polls GET /api/agent-status every 15s; online = lastSeenAt within ONLINE_WINDOW_MS = 45_000 (3x the agent's DEFAULT 15s poll — AGENT_POLL_SECONDS is operator-tunable but the server can't see it, so the window is fixed). On fetch failure it recomputes from the last known lastSeenAt so a stale "online" ages out.
+  - `dashboard/app/tasks/page.tsx`: header dot indicator "Poster agent online/offline" (teal #4DAB9A / amber #D4A04D dot), tooltip shows last-seen time; hidden until first fetch resolves (online === null).
+  - `dashboard/components/PublishButtons.tsx`: when offline, buttons go amber with ring + title tooltip and an amber warning line renders: "Poster agent offline — start it on your machine. Publishing still queues the job for when it comes back." Buttons stay clickable — publish still queues.
+- Files changed: dashboard/lib/agent-liveness.ts (new), dashboard/app/tasks/page.tsx, dashboard/components/PublishButtons.tsx, workers/posting/verify-agent-liveness.ts (new, committed harness), specs/local-publish-3-decommission.md.
+- Verified: dashboard `npx tsc --noEmit` clean; workers/posting `npm run typecheck` clean; Playwright harness (verify-agent-liveness.ts) all 6 checks pass — offline indicator, warning text, tooltip, publish-POST-still-fires, online indicator, no-warning-when-online.
+- Learnings for future iterations:
+  - page.route fixtures for /api/tasks + /api/agent-status give full control of liveness states without touching agent-status.json or tasks.json; POST-capture via a route that flips a boolean verifies "clicking still queues" with zero server writes.
+  - `page.unroute()` then re-`route()` swaps a fixture between scenarios on the same page.
+  - The tasks-page indicator hides (not "offline") until the first /api/agent-status fetch resolves — avoids an offline flash on load.
+  - US-003 can reuse useAgentLiveness + GET /api/agent-status `platforms` array for the Settings panel rewrite.

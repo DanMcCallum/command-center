@@ -32,10 +32,10 @@ Deletion is the point: every line of the VNC stack that survives is a line someo
 **Description:** As the operator, I want to know before clicking Publish that nothing will happen because the agent isn't running.
 
 **Acceptance Criteria:**
-- [ ] Task page surfaces agent state from `GET /api/agent-status`: online if `lastSeenAt` within 3× poll interval, else offline
-- [ ] Publish buttons show a warning state/tooltip when the agent is offline ("Poster agent offline — start it on your machine"); clicking still queues (job runs when the agent comes back)
-- [ ] Typecheck passes
-- [ ] Verify changes work in browser
+- [x] Task page surfaces agent state from `GET /api/agent-status`: online if `lastSeenAt` within 3× poll interval, else offline
+- [x] Publish buttons show a warning state/tooltip when the agent is offline ("Poster agent offline — start it on your machine"); clicking still queues (job runs when the agent comes back)
+- [x] Typecheck passes
+- [x] Verify changes work in browser
 
 ### US-003: Rework the Settings auth panel to read-only agent reports
 **Description:** As the operator, I want Settings to show each platform's session state from the agent, replacing the connect-via-live-view flow.

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useAgentLiveness } from '@/lib/agent-liveness';
 import type { PostingStatus, Task } from '@/lib/types';
 
 interface PlatformInfo {
@@ -9,6 +10,9 @@ interface PlatformInfo {
 }
 
 const IN_FLIGHT: PostingStatus[] = ['queued', 'posting', 'awaiting_auth'];
+
+const OFFLINE_WARNING =
+  'Poster agent offline — start it on your machine. Publishing still queues the job for when it comes back.';
 
 let platformsPromise: Promise<PlatformInfo[]> | null = null;
 
@@ -44,6 +48,8 @@ export default function PublishButtons({ task, onChange }: Props) {
   const [platforms, setPlatforms] = useState<PlatformInfo[]>([]);
   const [publishing, setPublishing] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const { online } = useAgentLiveness();
+  const offline = online === false;
 
   useEffect(() => {
     let cancelled = false;
@@ -97,7 +103,13 @@ export default function PublishButtons({ task, onChange }: Props) {
                 type="button"
                 disabled={inFlight || publishing === key}
                 onClick={() => publish(key)}
-                className="px-2.5 py-1 text-xs font-medium rounded bg-[#2F2F2F] text-[#4DAB9A] hover:bg-[#373737] transition-colors disabled:opacity-50 disabled:hover:bg-[#2F2F2F]"
+                title={offline ? OFFLINE_WARNING : undefined}
+                className={
+                  'px-2.5 py-1 text-xs font-medium rounded bg-[#2F2F2F] hover:bg-[#373737] transition-colors disabled:opacity-50 disabled:hover:bg-[#2F2F2F] ' +
+                  (offline
+                    ? 'text-[#D4A04D] ring-1 ring-inset ring-[#D4A04D]/40'
+                    : 'text-[#4DAB9A]')
+                }
               >
                 {posting?.status === 'posted' ? 'Publish again' : 'Publish'}
               </button>
@@ -105,6 +117,9 @@ export default function PublishButtons({ task, onChange }: Props) {
           );
         })}
       </div>
+      {offline && (
+        <div className="text-xs text-[#D4A04D] mt-2">{OFFLINE_WARNING}</div>
+      )}
       {error && <div className="text-xs text-[#FF4D4D] mt-2">{error}</div>}
     </div>
   );
