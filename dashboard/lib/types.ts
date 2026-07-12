@@ -19,7 +19,7 @@ export const TASK_TYPES: TaskType[] = [
   'Admin',
 ];
 
-export type PostingStatus = 'queued' | 'posting' | 'posted' | 'failed';
+export type PostingStatus = 'queued' | 'posting' | 'awaiting_auth' | 'posted' | 'failed';
 
 export interface AdPosting {
   platform: string;

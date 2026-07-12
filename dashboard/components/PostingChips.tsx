@@ -6,6 +6,7 @@ import type { AdPosting, PostingStatus, Task } from '@/lib/types';
 export const POSTING_COLORS: Record<PostingStatus, { color: string; label: string }> = {
   queued: { color: '#6B6B6B', label: 'Queued' },
   posting: { color: '#4DA3D4', label: 'Posting…' },
+  awaiting_auth: { color: '#D4A04D', label: 'Waiting for login…' },
   posted: { color: '#4DAB9A', label: 'Posted' },
   failed: { color: '#FF4D4D', label: 'Failed' },
 };

@@ -1,0 +1,24 @@
+# Progress — Local Publish Part 1: Publish Job Model & Agent-Facing API
+
+## Iteration 1 - US-001: Extend the posting state model
+- Added 'awaiting_auth' to the PostingStatus union in dashboard/lib/types.ts
+  (full set: queued | posting | awaiting_auth | posted | failed).
+- Added the awaiting_auth entry to POSTING_COLORS in
+  dashboard/components/PostingChips.tsx — amber #D4A04D (same amber as
+  needs_review, fits "waiting on a human"), label "Waiting for login…".
+  That Record<PostingStatus, ...> is the only exhaustive map over posting
+  statuses in the codebase; PostingFailureBanner.tsx, TaskCard.tsx, and
+  app/api/tasks/route.ts only compare against specific literals, so they
+  needed no changes.
+- Files changed: dashboard/lib/types.ts, dashboard/components/PostingChips.tsx
+- Verified: `npx tsc --noEmit` in dashboard/ exits 0.
+- Learnings for future iterations:
+  - dashboard/package.json has NO typecheck script — run `npx tsc --noEmit`
+    from dashboard/ (takes ~30-60 s; fine to background it).
+  - workers/ has no references to PostingStatus or posting-status literals;
+    the type lives only in dashboard/lib/types.ts.
+  - The working tree carries many uncommitted changes from other features —
+    always `git add` only the files you touched, never `git add -A`.
+  - The chip label "Waiting for login…" already matches what US-009 asks
+    for, so US-009 can focus on the Retry-action rewiring.
+---
