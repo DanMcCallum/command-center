@@ -115,6 +115,40 @@ export async function updateTask(
   });
 }
 
+export type TaskMutationResult =
+  | { outcome: 'updated'; task: Task }
+  | { outcome: 'rejected' }
+  | { outcome: 'not_found' };
+
+/**
+ * Atomic read-modify-write of one task under the write mutex, for endpoints
+ * whose precondition check and write must be a single step (e.g. publish /
+ * claim flipping one postings[] entry). `mutate` returns the updated task,
+ * or null to reject without writing.
+ */
+export async function mutateTask(
+  id: string,
+  mutate: (task: Task) => Task | null,
+): Promise<TaskMutationResult> {
+  return serialize(async () => {
+    const tasks = await readJson<Task[]>(TASKS_FILE, []);
+    const idx = tasks.findIndex(t => t.id === id);
+    if (idx === -1) return { outcome: 'not_found' as const };
+    const existing = tasks[idx];
+    const mutated = mutate(existing);
+    if (!mutated) return { outcome: 'rejected' as const };
+    const merged: Task = {
+      ...mutated,
+      id: existing.id,
+      createdAt: existing.createdAt,
+      updatedAt: nowIso(),
+    };
+    tasks[idx] = merged;
+    await writeJson(TASKS_FILE, tasks);
+    return { outcome: 'updated' as const, task: merged };
+  });
+}
+
 export async function deleteTask(id: string): Promise<boolean> {
   return serialize(async () => {
     const tasks = await readJson<Task[]>(TASKS_FILE, []);

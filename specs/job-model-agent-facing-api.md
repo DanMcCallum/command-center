@@ -58,12 +58,12 @@ Operator's machine                        Linode server
 **Description:** As an operator, clicking Publish must create a queued publish job for exactly one platform on one task.
 
 **Acceptance Criteria:**
-- [ ] `POST /api/tasks/[id]/publish` with body `{platform}` (browser-called, no agent token)
-- [ ] 400 if the platform is not `enabled: true` in `config/posting-platforms.json`; 404 if task missing
-- [ ] Creates or replaces that platform's entry in `task.postings[]` as `{platform, status:'queued', attempts: prev+1, queuedAt: now}` (preserving other platforms' entries)
-- [ ] 409 if that platform's posting is currently `queued`, `posting`, or `awaiting_auth`
-- [ ] Re-publishing a `failed` or `posted` entry is allowed (that's the retry/repost path)
-- [ ] Typecheck passes
+- [x] `POST /api/tasks/[id]/publish` with body `{platform}` (browser-called, no agent token)
+- [x] 400 if the platform is not `enabled: true` in `config/posting-platforms.json`; 404 if task missing
+- [x] Creates or replaces that platform's entry in `task.postings[]` as `{platform, status:'queued', attempts: prev+1, queuedAt: now}` (preserving other platforms' entries)
+- [x] 409 if that platform's posting is currently `queued`, `posting`, or `awaiting_auth`
+- [x] Re-publishing a `failed` or `posted` entry is allowed (that's the retry/repost path)
+- [x] Typecheck passes
 
 ### US-004: List queued jobs (agent API)
 **Description:** As the local agent, I need to see all queued publish jobs so I can pick up work.

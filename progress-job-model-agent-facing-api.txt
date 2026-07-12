@@ -49,3 +49,38 @@
   - US-004..US-007 usage pattern: `const denied = requireAgentToken(request);
     if (denied) return denied;`
 ---
+
+## Iteration 3 - US-003: Publish endpoint
+- Added POST /api/tasks/[id]/publish
+  (dashboard/app/api/tasks/[id]/publish/route.ts): validates {platform} body,
+  400 on unknown/disabled platform (config read the same way as
+  posting-platforms/route.ts: path.resolve(cwd, '..', 'config', ...)),
+  404 unknown task, 409 when that platform's posting is queued/posting/
+  awaiting_auth, otherwise REPLACES the entry with exactly
+  {platform, status:'queued', attempts: prev+1, queuedAt: now} (stale
+  lastError/listingUrl/screenshotPath intentionally dropped per spec),
+  preserving other platforms' entries. Returns the full updated task.
+- Added mutateTask(id, mutate) to dashboard/lib/data.ts: atomic
+  read-modify-write of one task under the existing serialize() mutex;
+  mutate returns Task or null-to-reject; result is a discriminated union
+  {outcome: 'updated'|'rejected'|'not_found'}. Protects id/createdAt and
+  stamps updatedAt like updateTask. **US-005 (claim) should reuse this** —
+  its queued→posting flip with 409-if-not-queued is the same shape
+  (capture the conflict reason in a closure variable, as publish does).
+- Files changed: dashboard/lib/data.ts,
+  dashboard/app/api/tasks/[id]/publish/route.ts (new)
+- Verified: `npx tsc --noEmit` exits 0; hermetic runtime test exercised all
+  criteria (400/404/409 paths, replace-not-merge, attempts prev+1, other
+  platforms preserved, posted/failed re-publish allowed).
+- Learnings for future iterations:
+  - Route handlers are runtime-testable WITHOUT a dev server and WITHOUT
+    touching the real tasks.json: build a sandbox dir with config/ and
+    dashboard/data/tasks.json, process.chdir() into sandbox/dashboard
+    BEFORE dynamically importing the route module (data.ts and config
+    paths are computed at import time from cwd), then call the exported
+    handler with a plain Request + {params: Promise.resolve({id})}.
+    Run with `npx tsx --tsconfig dashboard/tsconfig.json <script>` so the
+    '@/lib/*' path alias resolves.
+  - updateTask() is NOT safe for postings changes (check-then-write races
+    with the poster/other requests); always go through mutateTask.
+---
