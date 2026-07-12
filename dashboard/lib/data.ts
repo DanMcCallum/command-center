@@ -1,6 +1,6 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
-import type { CronConfig, Task, Todo, WorkerState } from './types';
+import type { AgentStatus, CronConfig, Task, Todo, WorkerState } from './types';
 import { generateTaskId, nowIso } from './utils';
 
 const DATA_DIR = path.join(process.cwd(), 'data');
@@ -8,6 +8,7 @@ const TASKS_FILE = path.join(DATA_DIR, 'tasks.json');
 const CRON_FILE = path.join(DATA_DIR, 'cron-config.json');
 const WORKER_STATE_FILE = path.join(DATA_DIR, 'worker-state.json');
 const TODOS_FILE = path.join(DATA_DIR, 'todos.json');
+const AGENT_STATUS_FILE = path.join(DATA_DIR, 'agent-status.json');
 
 let writeChain: Promise<unknown> = Promise.resolve();
 
@@ -183,6 +184,17 @@ export async function getWorkerState(): Promise<WorkerState> {
 export async function saveWorkerState(state: WorkerState): Promise<void> {
   return serialize(async () => {
     await writeJson(WORKER_STATE_FILE, state);
+  });
+}
+
+export async function getAgentStatus(): Promise<AgentStatus> {
+  return readJson<AgentStatus>(AGENT_STATUS_FILE, { lastSeenAt: null });
+}
+
+/** Stamps the poster agent's last poll time (backs a future online/offline UI). */
+export async function recordAgentSeen(): Promise<void> {
+  return serialize(async () => {
+    await writeJson(AGENT_STATUS_FILE, { lastSeenAt: nowIso() });
   });
 }
 

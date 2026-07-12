@@ -84,3 +84,37 @@
   - updateTask() is NOT safe for postings changes (check-then-write races
     with the poster/other requests); always go through mutateTask.
 ---
+## Iteration 4 - US-004: List queued jobs (agent API)
+- Added GET /api/publish-jobs (dashboard/app/api/publish-jobs/route.ts):
+  requireAgentToken guard, flat-maps every task's postings to
+  {taskId, taskTitle, platform, queuedAt, attempts} for status==='queued'
+  only, stamps the poll time, returns {jobs}.
+- Added AgentStatus {lastSeenAt: string|null} to lib/types.ts and
+  getAgentStatus()/recordAgentSeen() to lib/data.ts (agent-status.json in
+  DATA_DIR, written under the serialize() mutex). recordAgentSeen is called
+  on every authorized poll; getAgentStatus is there for the future
+  online/offline UI (nothing consumes it yet).
+- Generated AGENT_TOKEN (openssl rand -hex 32) into the root .env.local
+  (was missing; file is chmod 600). Never printed/logged the value — curl
+  tests re-read it via grep from .env.local inside the same shell command.
+- Gitignored dashboard/data/agent-status.json next to worker-state.json
+  (same runtime-state class).
+- Files changed: dashboard/app/api/publish-jobs/route.ts (new),
+  dashboard/lib/data.ts, dashboard/lib/types.ts, .gitignore
+- Verified: npx tsc --noEmit exits 0. Curl against `npx next dev -p 3001`:
+  no token → 401, wrong token → 401, correct token → 200 {"jobs":[]};
+  with a throwaway completed task PATCHed to have one queued (landflip) and
+  one posted (landmodo) posting, the queued one appeared with exactly the
+  spec'd fields and the posted one was excluded; agent-status.json got
+  {lastSeenAt}; task deleted afterward, jobs list back to [].
+- Learnings for future iterations:
+  - BOTH crontab lines (# COMMAND-CENTER-WORKER and # COMMAND-CENTER-POSTER)
+    are live every 5 min and share the real tasks.json — any test task must
+    be status 'completed' (so the worker ignores it) and short-lived (so
+    run-poster.sh doesn't grab a queued posting mid-test). US-010 will
+    remove the poster line.
+  - Real tasks.json currently has zero queued postings, so an empty-jobs
+    response is the steady state until US-008 ships Publish buttons.
+  - Dev-server curl loop: nohup npx next dev -p 3001, poll /api/tasks until
+    ready (~10 s), kill the pid when done.
+---

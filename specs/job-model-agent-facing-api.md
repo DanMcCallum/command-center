@@ -69,11 +69,11 @@ Operator's machine                        Linode server
 **Description:** As the local agent, I need to see all queued publish jobs so I can pick up work.
 
 **Acceptance Criteria:**
-- [ ] `GET /api/publish-jobs` guarded by `requireAgentToken`
-- [ ] Returns `{jobs: [{taskId, taskTitle, platform, queuedAt, attempts}]}` for every posting with status `queued` across all tasks
-- [ ] Records the poll time (e.g. `dashboard/data/agent-status.json` `{lastSeenAt}`) so the UI can later show agent online/offline
-- [ ] Verified with `curl`: wrong/missing token → 401; correct token → job list
-- [ ] Typecheck passes
+- [x] `GET /api/publish-jobs` guarded by `requireAgentToken`
+- [x] Returns `{jobs: [{taskId, taskTitle, platform, queuedAt, attempts}]}` for every posting with status `queued` across all tasks
+- [x] Records the poll time (e.g. `dashboard/data/agent-status.json` `{lastSeenAt}`) so the UI can later show agent online/offline
+- [x] Verified with `curl`: wrong/missing token → 401; correct token → job list
+- [x] Typecheck passes
 
 ### US-005: Claim a job (agent API)
 **Description:** As the local agent, I need to atomically claim a queued job so a job is never picked up twice.

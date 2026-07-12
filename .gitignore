@@ -21,3 +21,4 @@ workers/logs/
 
 # Worker runtime state
 dashboard/data/worker-state.json
+dashboard/data/agent-status.json

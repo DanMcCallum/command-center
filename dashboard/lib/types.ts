@@ -68,6 +68,10 @@ export interface WorkerState {
   lastTaskId: string | null;
 }
 
+export interface AgentStatus {
+  lastSeenAt: string | null;
+}
+
 export const SUPPORTED_INTERVALS = [5, 10, 15, 30, 60, 120, 240] as const;
 
 export interface Todo {
