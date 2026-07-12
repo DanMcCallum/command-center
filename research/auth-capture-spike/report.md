@@ -78,179 +78,16 @@ auth files gitignored and excluded from the file-browsing API as secrets.
 
 ---
 
-## 2. Land.com — LandFeed XML API
+## 2. Land.com — feed API (evaluated and rejected)
 
-**Verdict: sanctioned, browser-free path for Land.com — recommended, pending one
-eligibility check with Land.com support (see open questions).** The seeded
-research's headline claim holds up: Land.com publishes an official **LandFeed XML
-API** that adds, updates, and deletes listings via a single authenticated HTTPS
-POST, with no cookies, no browser session, and nothing to expire. If our account
-qualifies, this deletes the Land.com half of the auth-capture problem at its root.
-
-### How the doc fetch went (US-002 evidence)
-
-| URL | Fetched | Status | Note |
-|---|---|---|---|
-| `https://www.landsofamerica.com/LandFeed/Docs/` | 2026-07-10 | **HTTP 500** | Still errors live, exactly as the seeded research reported. |
-| `http://web.archive.org/web/20240423062829/https://www.landsofamerica.com/LandFeed/Docs/` | 2026-07-10 | **HTTP 200** | Full spec recovered here — **LandFeed API Specification, Version 2.1 (September 21, 2022)**. All details below come from this snapshot. |
-| `https://www.land.com/LandFeed/Docs/` | 2026-07-10 | **HTTP 200** | The `land.com` host (vs. `landsofamerica.com`) serves the same docs page live; the 500 is host-specific, so the spec is not gone, just flaky on one hostname. |
-| `https://www.land.com/LandFeed/schemas/LandFeedSchema1.0.xsd` | 2026-07-10 | **HTTP 200** | The XSD the feed is validated against is live and fetchable — real, current schema. |
-| `https://www.land.com/LandFeed/states/` | 2026-07-10 | **HTTP 200** | The canonical county/city name list (names must match exactly) is live. |
-| `https://www.land.com/LandFeed/` | 2026-07-10 | **HTTP 200** | The POST target endpoint responds. |
-
-So the earlier "couldn't verify firsthand" caveat is now resolved: the full v2.1
-spec, its XSD, and the supporting reference lists were all read directly.
-
-### What the feed does
-
-Customers "automatically add, update, and delete land listings by securely
-uploading XML data to Land.com via HTTPS." One POST carries the operator's **entire**
-active inventory each time; Land.com diffs it against what it already has by the
-customer's own unique listing ID:
-
-- **INSERT** — the listing ID is not yet in Land.com's system.
-- **UPDATE** — the listing ID already exists; its data is overwritten.
-- **DELETE** — a listing ID previously sent is **absent** from the new feed.
-  *Gotcha:* this makes the feed authoritative — you must send **all** listings and
-  **all** photos every time, or anything you omit is deleted. A `mode` of `test`
-  runs full validation without touching live listings or images.
-
-Processing runs 365 days/year; successfully posted data is live "within minutes."
-
-### Auth model
-
-Credentials travel **inside the XML body** (not headers), in the `<channel>`
-element — there is no OAuth, no cookie, no session:
-
-- `channel.loa_account_id` (integer) — the Land.com account ID (parent account for
-  a corporate account). Retrievable from the Land.com Admin area.
-- `channel.loa_account_email` — the email on the parent account.
-- `channel.loa_shared_key` — a **secret shared key issued by Land.com technical
-  staff** when LandFeed is enabled for the account. This is the credential we do
-  not yet have.
-- `channel.loa_account_password` — present in the schema but **deprecated**; not
-  the auth path.
-
-Transport requirements: HTTPS POST to `https://www.land.com/LandFeed/`, **TLS 1.2
-or higher**, `Content-Type: text/xml`, a valid `User-Agent` header, and a correct
-`Content-Length`. A prerequisite stated up front: an **active Land.com Corporate
-Account**, with named Primary and Alternate technical contacts (this is the
-eligibility question below — our account may be a plain advertiser, not corporate).
-
-For our stack this is a good fit: the shared key is a secret we'd store the same
-way `workers/posting/auth/*.json` are handled today (gitignored, `600`, never
-logged) — but unlike a browser session it never expires and never needs
-recapturing.
-
-### Schema (key fields)
-
-Data format is Google Base XML (an RSS 2.0 document with a `<channel>` and repeated
-`<item>` elements), validated against
-`https://www.land.com/LandFeed/schemas/LandFeedSchema1.0.xsd`. Fields most relevant
-to how we generate ads today (`config/ad-platforms.json` + Ad Builder metadata):
-
-| Field | XML element | Req? | Notes |
-|---|---|---|---|
-| Customer listing ID | `item.id` | yes | Our own unique key; drives INSERT/UPDATE/DELETE. `task.id` is a natural fit. |
-| Description | `item.description` | yes | CDATA. **No HTML, no URLs, no email addresses** — those listings are rejected outright. |
-| Custom listing title | `item.listing_title` | no | Up to 775 chars — the headline surface. |
-| Listing status | `item.listing_status` | yes | `Available` / `Contract Pending` / `Sold`. |
-| County | `item.county` | yes | Must match Land.com's county names exactly (list at `/LandFeed/states/`). |
-| State | `item.state` | yes | Full name or 2-char code. |
-| Closest city | `item.closest_city` | yes | |
-| Lot size | `item.lot_size` | yes | Acres, ≤2 decimals; residential/commercial must be ≥1 acre. |
-| Price | `item.price` | yes | Integer, no non-numeric characters. |
-| Property types | `item` attribute `propertytypes` | — | Bitwise sum (Recreational Land = 4, Undeveloped Land = 32, Hunting Land = 128, etc.), max 3 types; supersedes the legacy `property_type` tag. |
-| Main photo | `item.image_link` | no | One image URL (Land.com pulls it). |
-| Photo tour | `item.loa_photo_tour_images.image_link` | no | 0–200 image URLs. |
-| Lead routing email | `item.lead_routing_email` | no | Extra address to notify on a lead. |
-| Sales comps | `item.salesdata.*` | no | Only when `listing_status = Sold`; ties into our knowledge-base sold-ad loop. |
-
-Photos are referenced by **URL** — Land.com GETs them from links in the XML (JPEG/
-GIF/PNG/BMP, ≤2 MB each, min ~300px wide). This differs from the current poster,
-which uploads local files from `outputs/<taskId>/photos/`; a feed integration would
-need those photos reachable at a public URL.
-
-### Posting latency
-
-- **Listings:** live in **5 minutes to ~1 hour** (per the spec's FAQ).
-- **Images:** processed by a separate pass, typically **10 minutes to 6 hours**
-  depending on count.
-- Feed and image processing each email a success/warning/error report to the
-  account's technical contacts; per-listing errors don't halt the rest of the feed.
-  Results are verified by logging into the Property Control Center
-  (`propertycontrolcenter.com`) — the same admin surface the current Playwright
-  poster drives.
-
-### Cost
-
-**$0 beyond the Land.com listing plan the operator already pays for.** LandFeed is
-a feature of an account, not a metered API — the only stated prerequisite is an
-active Corporate Account and issuance of the shared key. No per-post fee, no vendor,
-no infrastructure.
-
-### Open questions for Land.com support
-
-1. **Eligibility:** Is LandFeed available on our current account tier, or does it
-   require a **Corporate Account** specifically? The spec lists "an active Land.com
-   Corporate Account" as a prerequisite — the single biggest unknown, since we may
-   be a standard advertiser.
-2. **Credential issuance:** How is the `loa_shared_key` issued, to whom, and how is
-   it rotated/revoked if leaked? (The spec says "Land.com staff will create a new
-   unique key.")
-3. **Account IDs:** Confirm our `loa_account_id` (and any child account IDs) from
-   the Admin area, and whether a corporate parent must be created first.
-4. **Cost:** Any fee or plan upgrade tied to enabling LandFeed?
-5. **Photo hosting:** Since photos are ingested by URL, is there any Land.com-hosted
-   upload path, or must we serve our `outputs/<taskId>/photos/` images at a public
-   HTTPS URL ourselves?
-6. **Schema currency:** Is `LandFeedSchema1.0.xsd` (v2.1, Sept 2022) still the
-   current schema, and is the `landsofamerica.com/LandFeed/Docs/` 500 a known issue?
-
-### Draft email to Land.com support (ready to send)
-
-> **To:** support@land.com (cc: sales@land.com)
-> **Subject:** LandFeed XML API access for my advertiser account
->
-> Hello,
->
-> I advertise land listings on Land.com and would like to enable the **LandFeed
-> XML API** so I can add, update, and delete my listings programmatically instead
-> of entering them by hand in the Property Control Center.
->
-> Could you help me confirm a few things?
->
-> 1. Is LandFeed available on my current account, or do I need a Corporate Account
->    to use it? If I need one, what's involved in setting that up?
-> 2. How do I get my **shared key** (`loa_shared_key`) and confirm my
->    **account ID** (`loa_account_id`)?
-> 3. Is there any cost or plan change associated with enabling LandFeed?
-> 4. Is `LandFeedSchema1.0.xsd` (spec version 2.1, September 2022) still the current
->    schema? The docs page at `landsofamerica.com/LandFeed/Docs/` currently returns
->    an HTTP 500 error, though `land.com/LandFeed/Docs/` loads.
->
-> My account email is daniel@ownaloha.land. Happy to provide my account ID or set
-> up the required technical contacts.
->
-> Thank you,
-> Dan
-
-### Fallback if feed access is denied
-
-If LandFeed turns out to be gated to broker/corporate tiers we can't reach, the
-fallback is to **keep the current Playwright poster for Land.com** and capture its
-login session using whatever approach we choose for Landmodo (the hosted live-view
-browser recommended in §4). Nothing about Land.com's posting *mechanics* changes in
-that case — only the login-capture UX improves alongside Landmodo's. This keeps
-Land.com functional regardless of the eligibility answer; the LandFeed API is a
-strict upgrade we adopt only if the account qualifies.
-
-**Sources** (all fetched 2026-07-10): LandFeed API Specification v2.1 via Wayback
-`web.archive.org/web/20240423062829/https://www.landsofamerica.com/LandFeed/Docs/`;
-live schema `https://www.land.com/LandFeed/schemas/LandFeedSchema1.0.xsd` (HTTP
-200); live endpoint `https://www.land.com/LandFeed/` (HTTP 200); live docs mirror
-`https://www.land.com/LandFeed/Docs/` (HTTP 200); `landsofamerica.com/LandFeed/Docs/`
-(HTTP 500).
+Land.com publishes an official bulk XML feed API for programmatically adding,
+updating, and deleting listings. This spike evaluated it in depth and it was
+**rejected**: it requires a Corporate Account with a large number of ads, which we
+don't have. The evaluation details have been removed from this report; the decision
+and its rationale are recorded once, in the decision note in `specs/specs.md`
+("Land.com access — research spike" entry). Consequence for this proposal: Land.com
+stays on the browser-session posting path, and its login capture follows the §5a
+extension cookie-export route recommended in §6.
 
 ---
 
@@ -423,9 +260,9 @@ profile over CDP or exports its cookies into the existing
 
 **Assumptions** (from the PRD): a login capture ≈ **2 min** of browser time; a
 posting run ≈ **3 min**. Sessions persist, so captures are occasional (session-rot
-re-auth, roughly 1–2/user/month). If Land.com moves to the LandFeed API (§2), only
-**Landmodo** posts through a hosted browser; if LandFeed is denied, double the
-posting minutes for the both-platforms case.
+re-auth, roughly 1–2/user/month). Only **Landmodo** posts through a hosted
+browser — Land.com stays on the existing Playwright poster with extension-exported
+cookies (§2, §5a) — so the hosted-browser minutes below are Landmodo's.
 
 - **1 user, ~10 posts/mo:** 10 posts × 3 min + ~2 captures × 2 min ≈ **0.6
   browser-hours/mo**.
@@ -692,7 +529,8 @@ from §3 (`workers/posting/recon-landmodo.ts`, 2026-07-10).
 ## 6. Comparison & Recommendation
 
 This section synthesizes §2–§5 into a single decision. The bottom line: **Land.com
-should move to the LandFeed XML API (§2) once support confirms eligibility, and
+captures its login via browser-extension cookie export (§5a) with posting egress
+through a Tailscale exit node — its feed API was evaluated and rejected (§2) — and
 Landmodo should use a hosted live-view browser — Browserbase (§4) — so the operator
 logs in inside the dashboard.** The rest of this section is the evidence for that
 call.
@@ -708,7 +546,6 @@ baseline every alternative is judged against.
 | Option (§) | UX | Effort | Reliability | Security | $/mo now | $/mo @ 20 users |
 |---|---|---|---|---|---|---|
 | **Current CLI capture** (§1, baseline) | ▼ terminal on the worker box; read-only dashboard | — (exists) | ● session rots silently; first signal is a failed post | ▲ no password custody; `600` local files | $0 | $0 (but doesn't scale to non-technical users) |
-| **LandFeed XML API** — land_com (§2) | ▲ no login at all; feed replaces capture | ● build XML feed + photo hosting; **gated on eligibility** | ▲ no session to expire; official sanctioned path | ▲ shared key, no cookies, no passwords | $0 | $0 |
 | **Browserbase** — live-view (§4) | ▲ log in inside the dashboard iframe | ● ~1–2 days SDK + iframe + poll | ▲ same-IP-class replay; **CAPTCHA solving bundled** | ▲ state stays vendor-side; no password custody | $0 (Free, 15-min cap) | **$20** (Developer) |
 | **Steel.dev** — live-view (§4) | ▲ same as Browserbase | ● ~1–2 days | ▲ same-IP replay; CAPTCHA solving | ▲ vendor-side; no passwords | $0 (one-time $30 credits) | **$250** (no cheap tier) or self-host |
 | **Anchor** — live-view (§4) | ▲ same; one-time hand-off URL | ● ~1–2 days | ▲ same-IP replay | ▲ vendor-side; no passwords | $0 ($5/mo credits) | ~$8 PAYG (or $50 floor) |
@@ -718,28 +555,32 @@ baseline every alternative is judged against.
 | **Self-hosted neko/noVNC** (§5c) | ▲ matches §4 once built | ▼ 1–2 weeks + ongoing ops | ● same-server IP, but we own every breakage | ▲ nothing leaves our infra | ~$10–40 VPS | ~$10–40 VPS |
 | **Credential vault** (§5d) | ▲ best on paper (self-healing) | ▲ ~1–2 days | ▼ headless login trips Landmodo's invisible reCAPTCHA | ▼ **stores passwords for accounts we don't own** | ~$0 | ~$0 |
 
-Reading the matrix: the LandFeed API dominates for land_com (it removes the problem
-rather than improving it), and among the browser-session options for Landmodo the
-four hosted live-view vendors are near-identical on everything except price at
-scale, where **Browserbase's $20/mo (with CAPTCHA solving bundled, which directly
-addresses Landmodo's invisible reCAPTCHA from §3) is the cheapest turnkey recurring
-option**. The credential vault is the only option that fails a hard constraint
-(password custody, ▼ security) and is separately the most fragile against Landmodo's
-reCAPTCHA; extension export and self-hosting are constraint-compliant but each trade
-away either reliability or effort for no offsetting gain over a hosted vendor.
+Reading the matrix: among the browser-session options for Landmodo the four hosted
+live-view vendors are near-identical on everything except price at scale, where
+**Browserbase's $20/mo (with CAPTCHA solving bundled, which directly addresses
+Landmodo's invisible reCAPTCHA from §3) is the cheapest turnkey recurring option**.
+The credential vault is the only option that fails a hard constraint (password
+custody, ▼ security) and is separately the most fragile against Landmodo's
+reCAPTCHA; for Landmodo, extension export and self-hosting are constraint-compliant
+but each trades away either reliability or effort for no offsetting gain over a
+hosted vendor. For land_com — whose feed API was rejected (§2) — the extension
+cookie export (§5a) is the primary path, per the decision recorded in
+`specs/specs.md`.
 
 ### Per-platform recommendation
 
-**Land.com → LandFeed XML API (§2). Fallback: hosted live-view capture (the
-Landmodo path below), keeping the current Playwright poster.**
-The LandFeed feed is Land.com's own sanctioned integration: one authenticated HTTPS
-POST adds/updates/deletes listings with a shared key that never expires and no
-browser session to capture, at $0 beyond the existing plan. It eliminates the
-Land.com auth-capture problem outright rather than merely improving its UX. The one
-open item is eligibility — the spec names a Corporate Account as a prerequisite, so
-the recommendation is contingent on the support answer to the §2 draft email; if
-feed access is denied, Land.com falls back to the same hosted live-view capture we
-recommend for Landmodo, with zero change to the existing poster mechanics.
+**Land.com → browser-extension cookie export (§5a), with posting egress via a
+Tailscale exit node. Fallback: run the poster locally, then a commercial
+residential proxy.**
+Land.com's own feed API was evaluated and rejected (§2 — it requires a Corporate
+Account with a large number of ads), so Land.com keeps the current Playwright
+poster and captures its session via the §5a extension export: the operator logs in
+in their own browser and the exported cookies become the poster's
+`auth/land_com.json`. A session minted on a residential IP should also be replayed
+from a residential IP class, so posting egress goes through a Tailscale exit node
+on a home device; if that proves impractical, run the poster locally, and beyond
+that a commercial residential proxy. Nothing about Land.com's posting mechanics
+changes.
 
 **Landmodo → hosted live-view browser, Browserbase (§4). Fallback: browser-extension
 cookie export (§5a), then self-hosted neko (§5c).**
@@ -755,14 +596,6 @@ for full data sovereignty at the cost of 1–2 weeks of build and ops.
 
 ### What would change this decision
 
-- **LandFeed eligibility denied.** If Land.com support says the feed requires a
-  Corporate Account tier we can't or won't reach, land_com drops to the hosted
-  live-view fallback and the LandFeed recommendation is shelved (revisit if we later
-  upgrade the account).
-- **LandFeed photo hosting proves impractical.** The feed ingests photos by public
-  URL (§2); if we can't serve `outputs/<taskId>/photos/` at a public HTTPS URL
-  acceptably, that raises the feed's effort enough to reconsider live-view for
-  land_com too.
 - **Landmodo adds real bot protection or MFA.** §3 found only an invisible reCAPTCHA
   and no MFA. If Landmodo later adds a visible challenge, device binding, or MFA, the
   extension and credential-vault paths degrade further and the hosted live-view
@@ -777,8 +610,7 @@ for full data sovereignty at the cost of 1–2 weeks of build and ops.
   requires that session state never leave our infrastructure, self-hosted neko (§5c)
   moves from deferred fallback to primary.
 - **Landmodo ships an API.** If the support email (§3 operator task) reveals a
-  bulk-import or feed option, Landmodo could follow the same API-first path as
-  land_com and skip browser capture entirely.
+  bulk-import or feed option, Landmodo could skip browser capture entirely.
 
 ### UX and reliability gains over the current CLI flow
 
@@ -786,8 +618,8 @@ Every recommended path is a strict improvement over the terminal ritual in §1.
 Concretely, the operator gains:
 
 - **No terminal.** Capture becomes an in-app **"Connect"** button in
-  `PostingAuthPanel.tsx` (or vanishes entirely for land_com under LandFeed) instead
-  of `npm run capture-login -- <platform>` on the command line.
+  `PostingAuthPanel.tsx` instead of `npm run capture-login -- <platform>` on the
+  command line.
 - **Capture from any device.** The live-view flow runs through the dashboard, which
   is already reachable via the Cloudflare tunnel — an expired session can be fixed
   from a phone or laptop away from the worker machine, which §1's headed-Chromium +
@@ -797,15 +629,14 @@ Concretely, the operator gains:
   file-exists/mtime panel.
 - **No silent expiry surprise.** §1's first signal of a dead session is a failed
   posting discovered after approval. A live-view Connect flow lets the operator
-  refresh proactively; and for land_com, LandFeed removes the expiring session
-  altogether.
+  refresh proactively.
 - **Usable by non-technical users.** No npm, no repo layout, no terminal knowledge —
   a second operator or assistant can self-serve a login refresh, lifting the §1 cap
   of "one technical operator."
 - **Longer-lived sessions via same-IP replay.** A vendor profile is minted and
   replayed from the same IP class (and, with Browserbase, backed by CAPTCHA
   solving), so sessions survive longer than the §5a extension's user-IP→server-IP
-  mismatch — and LandFeed's shared key never expires at all.
+  mismatch.
 - **No two-context juggling.** The browser-window-plus-terminal-Enter dance of §1
   collapses to a single in-dashboard interaction.
 - **Preserves what already works.** No password custody, secrets kept out of git and
@@ -816,26 +647,27 @@ Concretely, the operator gains:
 
 ## 7. Proposed Implementation PRD
 
-*This is a ready-to-run PRD for the approaches recommended in §6. If accepted as-is,
+*This is a ready-to-run PRD for the approach recommended in §6. If accepted as-is,
 it can be saved to `specs/auth-capture.md` with `**Status:** Draft` and handed to
-Ralph. It carries forward the two per-platform decisions — **Land.com → LandFeed XML
-API** and **Landmodo → Browserbase hosted live-view capture** — and sequences them
-config/schema → backend → UI. Vendor and marketplace onboarding are the operator's
-to do first; they are flagged as **Operator Tasks** below, not Ralph stories.*
+Ralph. It carries forward the Landmodo decision — **Browserbase hosted live-view
+capture** — and sequences it config/schema → backend → UI. Land.com's cookie-export
+path (§6) is an operator flow with no Ralph stories: the export happens in the
+operator's own browser and the poster is unchanged. Vendor and marketplace
+onboarding are the operator's to do first; they are flagged as **Operator Tasks**
+below, not Ralph stories.*
 
 ### Introduction
 
-Replace the terminal-only login-capture ritual (§1) with two in-app,
-constraint-compliant paths: post Land.com listings through its sanctioned **LandFeed
-XML API** (no browser session at all), and capture the **Landmodo** login inside the
-dashboard via a **Browserbase** hosted live-view iframe, persisting the resulting
-session back into the poster's existing `auth/landmodo.json` storageState. The app
-never sees or stores a marketplace password in either path.
+Replace the terminal-only login-capture ritual (§1) with an in-app,
+constraint-compliant path: capture the **Landmodo** login inside the dashboard via
+a **Browserbase** hosted live-view iframe, persisting the resulting session back
+into the poster's existing `auth/landmodo.json` storageState. The app never sees or
+stores a marketplace password.
 
 ### Goals
 
-- Eliminate the CLI capture step for both enabled platforms: Land.com posts via feed,
-  Landmodo re-auth is an in-dashboard **Connect** button reachable from any device.
+- Eliminate the CLI capture step for Landmodo: re-auth is an in-dashboard
+  **Connect** button reachable from any device.
 - Keep the existing poster pipeline (`workers/run-poster.sh` → `post.ts`) working with
   the smallest possible change — the Landmodo path exports cookies into the same
   `auth/<platform>.json` file the poster already loads (§4 "low-risk path").
@@ -852,84 +684,21 @@ never sees or stores a marketplace password in either path.
   themselves.
 - **No change to the other four platforms** (land_century, landflip, land_listings,
   landhub) — they stay on manual/CLI capture.
-- **No ad-copy/generation changes** — this is purely auth capture + Land.com transport;
-  char caps and DREAMS stay where they are (`config/ad-platforms.json`, generate-ad).
+- **No Land.com feed/API work** — that option was evaluated and rejected (§2).
+- **No ad-copy/generation changes** — this is purely auth capture; char caps and
+  DREAMS stay where they are (`config/ad-platforms.json`, generate-ad).
 
 ### Operator Tasks (prerequisites — NOT Ralph stories)
 
 These are human steps that must happen outside the code and gate specific stories.
 Ralph cannot do them; each blocked story notes the gate.
 
-- **OT-1 — Obtain LandFeed access.** Send the §2 draft email to Land.com support;
-  confirm LandFeed eligibility on the account (Corporate Account if required), obtain
-  the `loa_shared_key`, and confirm the `loa_account_id`. **Gates US-104's live
-  submission** (the feed builder and validation can be built and tested against the
-  XSD in `--test`/dry mode without it).
 - **OT-2 — Create a Browserbase account + API key.** Sign up, create an API key and a
   reusable **Context** for Landmodo, and put the key in `.env.local` (same secret
   class as `auth/*.json`). **Gates US-202/US-203 live capture** (the route and UI can
   be built and typechecked with the key absent, failing closed with a clear message).
-- **OT-3 — Decide public photo hosting for LandFeed.** LandFeed ingests photos by
-  public HTTPS URL (§2); pick where `outputs/<taskId>/photos/` images are served
-  (e.g. an R2/S3 bucket or the Cloudflare tunnel). **Informs US-103.**
-
----
-
-### Land.com — LandFeed XML API stories
-
-#### US-101: LandFeed config + secret plumbing
-**Description:** Add a `landfeed` config block to `config/posting-platforms.json`
-(feed endpoint `https://www.land.com/LandFeed/`, `mode: "test" | "live"`, and the
-non-secret `loa_account_id`), and read `LOA_SHARED_KEY` from the environment — never
-committed. A tiny loader validates the block and fails closed with a clear message
-when the key is absent.
-
-**Acceptance Criteria:**
-- [ ] `config/posting-platforms.json` `land_com` entry gains a `landfeed` object:
-  `{ endpoint, mode, account_id, account_email }`; `mode` defaults to `"test"`
-- [ ] A loader (e.g. `workers/posting/landfeed/config.ts`) reads the block + `LOA_SHARED_KEY` from env, throws a one-line "set LOA_SHARED_KEY" error when missing (mirrors the poster's "run capture-login" fail-fast)
-- [ ] The shared key is never written to config, logs, or the file API; `.env.local` handling matches existing secrets
-- [ ] Typecheck passes (`cd workers/posting && npm run typecheck`)
-
-#### US-102: Build a schema-valid LandFeed XML document from tasks
-**Description:** Write a builder that turns the operator's active Land.com inventory
-(approved ad tasks) into one LandFeed XML document — `<channel>` credentials plus one
-`<item>` per listing — mapping task/metadata fields to the §2 schema (id, description
-CDATA, listing_title, county/state/closest_city, lot_size, price, propertytypes
-bitmask, listing_status). It validates against the live XSD and refuses HTML/URLs/
-emails in `description`.
-
-**Acceptance Criteria:**
-- [ ] `workers/posting/landfeed/build-feed.ts` maps a list of tasks → a LandFeed XML string, credentials pulled from US-101's loader
-- [ ] Output validates against `https://www.land.com/LandFeed/schemas/LandFeedSchema1.0.xsd` (fetch once, validate locally, e.g. with `libxmljs`/`fast-xml-parser` + assertions); a unit check with one sample task passes
-- [ ] `description` is CDATA-wrapped and rejects HTML tags, URLs, and email addresses (per §2); `propertytypes` is the bitwise sum, max 3 types
-- [ ] **Feed-is-authoritative guard:** the builder emits the operator's *entire* active inventory (a comment/asserted invariant documents that an omitted id is a DELETE)
-- [ ] Typecheck passes
-
-#### US-103: Public photo URLs for feed items
-**Description:** LandFeed pulls photos by URL, but the app stores them locally at
-`outputs/<taskId>/photos/`. Add a resolver that maps each local photo to a public
-HTTPS URL (per OT-3's chosen host) and emits `image_link` + `loa_photo_tour_images`
-for each item, honoring the ≤2 MB / min-width rules.
-
-**Acceptance Criteria:**
-- [ ] A resolver (`workers/posting/landfeed/photo-urls.ts`) maps `outputs/<taskId>/photos/*` → public URLs using a configured base from OT-3; primary photo → `item.image_link`, rest → `loa_photo_tour_images.image_link` (0–200)
-- [ ] Photos exceeding 2 MB or below the min width are skipped with a logged warning rather than emitted (feed would reject them)
-- [ ] The base URL is config-driven (no hardcoded host), absent-config fails closed with a clear message
-- [ ] Typecheck passes
-
-#### US-104: Submit the feed (test mode first) and record results
-**Description:** POST the built XML to the LandFeed endpoint over HTTPS with the §2
-transport headers (`Content-Type: text/xml`, TLS 1.2+, `User-Agent`, `Content-Length`),
-defaulting to `mode: test` so nothing goes live until the operator flips it. Parse the
-response, and record per-task feed status on the task (reusing the `postings[]` shape).
-
-**Acceptance Criteria:**
-- [ ] `workers/posting/landfeed/submit.ts` POSTs the US-102 document with the correct headers; `mode` comes from config (default `test`)
-- [ ] In `test` mode it runs full validation without touching live listings (per §2) and logs the returned validation/warning/error report
-- [ ] Each task's `land_com` posting entry is PATCHed with the feed outcome (`posted`/`failed` + `lastError`) via the API, never by direct file write (matches the §"Ad posting" invariant)
-- [ ] **Live submission is gated on OT-1** (shared key); with the key absent it fails fast per US-101 and does not attempt a POST
-- [ ] Typecheck passes
+  (OT-2 keeps its original number; the former OT-1/OT-3 were feed-path prerequisites,
+  removed with that option.)
 
 ---
 
@@ -981,13 +750,10 @@ session (existing mtime display). CLI platforms keep today's read-only status.
 
 ### Story sequencing
 
-Dependency order is **config/schema → backend → UI**, per platform, and the two
-platforms are independent (either can ship first):
+Dependency order is **config/schema → backend → UI**:
 
-- **Land.com:** OT-1 → US-101 → US-102 → US-103 → US-104 (US-104 live submit gated on OT-1).
 - **Landmodo:** OT-2 → US-201 → US-202 → US-203 (US-202/203 live capture gated on OT-2).
 
 Every Ralph story above is describable in 2–3 sentences, ends in "Typecheck passes,"
-and each UI story (US-203) additionally requires browser verification. The two
-operator prerequisites (OT-1, OT-2, plus the OT-3 hosting decision) are called out
-separately and are not Ralph work.
+and each UI story (US-203) additionally requires browser verification. The operator
+prerequisite (OT-2) is called out separately and is not Ralph work.

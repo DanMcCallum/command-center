@@ -56,13 +56,13 @@ This feature removes every LandFeed reference repo-wide and leaves exactly **one
 **Description:** As the operator, I want the auth-capture research report (63 matches) cleaned so the shareable proposal no longer proposes LandFeed.
 
 **Acceptance Criteria:**
-- [ ] The LandFeed deep-dive section (§2) is removed, replaced by a one-paragraph stub: LandFeed evaluated and rejected — requires an account with a large number of ads (no link back to removed content)
-- [ ] The recommendation/comparison sections promote the former fallback for land_com and drop LandFeed from all option tables and fallback chains
-- [ ] §7's US-101–104 (LandFeed path) stories are removed; remaining §7 stories renumber or stand alone coherently
-- [ ] The draft shared-key email to Land.com is removed
-- [ ] `grep -ci landfeed research/auth-capture-spike/report.md` returns 0
-- [ ] PDF regenerated via `cd workers/posting && npx tsx render-pdf.ts` and `research/auth-capture-spike/auth-capture-proposal.pdf` is updated
-- [ ] Typecheck passes
+- [x] The LandFeed deep-dive section (§2) is removed, replaced by a one-paragraph stub: LandFeed evaluated and rejected — requires an account with a large number of ads (no link back to removed content)
+- [x] The recommendation/comparison sections promote the former fallback for land_com and drop LandFeed from all option tables and fallback chains
+- [x] §7's US-101–104 (LandFeed path) stories are removed; remaining §7 stories renumber or stand alone coherently
+- [x] The draft shared-key email to Land.com is removed
+- [x] `grep -ci landfeed research/auth-capture-spike/report.md` returns 0
+- [x] PDF regenerated via `cd workers/posting && npx tsx render-pdf.ts` and `research/auth-capture-spike/auth-capture-proposal.pdf` is updated
+- [x] Typecheck passes
 
 ### US-005: Scrub the land-com-connect spike report and home-probe.sh
 **Description:** As the operator, I want the Land.com connect spike report (35 matches) and the probe script (3 matches) cleaned so the research artifacts match the decision.

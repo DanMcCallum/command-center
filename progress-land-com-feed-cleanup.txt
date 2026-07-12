@@ -29,3 +29,31 @@
   - An Edit spanning a paragraph break in this file failed to match once; splitting into two smaller edits (one per paragraph) worked. Prefer tight, single-paragraph old_strings.
   - Historical [x] criteria may be reworded to keep coherence — the pattern used: state what the section covered, add "(that option was later rejected — see specs/specs.md)" where needed.
 ---
+
+## Iteration 3 - US-003: Scrub the four remaining spec files
+- What was implemented:
+  - specs/auth-research.md (5 mentions): key-findings bullet reworded to "official bulk XML feed API ... (that option was later rejected — see the decision note in specs/specs.md)"; US-002 retitled "Verify the Land.com feed API" with rejection parenthetical in the description; Docs-fetch criterion now says "the feed-API docs page on landsofamerica.com" (URL contained /LandFeed/); US-006 example list says "feed-API access denied".
+  - specs/job-model-agent-facing-api.md: non-goal is now plain "No Land.com feed/API integration." (OT-C mention gone too).
+  - specs/live-view-browser.md: non-goal reworded to "No Land.com feed-API work." and the "(report §2)" pointer dropped (US-004 will stub that section anyway).
+  - specs/local-publish-2-local-agent.md: dropped "No LandFeed, " from the combined non-goal.
+  - Verified: grep -rci landfeed specs/ | grep -v ':0' → only specs/specs.md:1 plus this feature's own PRD (exempt while in flight per Non-Goals); typecheck passes.
+- Files changed: the four spec files above, specs/land-com-feed-cleanup.md (checkboxes), this file.
+- Learnings for future iterations:
+  - specs/live-view-browser.md carries an UNRELATED uncommitted hunk (a paste-attempt-detection [x] criterion, other in-flight work) — do NOT plain `git add` that file. Pattern that works: write a patch with only your hunk, `git apply --cached --recount /tmp/x.patch`, then commit; the foreign hunk stays unstaged in the working tree. Check `git diff <file>` before staging any file this feature touches.
+  - The US-003 grep criterion literally says "matches only specs/specs.md", but the PRD file itself also matches — Non-Goals exempts the in-flight PRD (US-007 excludes it too), so that's the intended pass state.
+  - "feed-API" / "bulk XML feed API" is the safe rewording vocabulary — descriptive, grep-clean.
+---
+
+## Iteration 4 - US-004: Scrub research/auth-capture-spike/report.md and regenerate the PDF
+- What was implemented:
+  - §2 (173 lines: doc-fetch table, feed mechanics, auth model/loa_* fields, schema table, latency, cost, open questions, the draft shared-key email, fallback, sources) replaced with a one-paragraph stub headed "## 2. Land.com — feed API (evaluated and rejected)" pointing at the specs/specs.md decision note. Section numbering preserved so all "(§2)" cross-refs still resolve.
+  - §4 cost-projection sentence reworded: only Landmodo uses hosted-browser hours; land_com stays on the Playwright poster with extension-exported cookies.
+  - §6: bottom line + per-platform recommendation promote cookie export (§5a) + Tailscale exit node for land_com (fallback: run poster locally → commercial residential proxy); LandFeed row dropped from the comparison matrix; the two LandFeed "what would change this decision" bullets removed; "Landmodo ships an API" bullet no longer says "same API-first path as land_com"; three UX-gains clauses cleaned.
+  - §7: intro/Introduction/Goals reworded Landmodo-only (land_com cookie export flagged as an operator flow, no Ralph stories); added a "No Land.com feed/API work" non-goal; OT-1 and OT-3 removed with a parenthetical explaining OT-2 keeps its number; US-101–104 section removed entirely; sequencing reduced to the Landmodo chain.
+  - PDF regenerated (218 KB, zero raw "landfeed" byte hits); grep -ci landfeed report.md = 0; loa_shared_key/loa_account/OT-C = 0; typecheck passes.
+- Files changed: research/auth-capture-spike/report.md, research/auth-capture-spike/auth-capture-proposal.pdf, specs/land-com-feed-cleanup.md (checkboxes), this file.
+- Learnings for future iterations:
+  - For a 170-line section replacement, Edit's exact-match old_string is impractical — a python3 splice via Bash with asserted boundary lines is reliable; do all subsequent replacements with assert count==1 in the same style once the file diverges from the last Read.
+  - Iteration 3's progress-notes entry was left uncommitted (in the working tree only) — it rode along in this commit. Check `git status` for the progress file at commit time.
+  - For US-007's spot-read: specs/specs.md's auth-capture entry still says the §7 prerequisites include "decide public photo hosting" — that was OT-3, now removed from the report; specs.md may want that clause dropped for coherence (no LandFeed word involved, so grep still passes).
+  - The PDF renderer prints "Wrote ... auth-capture-proposal.pdf" with an absolute path and exits 0; verify with a raw-bytes scan (uncompressed streams keep text greppable).
