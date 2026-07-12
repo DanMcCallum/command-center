@@ -79,10 +79,10 @@ The agent lives in this repo (`workers/posting/agent.ts`) so it typechecks and e
 **Description:** As a developer, I want land_com's login detection to require a positive signal, so the `redirect_off`-only false positive can never recur.
 
 **Acceptance Criteria:**
-- [ ] On every successful login capture, the agent logs the session's cookie **names** (never values) so the operator can identify land_com's session cookie
-- [ ] `config/posting-platforms.json` documents (comment file or `specs/`) that `land_com` must get a `cookie` signal ANDed with `redirect_off` once the name is known from the first real login
-- [ ] Detection treats a `login_success` with both `cookie` and `redirect_off` as AND (both required) — covered by a unit test
-- [ ] Typecheck passes
+- [x] On every successful login capture, the agent logs the session's cookie **names** (never values) so the operator can identify land_com's session cookie
+- [x] `config/posting-platforms.json` documents (comment file or `specs/`) that `land_com` must get a `cookie` signal ANDed with `redirect_off` once the name is known from the first real login
+- [x] Detection treats a `login_success` with both `cookie` and `redirect_off` as AND (both required) — covered by a unit test
+- [x] Typecheck passes
 
 ### US-007: Operator setup guide
 **Description:** As the operator, I want a short doc that gets the agent running on my machine without archaeology.

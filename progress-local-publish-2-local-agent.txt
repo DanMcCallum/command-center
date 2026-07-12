@@ -100,3 +100,213 @@
     iteration 1's cleanup precedent = strip the postings arrays (python
     json.dump indent=2 ensure_ascii=False + trailing newline), leave updatedAt.
 ---
+## Iteration 3 - US-003: Reusable, hardened login detection
+- Reworked workers/posting/capture/detect.ts into a three-way detection API:
+  new `detectLogin(signal, snapshot, tracker): 'logged_in' | 'not_logged_in'
+  | 'blocked'`. SessionSnapshot gains optional `title`; a trimmed,
+  case-insensitive full-title match on "Access Denied" (the Akamai denial
+  signature) returns 'blocked' BEFORE anything else — it never earns
+  sawLoginPage and can never read as logged-in. redirect_off is only honored
+  after tracker.sawLoginPage (earned by actually observing the login path);
+  cookie AND redirect_off together both required (delegates to the unchanged
+  pure isLoggedIn). checkSession() now feeds detectLogin (page.title() added
+  to the snapshot) and treats blocked/not_logged_in identically (fail closed
+  into the capture timeout).
+- 7 new unit tests in detect.test.ts incl. the exact spike flow
+  (/login-as-denial → / with denial title → / with normal title) asserting
+  blocked/blocked/not_logged_in and that the denial page never sets
+  sawLoginPage. All 8 pre-existing isLoggedIn tests untouched and passing.
+- Files changed: workers/posting/capture/detect.ts,
+  workers/posting/capture/detect.test.ts, specs/local-publish-2-local-agent.md
+- Verified: workers/posting typecheck clean; npm test 26/27 (the 1 failure is
+  the known parse-ad-output fixture issue from iteration 1 — still not ours).
+  Loading compiled detect.js from /tmp pulls in ZERO
+  session/stream/server/playwright modules (checked require.cache) — that is
+  the "importable without capture server/stream" criterion, proven
+  mechanically.
+- Learnings for future iterations:
+  - IMPORTANT (working-tree landmine): session.ts/stream.ts/server.ts carry
+    UNCOMMITTED US-008 paste-detection work (incl. a `sawLoginPage` field on
+    CaptureSession that is NOT in HEAD). Do not depend on those fields in
+    code you commit — I originally used `session` as the RedirectTracker and
+    the committed tree would not have typechecked. checkSession instead keeps
+    its own WeakMap<session, RedirectTracker>. The working tree's
+    session.sawLoginPage field is now dead code owned by that WIP; leave it.
+  - Verify committed-tree typecheck when the working tree is dirty:
+    `git worktree add /tmp/x HEAD`, copy in ONLY your files, symlink
+    workers/posting/node_modules, npx tsc -p. Cheap and catches exactly this.
+  - US-004: the agent's probe should call detectLogin with its own
+    `{sawLoginPage:false}` tracker per probe, snapshot from
+    `await context.cookies()` / `page.url()` / `await page.title()`.
+    'blocked' → fail the job with an Akamai-naming lastError (AC in US-004).
+    Import from './capture/detect' is safe — no playwright at module load.
+  - "used by the agent" clause of AC-1: the literal agent call site is
+    US-004's session probe (US-004's own AC says "evaluate US-003
+    detection"); US-003 delivered the decoupling + hardened API and proved
+    importability. Wire it in US-004.
+---
+## Iteration 4 - US-004: Auth as part of the transaction (headed login)
+- New workers/posting/agent-auth.ts: authenticate() launches headed Chromium
+  (headless:false, handleSIGINT/handleSIGTERM:false — see learnings) with
+  auth/<platform>.json storageState when present, probes new_listing_url via
+  detectLogin (fresh RedirectTracker per job), and on not_logged_in reports
+  awaiting_auth (callback), gotos login_url, and polls every 2s until
+  logged_in / blocked / window closed ('login cancelled') / 15-min timeout
+  (PRD floor 10) / shouldAbort (agent shutdown). On success: storageState ->
+  auth/<platform>.json chmod 600, cookie NAMES+expiry logged (never values),
+  returns the live browser/context/page for US-005. All non-ready outcomes
+  close the browser before returning. agent.ts: processJob now runs
+  authenticate after the bundle download; usedHeadedLogin=true triggers the
+  report back to `posting`; cancelled lastError is exactly 'login cancelled'
+  (no 'agent: ' prefix — AC contract); the US-005 stub failure now reads
+  'agent: logged in — posting not implemented yet (US-005)'.
+- Files changed: workers/posting/agent-auth.ts (new),
+  workers/posting/verify-agent-auth.ts (new harness),
+  workers/posting/agent.ts, workers/posting/package.json,
+  specs/local-publish-2-local-agent.md
+- Verified: typecheck + committed-tree worktree typecheck clean; npm test
+  26/27 (known parse-ad-output fixture failure). verify-agent-auth.ts: 22/22
+  checks across 8 scenarios against a mock marketplace under Xvfb :98 (fresh
+  login, cookie-signal probe skip, redirect_off-only bounce resolve, blocked
+  at probe + at login page, window close, shouldAbort, timeout). E2E on next
+  dev -p 3001 with a transient _verify_stub platform + stub ad copy:
+  cancelled path (SIGINT mid-login-wait -> failed 'login cancelled', agent
+  exit 0) and happy path (queued->posting->awaiting_auth->posting->failed
+  US-005 stub; 9 report POSTs in dev log confirm the awaiting_auth->posting
+  flip; auth/_verify_stub.json chmod 600; no cookie values in logs). All
+  test artifacts removed, config restored byte-identical, postings stripped
+  from tasks.json (json.dump indent=2 ensure_ascii=False + newline).
+- Learnings for future iterations:
+  - PLAYWRIGHT KILLS THE PROCESS ON CTRL-C: chromium.launch defaults
+    handleSIGINT/handleSIGTERM to true — playwright closes the browser and
+    force-exits (130) when a browser is open, BEFORE the agent's graceful
+    shutdown (report failed + close) can run; the job strands in
+    awaiting_auth, which 409-blocks re-publish. Fix: launch with
+    handleSIGINT:false, handleSIGTERM:false anywhere the agent owns
+    shutdown. (First suspected tsx signal relay — it wasn't; but the npm
+    agent script is now `node --import tsx agent.ts`, in-process, one less
+    relay layer. Iteration-2's node tsx/cli.mjs invocation still works.)
+  - redirect_off-only signals can NEVER pass the probe (strict US-003:
+    sawLoginPage unearned at new_listing_url). agent-auth resolves valid
+    sessions via a one-shot seeded-tracker check right after the deliberate
+    goto(login_url): non-blocked landing that bounced off the login path =
+    already logged in (~3s, no operator). The seed is used once and
+    discarded; the operator wait keeps strict semantics. Denial flow can't
+    hit it — 'blocked' returns before any tracker state.
+  - A stranded awaiting_auth/posting posting can be reset via
+    POST /api/publish-jobs/report {status:'failed'} with the agent token —
+    the recovery path for any crashed-agent test.
+  - `cd X && (loop) & PID=$!` backgrounds the cd too — the main shell never
+    changes dir and the next command runs from the wrong cwd. cd on its own
+    line before backgrounding.
+  - Unexplained one-off: during e2e run 1 the status recorder saw
+    awaiting_auth revert to posting for ~4s then back, with only 1 claim +
+    1 report in the dev-server log (writes are atomic renames). Never
+    reproduced across 3 later runs with md5 watching. If seen again,
+    suspect next-dev read anomaly / multi-worker fs weirdness — not agent
+    behavior.
+  - US-005: authenticate() returns {browser, context, page, usedHeadedLogin}
+    — post in that context, then browser.close() in finally (agent.ts
+    already does the close + the posting flip). verify-agent-auth.ts's mock
+    marketplace + Xvfb :98 harness is the template for driving the posting
+    flow without real sites; extend it with a mock listing form.
+  - US-006 AC-1 (log cookie names on every successful capture) is already
+    satisfied by finishLogin's names-only log line.
+## Iteration 5 - US-005: Post in the same browser context and report results
+- Refactored both posters (post-landmodo.ts / post-land_com.ts) to drive an
+  already-authenticated page instead of launching their own browser: new
+  `PostContext` in post-common.ts ({page, outputDir, platform?}) — the caller
+  owns the browser lifecycle, posters never close it. platform config is
+  injectable (agent passes its loaded config; CLI passes its own; tests pass
+  mocks). post.ts exports POSTERS + Poster type, its CLI main() is guarded
+  by `require.main === module` (it now owns the headless browser +
+  requireAuthState for local dev against outputs/). agent.ts: claimJob now
+  returns the full task (claim response body — metadata feeds
+  requireListingFacts), preflight (bundle download, zero-photos check,
+  parseAdOutput, config, POSTERS lookup) all happen BEFORE authenticate so a
+  doomed job never pops a login window; after auth the poster runs in
+  auth.page, then: success -> uploadProof (POST /api/tasks/[id]/proof, raw
+  PNG; server returns {path} used as screenshotPath) + report posted with
+  listingUrl (postedAt is server-stamped); failure -> one-line lastError
+  capped at 300 chars (`oneLineError`), failure-state screenshot of the
+  still-open page uploaded via the same proof route, report failed. Browser
+  close stays in the processJob finally (both paths).
+- Files changed: workers/posting/{post-common,post-landmodo,post-land_com,
+  post,agent}.ts, workers/posting/verify-agent-post.ts (new committed
+  harness), specs/local-publish-2-local-agent.md
+- Verified: both typechecks + committed-tree worktree typecheck clean;
+  npm test 26/27 (known parse-ad-output fixture failure, still not ours).
+  verify-agent-post.ts: 23/23 checks headless (landmodo happy path with
+  multipart field-value + 2-photo assertions, dry run never POSTs, expired
+  session throws with page left open, missing submit names the SELECTORS
+  block, land_com happy path). Agent e2e on next dev -p 3001 with landmodo
+  config pointed at a mock marketplace (auto-login JS, real auth/landmodo.json
+  + config backed up and restored byte-identical, md5-checked): happy path
+  queued->posting->awaiting_auth->posting->posted with listingUrl,
+  server-stamped postedAt, proof PNG landing at
+  outputs/<id>/postings/landmodo.png and screenshotPath recorded; failure
+  path (mock form without submit) -> failed, lastError one line (151 chars,
+  "agent: Could not find the submit button ..."), failure screenshot
+  uploaded/overwritten. No orphan chromium processes after either run; no
+  cookie values in logs. All test state cleaned (postings stripped from
+  tasks.json, outputs postings/ dir removed, .agent-cache test dir removed).
+- Learnings for future iterations:
+  - The AC's "refactor post-common path helpers to accept a base dir" was
+    already true (listPhotos/requirePhotos/saveProofScreenshot all take
+    outputDir); the real decoupling was page injection via PostContext.
+    requirePhotos' exact error string is unit-tested — left untouched; the
+    agent does its own zero-photo preflight at bundle time instead.
+  - saveProofScreenshot returns a PROJECT_ROOT-relative path; the agent
+    resolves it back to absolute to read bytes for upload. Works because
+    .agent-cache lives under the project root.
+  - The proof route response is {path, size}; path is exactly the
+    screenshotPath the dashboard expects (workers/workspace/outputs/...).
+    Report the proof path, never the local cache path.
+  - pkill -f BIT ME TWICE (iteration-1 warning holds): a cleanup line
+    `pkill -f "us005-mock-marketplace.js"` killed the invoking bash itself
+    (its -c string contains the pattern) and aborted the rest of the cleanup
+    script — restore steps after it silently didn't run. Kill by port
+    (`fuser -k PORT/tcp`) or exact PID, and verify restores with md5sum.
+  - `pgrep -f` also matches your own wrapper; a "mock-running" check false
+    -positived. curl the port instead of pgrep to check server liveness.
+  - Backgrounding servers from the harness: plain `cmd &` inside one Bash
+    call can die with the call; `nohup cmd & disown` survived reliably.
+  - US-006 is next: AC-1 (cookie names logged on every capture) already
+    satisfied by finishLogin; remaining work is the config/spec documentation
+    of land_com's cookie signal and a unit test asserting cookie AND
+    redirect_off semantics (US-003's detect.test.ts already covers AND — check
+    whether it asserts exactly the US-006 wording before writing a new test).
+---
+## Iteration 6 - US-006: Positive login signal for land_com
+- Mostly a landed-already story: AC-1 (cookie names logged on every capture) was
+  delivered by US-004's finishLogin (agent-auth.ts logs names+expiry only), and
+  AC-3 (cookie AND redirect_off = both required) was already unit-tested by
+  US-003 ("detectLogin: cookie AND redirect_off are both required" +
+  isLoggedIn "combined signals: both must hold" in capture/detect.test.ts) —
+  verified they assert exactly the US-006 semantics, wrote no duplicate test.
+  The new work was AC-2: config/posting-platforms.json's `_doc` now documents
+  that land_com must gain a login_success.cookie ANDed with redirect_off (the
+  Akamai false-positive history, where the operator gets the cookie name from
+  — the agent's names-only capture log line — and that AND is unit-tested).
+- Files changed: config/posting-platforms.json (_doc only),
+  specs/local-publish-2-local-agent.md (US-006 checked off)
+- Verified: workers/posting typecheck clean; npm test 26/27 (the 1 failure is
+  the pre-existing parse-ad-output fixture issue from iteration 1 — still not
+  ours; all 15 detect tests pass). Both the working-tree and staged config
+  versions validated as JSON via python json.load.
+- Learnings for future iterations:
+  - config/posting-platforms.json carries UNCOMMITTED WIP (land_com login_url
+    /account/login -> /login + matching redirect_off) belonging to the capture
+    -stack US-008 work — do NOT sweep it into your commit. Partial-stage
+    non-interactively: git show HEAD:file > tmp, apply your edit to tmp,
+    blob=$(git hash-object -w tmp), git update-index --cacheinfo
+    100644,$blob,file. Then commit WITHOUT naming the file as a commit path
+    (git commit <path> re-adds from the working tree and destroys the partial
+    stage); verify with git status --short showing MM for that file.
+  - US-007 (operator setup guide) is the last unchecked story, then the Ship
+    step. For AGENT.md: .gitignore already covers workers/posting/.agent-cache/
+    (added in US-002) — confirm auth/ coverage while writing the doc; env vars
+    are DASHBOARD_URL, AGENT_TOKEN, AGENT_POLL_SECONDS (default 15); wipe a bad
+    session with rm auth/<platform>.json; chip flow to describe is
+    queued -> posting -> awaiting_auth -> posting -> posted.
+---
