@@ -1,0 +1,49 @@
+# Progress — Local publish 2/3: the local poster agent
+
+## Iteration 1 - US-001: Agent scaffold and poll loop
+- Implemented `workers/posting/agent.ts`: config loading (env with root-.env.local
+  fallback, exits 1 with a clear message naming missing vars), FIFO poll loop hitting
+  `GET /api/publish-jobs` with the Bearer token, per-poll job-count logging, and
+  SIGINT/SIGTERM handlers that cut the poll sleep short and exit cleanly (second
+  signal = hard exit). Added `"agent": "tsx agent.ts"` npm script.
+- Files changed: workers/posting/agent.ts (new), workers/posting/package.json,
+  specs/local-publish-2-local-agent.md (US-001 checked off)
+- Verified: typecheck clean; live run against `npx next dev -p 3001` with a job queued
+  via `POST /api/tasks/task-1783741270364-bo28kt/publish {"platform":"landmodo"}` —
+  job visible in the log each poll; SIGINT to the node process mid-poll logged
+  "SIGINT received — shutting down" / "agent stopped" and left no orphan processes;
+  missing DASHBOARD_URL exits 1 with the config message (AGENT_TOKEN resolved via the
+  .env.local fallback, proving the fallback path).
+- Learnings for future iterations:
+  - PRE-EXISTING TEST FAILURE (not US-001): `parse-ad-output.test.ts` "parses headline
+    and description from a real landmodo sample" fails because the working tree's
+    sample fixture `workers/workspace/outputs/task-1780891259218-ppunbv/landmodo.md`
+    was edited (description no longer ends with "Reply now for parcel details and GPS
+    location."). Confirmed by stashing my changes and re-running: 19/20 pass either
+    way. Don't burn time on it; don't count it against your story — but if a future
+    story touches parse-ad-output, fix the fixture assertion then.
+  - To signal the agent in tests: `kill -INT $!` hits the npx wrapper, which does NOT
+    forward SIGINT — find the real process with `pgrep -P` chains (npx → sh → tsx →
+    node) and signal the deepest node. Also `pgrep -f "agent.ts"` matches your own
+    bash wrapper (the -c command string contains the pattern) — you will SIGINT your
+    own script. Anchor the pattern or use -P parent walking.
+  - Queue a test job with `POST /api/tasks/<id>/publish {platform}` (no token needed,
+    browser route). Cleanup: I removed the test posting from tasks.json after killing
+    the dev server, matching the app's serialization exactly:
+    `JSON.stringify(data, null, 2) + '\n'` equivalent = python json.dump with
+    indent=2, ensure_ascii=False, plus a trailing newline (default ensure_ascii=True
+    escapes the "·" in task titles and pollutes the diff).
+  - AGENT_TOKEN is already in root .env.local; DASHBOARD_URL is not — tests must pass
+    it via env. Agent reads env first, then root .env.local (same regex pattern as
+    capture/stream.ts readProjectEnvVar; duplicated into agent.ts deliberately —
+    agent must not import capture/stream.ts, it dies in Part 3).
+  - agent.ts gets PROJECT_ROOT from post-common.ts (safe import: no playwright at
+    module load, resolves root by looking for config/posting-platforms.json).
+  - US-002 will need a queued job again: re-run the publish POST above. The
+    "next up" job selection (FIFO by queuedAt) is already in the loop; claiming
+    goes where the "Claiming and processing land in US-002…US-005" comment sits.
+  - Dev server: `fuser -k 3001/tcp` first, `npx next dev -p 3001` (port 3000 = stale
+    prod). tasks.json currently has ZERO postings on any task and only 2 ad tasks
+    (task-1783741270364-bo28kt, task-1783741999340-sfsooi), both needs_review with
+    real outputs under workers/workspace/outputs/.
+---
