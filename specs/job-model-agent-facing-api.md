@@ -120,11 +120,11 @@ Operator's machine                        Linode server
 **Description:** As an operator, I want each site's chip to show where its publish job is, including "waiting for login".
 
 **Acceptance Criteria:**
-- [ ] `PostingChips.tsx` renders `awaiting_auth` as a distinct chip (e.g. "Waiting for login…")
-- [ ] The Retry action calls `POST /api/tasks/[id]/publish` (re-queue) instead of `POST /api/run-poster`; remove the `MAX_ATTEMPTS` auto-retry copy (retries are now manual re-publishes)
-- [ ] `failed` chips still surface `lastError` on hover/popover
-- [ ] Typecheck passes
-- [ ] Verify changes work in browser
+- [x] `PostingChips.tsx` renders `awaiting_auth` as a distinct chip (e.g. "Waiting for login…")
+- [x] The Retry action calls `POST /api/tasks/[id]/publish` (re-queue) instead of `POST /api/run-poster`; remove the `MAX_ATTEMPTS` auto-retry copy (retries are now manual re-publishes)
+- [x] `failed` chips still surface `lastError` on hover/popover
+- [x] Typecheck passes
+- [x] Verify changes work in browser
 
 ### US-010: Retire server-side poster kickoff
 **Description:** As a developer, I must make sure the worker box can never pick up a publish job, because posting from its blocked datacenter IP is the known-bad path.

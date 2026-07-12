@@ -11,8 +11,6 @@ export const POSTING_COLORS: Record<PostingStatus, { color: string; label: strin
   failed: { color: '#FF4D4D', label: 'Failed' },
 };
 
-const MAX_ATTEMPTS = 3;
-
 let namesPromise: Promise<Record<string, string>> | null = null;
 
 function loadDisplayNames(): Promise<Record<string, string>> {
@@ -46,6 +44,7 @@ export default function PostingChips({ task, onChange }: Props) {
   const postings = task.postings ?? [];
   const [names, setNames] = useState<Record<string, string>>({});
   const [retrying, setRetrying] = useState<string | null>(null);
+  const [retryError, setRetryError] = useState<{ platform: string; message: string } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -59,33 +58,25 @@ export default function PostingChips({ task, onChange }: Props) {
 
   if (postings.length === 0) return null;
 
-  async function retry(platform: string) {
+  async function retry(platform: string): Promise<boolean> {
     setRetrying(platform);
+    setRetryError(null);
     try {
-      // Re-fetch before rewriting so a concurrent poster update to another
-      // posting isn't clobbered by the full-array-replace PATCH.
-      const res = await fetch(`/api/tasks/${task.id}`, { cache: 'no-store' });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const fresh = (await res.json()) as Task;
-      const updated = (fresh.postings ?? []).map(p =>
-        p.platform === platform
-          ? {
-              ...p,
-              status: 'queued' as const,
-              attempts: 0,
-              queuedAt: new Date().toISOString(),
-              lastError: undefined,
-            }
-          : p,
-      );
-      const patch = await fetch(`/api/tasks/${task.id}`, {
-        method: 'PATCH',
+      const res = await fetch(`/api/tasks/${task.id}/publish`, {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ postings: updated }),
+        body: JSON.stringify({ platform }),
       });
-      if (!patch.ok) throw new Error(`HTTP ${patch.status}`);
-      fetch('/api/run-poster', { method: 'POST' }).catch(() => {});
+      if (!res.ok) {
+        const body = (await res.json().catch(() => null)) as { error?: string } | null;
+        setRetryError({ platform, message: body?.error ?? `HTTP ${res.status}` });
+        return false;
+      }
       onChange();
+      return true;
+    } catch {
+      setRetryError({ platform, message: 'Request failed — is the dashboard reachable?' });
+      return false;
     } finally {
       setRetrying(null);
     }
@@ -103,6 +94,7 @@ export default function PostingChips({ task, onChange }: Props) {
               posting={p}
               name={name}
               retrying={retrying === p.platform}
+              retryError={retryError?.platform === p.platform ? retryError.message : null}
               onRetry={() => retry(p.platform)}
             />
           );
@@ -138,12 +130,14 @@ function FailedChip({
   posting,
   name,
   retrying,
+  retryError,
   onRetry,
 }: {
   posting: AdPosting;
   name: string;
   retrying: boolean;
-  onRetry: () => Promise<void>;
+  retryError: string | null;
+  onRetry: () => Promise<boolean>;
 }) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLSpanElement>(null);
@@ -186,7 +180,7 @@ function FailedChip({
             {posting.lastError || 'No error message recorded.'}
           </pre>
           <div className="text-xs text-[#6B6B6B]">
-            Attempts: {posting.attempts} of {MAX_ATTEMPTS}
+            Attempts: {posting.attempts}
           </div>
           {posting.screenshotPath && (
             <a
@@ -198,23 +192,17 @@ function FailedChip({
               View screenshot
             </a>
           )}
-          {posting.attempts >= MAX_ATTEMPTS ? (
-            <button
-              type="button"
-              disabled={retrying}
-              onClick={async () => {
-                await onRetry();
-                setOpen(false);
-              }}
-              className="px-2 py-0.5 text-xs font-medium rounded bg-[#2F2F2F] text-[#9B9B9B] hover:bg-[#373737] hover:text-white transition-colors disabled:opacity-50"
-            >
-              Retry
-            </button>
-          ) : (
-            <div className="text-xs text-[#6B6B6B]">
-              Will retry automatically on the next poster run.
-            </div>
-          )}
+          <button
+            type="button"
+            disabled={retrying}
+            onClick={async () => {
+              if (await onRetry()) setOpen(false);
+            }}
+            className="px-2 py-0.5 text-xs font-medium rounded bg-[#2F2F2F] text-[#9B9B9B] hover:bg-[#373737] hover:text-white transition-colors disabled:opacity-50"
+          >
+            Retry
+          </button>
+          {retryError && <div className="text-xs text-[#FF4D4D]">{retryError}</div>}
         </div>
       )}
     </span>
