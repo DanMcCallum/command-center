@@ -3,15 +3,17 @@
  *
  * Usage: npm run post -- land_com <taskId> [--dry-run]
  *
- * Requires a saved session from `npm run capture-login -- land_com`.
+ * Drives an already-authenticated page handed in by the caller (the local
+ * poster agent's headed browser, or post.ts's headless one built from the
+ * saved capture-login session) — the caller owns the browser lifecycle.
  * Fills the new-listing form from the parsed ad copy plus task metadata,
  * uploads photos from <outputDir>/photos/ when present, saves a full-page
  * proof screenshot, and returns the live listing URL after submit.
  */
-import { chromium } from 'playwright'
 import type { Page } from 'playwright'
 import {
   AdCopy,
+  PostContext,
   PostOptions,
   PosterTask,
   PostResult,
@@ -19,7 +21,6 @@ import {
   listPhotos,
   loadPlatformConfig,
   loginExpiredError,
-  requireAuthState,
   requireListingFacts,
   saveProofScreenshot,
   splitLocation,
@@ -54,64 +55,56 @@ export const LAND_COM_SELECTORS = {
 export async function postToLandCom(
   task: PosterTask,
   adCopy: AdCopy,
-  opts: PostOptions & { outputDir: string }
+  opts: PostOptions & PostContext
 ): Promise<PostResult> {
-  const config = loadPlatformConfig(PLATFORM)
-  const authPath = requireAuthState(PLATFORM)
+  const config = opts.platform ?? loadPlatformConfig(PLATFORM)
   const facts = requireListingFacts(task)
   const { county, state } = splitLocation(facts.location)
   const photos = listPhotos(opts.outputDir)
+  const page = opts.page
 
-  const browser = await chromium.launch()
-  try {
-    const context = await browser.newContext({ storageState: authPath })
-    const page = await context.newPage()
-    await page.goto(config.new_listing_url, { waitUntil: 'domcontentloaded' })
-
-    if (await onLoginPage(page)) {
-      throw loginExpiredError(PLATFORM, page.url())
-    }
-
-    await fillField(page, LAND_COM_SELECTORS.title, adCopy.headline, 'title', SCRIPT)
-    await fillField(page, LAND_COM_SELECTORS.description, adCopy.description, 'description', SCRIPT)
-    await fillField(page, LAND_COM_SELECTORS.price, String(facts.priceUsd), 'price', SCRIPT)
-    await fillField(page, LAND_COM_SELECTORS.acreage, String(facts.acreage), 'acreage', SCRIPT)
-    await fillField(page, LAND_COM_SELECTORS.state, state, 'state', SCRIPT)
-    await fillField(page, LAND_COM_SELECTORS.county, county, 'county', SCRIPT)
-
-    const photoInput = page.locator(LAND_COM_SELECTORS.photos).first()
-    if (photos.length > 0 && (await photoInput.count()) > 0) {
-      await photoInput.setInputFiles(photos)
-    }
-
-    if (opts.dryRun) {
-      const screenshotPath = await saveProofScreenshot(page, opts.outputDir, PLATFORM)
-      return { listingUrl: null, screenshotPath }
-    }
-
-    const submit = page.locator(LAND_COM_SELECTORS.submit).first()
-    if ((await submit.count()) === 0) {
-      throw new Error(
-        `Could not find the submit button (tried: ${LAND_COM_SELECTORS.submit}). ` +
-          `Update the SELECTORS block in ${SCRIPT}.`
-      )
-    }
-    const formUrl = page.url()
-    await submit.click()
-    // A successful create navigates away from the form; staying put means
-    // validation errors (or a silent rejection) — surface that as a failure.
-    await page.waitForURL((url) => url.toString() !== formUrl, { timeout: 30_000 })
-    await page.waitForLoadState('domcontentloaded')
-    if (await onLoginPage(page)) {
-      throw loginExpiredError(PLATFORM, page.url())
-    }
-
-    const listingUrl = page.url()
-    const screenshotPath = await saveProofScreenshot(page, opts.outputDir, PLATFORM)
-    return { listingUrl, screenshotPath }
-  } finally {
-    await browser.close()
+  await page.goto(config.new_listing_url, { waitUntil: 'domcontentloaded' })
+  if (await onLoginPage(page)) {
+    throw loginExpiredError(PLATFORM, page.url())
   }
+
+  await fillField(page, LAND_COM_SELECTORS.title, adCopy.headline, 'title', SCRIPT)
+  await fillField(page, LAND_COM_SELECTORS.description, adCopy.description, 'description', SCRIPT)
+  await fillField(page, LAND_COM_SELECTORS.price, String(facts.priceUsd), 'price', SCRIPT)
+  await fillField(page, LAND_COM_SELECTORS.acreage, String(facts.acreage), 'acreage', SCRIPT)
+  await fillField(page, LAND_COM_SELECTORS.state, state, 'state', SCRIPT)
+  await fillField(page, LAND_COM_SELECTORS.county, county, 'county', SCRIPT)
+
+  const photoInput = page.locator(LAND_COM_SELECTORS.photos).first()
+  if (photos.length > 0 && (await photoInput.count()) > 0) {
+    await photoInput.setInputFiles(photos)
+  }
+
+  if (opts.dryRun) {
+    const screenshotPath = await saveProofScreenshot(page, opts.outputDir, PLATFORM)
+    return { listingUrl: null, screenshotPath }
+  }
+
+  const submit = page.locator(LAND_COM_SELECTORS.submit).first()
+  if ((await submit.count()) === 0) {
+    throw new Error(
+      `Could not find the submit button (tried: ${LAND_COM_SELECTORS.submit}). ` +
+        `Update the SELECTORS block in ${SCRIPT}.`
+    )
+  }
+  const formUrl = page.url()
+  await submit.click()
+  // A successful create navigates away from the form; staying put means
+  // validation errors (or a silent rejection) — surface that as a failure.
+  await page.waitForURL((url) => url.toString() !== formUrl, { timeout: 30_000 })
+  await page.waitForLoadState('domcontentloaded')
+  if (await onLoginPage(page)) {
+    throw loginExpiredError(PLATFORM, page.url())
+  }
+
+  const listingUrl = page.url()
+  const screenshotPath = await saveProofScreenshot(page, opts.outputDir, PLATFORM)
+  return { listingUrl, screenshotPath }
 }
 
 async function onLoginPage(page: Page): Promise<boolean> {

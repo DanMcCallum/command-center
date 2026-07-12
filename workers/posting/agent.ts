@@ -9,8 +9,12 @@
  */
 import * as fs from 'node:fs'
 import * as path from 'node:path'
+import type { Page } from 'playwright'
 import { authenticate } from './agent-auth'
+import { parseAdOutput } from './parse-ad-output'
+import { POSTERS } from './post'
 import { loadPlatformConfig, PROJECT_ROOT } from './post-common'
+import type { AdCopy, PlatformConfig, PosterTask, PostResult } from './post-common'
 
 interface AgentConfig {
   dashboardUrl: string
@@ -135,8 +139,12 @@ async function apiError(res: Response): Promise<string> {
   return `HTTP ${res.status}`
 }
 
-/** Atomically claim a queued job. 'conflict' = someone else got it (409). */
-async function claimJob(config: AgentConfig, job: PublishJob): Promise<'claimed' | 'conflict'> {
+/**
+ * Atomically claim a queued job; the claim response is the full task, whose
+ * metadata (price/acreage/location) the posting scripts need.
+ * 'conflict' = someone else got it (409).
+ */
+async function claimJob(config: AgentConfig, job: PublishJob): Promise<PosterTask | 'conflict'> {
   const res = await fetch(`${config.dashboardUrl}/api/publish-jobs/claim`, {
     method: 'POST',
     headers: {
@@ -149,7 +157,7 @@ async function claimJob(config: AgentConfig, job: PublishJob): Promise<'claimed'
   if (!res.ok) {
     throw new Error(`claim failed: ${await apiError(res)}`)
   }
-  return 'claimed'
+  return (await res.json()) as PosterTask
 }
 
 /**
@@ -160,7 +168,12 @@ async function claimJob(config: AgentConfig, job: PublishJob): Promise<'claimed'
 async function reportPosting(
   config: AgentConfig,
   job: PublishJob,
-  patch: { status: 'posting' | 'awaiting_auth' | 'posted' | 'failed'; lastError?: string; listingUrl?: string }
+  patch: {
+    status: 'posting' | 'awaiting_auth' | 'posted' | 'failed'
+    lastError?: string
+    listingUrl?: string
+    screenshotPath?: string
+  }
 ): Promise<void> {
   try {
     const res = await fetch(`${config.dashboardUrl}/api/publish-jobs/report`, {
@@ -198,7 +211,10 @@ const PLATFORM_PATTERN = /^[a-z0-9_]+$/
  * Photos are size-checked against the server's Content-Length after writing.
  * Throws with a one-line message naming what failed.
  */
-async function downloadBundle(config: AgentConfig, job: PublishJob): Promise<string> {
+async function downloadBundle(
+  config: AgentConfig,
+  job: PublishJob
+): Promise<{ taskDir: string; photoCount: number }> {
   if (!TASK_ID_PATTERN.test(job.taskId) || !PLATFORM_PATTERN.test(job.platform)) {
     throw new Error(`refusing unsafe job identifiers (taskId "${job.taskId}", platform "${job.platform}")`)
   }
@@ -244,32 +260,110 @@ async function downloadBundle(config: AgentConfig, job: PublishJob): Promise<str
     }
   }
   log(`bundle cached: ${job.platform}.md + ${bundle.photos.length} photo(s) in .agent-cache/${job.taskId}/`)
-  return taskDir
+  return { taskDir, photoCount: bundle.photos.length }
 }
 
-/** Claim, download, and (in US-004/US-005) auth + post one job. */
+// --- posting -----------------------------------------------------------------
+
+// lastError renders in a dashboard chip popover — one line, hard cap.
+const LAST_ERROR_MAX = 300
+
+/** First line of an error, truncated to LAST_ERROR_MAX chars. */
+function oneLineError(err: unknown): string {
+  const line = (err instanceof Error ? err.message : String(err)).split('\n')[0].trim()
+  return line.length > LAST_ERROR_MAX ? `${line.slice(0, LAST_ERROR_MAX - 1)}…` : line
+}
+
+/**
+ * Upload a local PNG as the job's proof screenshot. Returns the server-side
+ * path (for the posting's screenshotPath) or undefined on failure — a lost
+ * screenshot never fails the job, it is only logged.
+ */
+async function uploadProof(
+  config: AgentConfig,
+  job: PublishJob,
+  localPngPath: string
+): Promise<string | undefined> {
+  try {
+    const bytes = fs.readFileSync(localPngPath)
+    const res = await fetch(
+      `${config.dashboardUrl}/api/tasks/${encodeURIComponent(job.taskId)}` +
+        `/proof?platform=${encodeURIComponent(job.platform)}`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${config.agentToken}`,
+          'Content-Type': 'image/png',
+        },
+        body: new Uint8Array(bytes),
+      }
+    )
+    if (!res.ok) {
+      log(`proof upload for ${job.platform}/${job.taskId} failed: ${await apiError(res)}`)
+      return undefined
+    }
+    const body = (await res.json()) as { path?: string }
+    return body.path
+  } catch (err) {
+    log(`proof upload for ${job.platform}/${job.taskId} failed: ${oneLineError(err)}`)
+    return undefined
+  }
+}
+
+/**
+ * After a posting failure, capture what the browser was looking at and upload
+ * it as the proof screenshot so the operator can see the failure state.
+ * Best-effort: returns the server-side path or undefined.
+ */
+async function captureFailureProof(
+  config: AgentConfig,
+  job: PublishJob,
+  page: Page,
+  taskDir: string
+): Promise<string | undefined> {
+  if (page.isClosed()) return undefined
+  try {
+    const postingsDir = path.join(taskDir, 'postings')
+    fs.mkdirSync(postingsDir, { recursive: true })
+    const localPath = path.join(postingsDir, `${job.platform}.png`)
+    await page.screenshot({ path: localPath, fullPage: true })
+    return await uploadProof(config, job, localPath)
+  } catch (err) {
+    log(`failure screenshot for ${job.platform}/${job.taskId} not captured: ${oneLineError(err)}`)
+    return undefined
+  }
+}
+
+/** Claim one job, download its bundle, then auth + post in one browser. */
 async function processJob(config: AgentConfig, job: PublishJob): Promise<void> {
-  const claim = await claimJob(config, job)
-  if (claim === 'conflict') {
+  const task = await claimJob(config, job)
+  if (task === 'conflict') {
     log(`claim conflict for ${job.platform}/${job.taskId} — someone else got it, skipping`)
     return
   }
   log(`claimed ${job.platform}/${job.taskId}`)
 
+  // Preflight everything that can fail without a browser: bundle download,
+  // ad-copy parse, platform config, poster lookup. A doomed job must never
+  // pop a login window at the operator.
+  let taskDir: string
+  let adCopy: AdCopy
+  let platform: PlatformConfig
   try {
-    await downloadBundle(config, job)
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err)
-    log(`job ${job.platform}/${job.taskId} failed: ${message}`)
-    await reportPosting(config, job, { status: 'failed', lastError: `agent: ${message}` })
-    return
-  }
-
-  let platform
-  try {
+    const bundle = await downloadBundle(config, job)
+    taskDir = bundle.taskDir
+    if (bundle.photoCount === 0) {
+      throw new Error('no photos on the server for this task — upload photos and Publish again')
+    }
+    adCopy = parseAdOutput(taskDir, job.platform)
     platform = loadPlatformConfig(job.platform)
+    if (!POSTERS[job.platform]) {
+      throw new Error(
+        `no posting script implemented for "${job.platform}" (implemented: ${Object.keys(POSTERS).join(', ')})`
+      )
+    }
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err)
+    const message = oneLineError(err)
     log(`job ${job.platform}/${job.taskId} failed: ${message}`)
     await reportPosting(config, job, { status: 'failed', lastError: `agent: ${message}` })
     return
@@ -298,19 +392,45 @@ async function processJob(config: AgentConfig, job: PublishJob): Promise<void> {
     return
   }
 
+  // Post in the same, already-authenticated browser context, then push every
+  // result the dashboard needs back through the API. The browser closes when
+  // the job finishes, success or failure (the finally owns it).
   try {
     if (auth.usedHeadedLogin) {
       await reportPosting(config, job, { status: 'posting' })
     }
-    // TODO(US-005): post via POSTERS[job.platform] using auth.context and the
-    // cached bundle, then report posted + upload the proof screenshot. Until
-    // then, fail the job explicitly rather than stranding it in `posting`
-    // (a stranded job blocks re-publish; `failed` keeps the Publish-again
-    // path open on the dashboard).
+
+    let result: PostResult
+    try {
+      log(`posting ${job.platform}/${job.taskId}`)
+      result = await POSTERS[job.platform](task, adCopy, {
+        outputDir: taskDir,
+        page: auth.page,
+        platform,
+      })
+    } catch (err) {
+      const message = oneLineError(err)
+      log(`job ${job.platform}/${job.taskId} failed: ${message}`)
+      const screenshotPath = await captureFailureProof(config, job, auth.page, taskDir)
+      await reportPosting(config, job, {
+        status: 'failed',
+        lastError: `agent: ${message}`,
+        ...(screenshotPath && { screenshotPath }),
+      })
+      return
+    }
+
+    // saveProofScreenshot returns a PROJECT_ROOT-relative path; the local file
+    // is in the cache dir. Upload it so the dashboard's screenshot link works,
+    // then report posted (the server stamps postedAt).
+    const localShot = path.resolve(PROJECT_ROOT, result.screenshotPath)
+    const screenshotPath = await uploadProof(config, job, localShot)
     await reportPosting(config, job, {
-      status: 'failed',
-      lastError: 'agent: logged in — posting not implemented yet (US-005)',
+      status: 'posted',
+      ...(result.listingUrl && { listingUrl: result.listingUrl }),
+      ...(screenshotPath && { screenshotPath }),
     })
+    log(`job ${job.platform}/${job.taskId} posted: ${result.listingUrl ?? '(no listing URL)'}`)
   } finally {
     await auth.browser.close().catch(() => {})
   }

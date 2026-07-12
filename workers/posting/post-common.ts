@@ -57,6 +57,25 @@ export interface PostOptions {
   dryRun?: boolean
 }
 
+/**
+ * What a posting script needs from its caller. The caller owns the browser:
+ * the page arrives already authenticated (agent.ts hands over the window the
+ * operator just logged in through; post.ts builds one from the saved auth
+ * state) and is never closed by the poster.
+ */
+export interface PostContext {
+  /** Already-authenticated page the poster drives. */
+  page: Page
+  /**
+   * Base dir holding <platform>.md and photos/ — the server's
+   * outputs/<taskId>/ for the CLI, the agent's .agent-cache/<taskId>/ mirror
+   * on the operator's machine.
+   */
+  outputDir: string
+  /** Loaded platform config; posters fall back to loadPlatformConfig(). */
+  platform?: PlatformConfig
+}
+
 export interface PostResult {
   /** Live listing URL after submit; null on --dry-run. */
   listingUrl: string | null

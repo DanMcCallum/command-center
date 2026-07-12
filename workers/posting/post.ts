@@ -1,23 +1,29 @@
 /**
- * CLI runner for the per-platform posting scripts.
+ * CLI runner for the per-platform posting scripts, and home of the POSTERS
+ * registry the local poster agent invokes (specs/local-publish-2-local-agent.md
+ * US-005).
  *
  * Usage: npm run post -- <platform> <taskId> [--dry-run]
  *
- * Fetches the task from the dashboard API (DASHBOARD_URL, default
- * http://localhost:3000), parses the generated ad copy for the platform, and
- * hands both to the platform's posting script. Logs go to stderr; the final
- * line on stdout is a JSON PostResult so the caller can parse
- * listingUrl/screenshotPath.
+ * The CLI is the local-dev path: it reads the server-side outputs/ layout,
+ * builds a headless browser from the saved capture-login session, and hands
+ * the authenticated page to the platform's posting script. The agent builds
+ * the same PostContext from its headed browser and cache dir instead.
+ * Logs go to stderr; the final line on stdout is a JSON PostResult so the
+ * caller can parse listingUrl/screenshotPath.
  */
 import * as path from 'node:path'
+import { chromium } from 'playwright'
 import { parseAdOutput } from './parse-ad-output'
 import {
   AdCopy,
   OUTPUTS_DIR,
+  PostContext,
   PostOptions,
   PosterTask,
   PostResult,
   loadPlatformConfig,
+  requireAuthState,
   requirePhotos,
 } from './post-common'
 import { postToLandCom } from './post-land_com'
@@ -25,13 +31,13 @@ import { postToLandmodo } from './post-landmodo'
 
 const DASHBOARD_URL = process.env.DASHBOARD_URL || 'http://localhost:3000'
 
-type Poster = (
+export type Poster = (
   task: PosterTask,
   adCopy: AdCopy,
-  opts: PostOptions & { outputDir: string }
+  opts: PostOptions & PostContext
 ) => Promise<PostResult>
 
-const POSTERS: Record<string, Poster> = {
+export const POSTERS: Record<string, Poster> = {
   landmodo: postToLandmodo,
   land_com: postToLandCom,
 }
@@ -77,6 +83,7 @@ async function main(): Promise<void> {
     )
   }
 
+  const authPath = requireAuthState(platformKey)
   const task = await fetchTask(taskId)
   const outputDir = path.join(OUTPUTS_DIR, taskId)
   requirePhotos(outputDir, taskId) // fail fast before any browser launch
@@ -85,16 +92,26 @@ async function main(): Promise<void> {
   console.error(
     `Posting task ${taskId} to ${platform.display_name}${dryRun ? ' (dry run)' : ''}...`
   )
-  const result = await poster(task, adCopy, { dryRun, outputDir })
-  console.error(
-    dryRun
-      ? `Dry run complete — form filled, screenshot at ${result.screenshotPath}`
-      : `Posted: ${result.listingUrl} (screenshot: ${result.screenshotPath})`
-  )
-  console.log(JSON.stringify(result))
+  const browser = await chromium.launch()
+  try {
+    const context = await browser.newContext({ storageState: authPath })
+    const page = await context.newPage()
+    const result = await poster(task, adCopy, { dryRun, outputDir, page, platform })
+    console.error(
+      dryRun
+        ? `Dry run complete — form filled, screenshot at ${result.screenshotPath}`
+        : `Posted: ${result.listingUrl} (screenshot: ${result.screenshotPath})`
+    )
+    console.log(JSON.stringify(result))
+  } finally {
+    await browser.close()
+  }
 }
 
-main().catch((err) => {
-  console.error(err instanceof Error ? err.message : err)
-  process.exit(1)
-})
+// Guarded so agent.ts can import POSTERS without running the CLI.
+if (require.main === module) {
+  main().catch((err) => {
+    console.error(err instanceof Error ? err.message : err)
+    process.exit(1)
+  })
+}

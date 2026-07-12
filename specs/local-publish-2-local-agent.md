@@ -68,12 +68,12 @@ The agent lives in this repo (`workers/posting/agent.ts`) so it typechecks and e
 **Description:** As the agent, after auth I post the ad in the same browser and push every result the dashboard needs back over the API.
 
 **Acceptance Criteria:**
-- [ ] `POSTERS[platform]` from `post.ts` is invoked with the already-authenticated context and the local cache paths (refactor `post-common.ts` path helpers to accept a base dir instead of hardcoding `workers/workspace/outputs`)
-- [ ] Success: PATCH posting to `posted` with `postedAt` + `listingUrl`; upload the proof screenshot via `POST /api/tasks/[id]/proof`
-- [ ] Failure: PATCH `failed` with `lastError` (truncated to a reasonable length), screenshot of the failure state uploaded when the page is still open
-- [ ] The browser closes when the job finishes, success or failure
-- [ ] The existing standalone `post.ts <platform> <taskId>` CLI still typechecks (it may keep reading `outputs/` directly for local dev)
-- [ ] Typecheck passes
+- [x] `POSTERS[platform]` from `post.ts` is invoked with the already-authenticated context and the local cache paths (refactor `post-common.ts` path helpers to accept a base dir instead of hardcoding `workers/workspace/outputs`)
+- [x] Success: PATCH posting to `posted` with `postedAt` + `listingUrl`; upload the proof screenshot via `POST /api/tasks/[id]/proof`
+- [x] Failure: PATCH `failed` with `lastError` (truncated to a reasonable length), screenshot of the failure state uploaded when the page is still open
+- [x] The browser closes when the job finishes, success or failure
+- [x] The existing standalone `post.ts <platform> <taskId>` CLI still typechecks (it may keep reading `outputs/` directly for local dev)
+- [x] Typecheck passes
 
 ### US-006: Positive login signal for land_com
 **Description:** As a developer, I want land_com's login detection to require a positive signal, so the `redirect_off`-only false positive can never recur.
