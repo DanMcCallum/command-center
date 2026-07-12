@@ -88,10 +88,10 @@ The agent lives in this repo (`workers/posting/agent.ts`) so it typechecks and e
 **Description:** As the operator, I want a short doc that gets the agent running on my machine without archaeology.
 
 **Acceptance Criteria:**
-- [ ] `workers/posting/AGENT.md`: prerequisites (Node version, `npm install`, `npx playwright install chromium`), the three env vars with an example `.env.local`, how to point `DASHBOARD_URL` at the server (Tailscale or tunnel hostname), where sessions live locally, and how to wipe a bad session (`rm auth/<platform>.json`)
-- [ ] Includes the security notes: `AGENT_TOKEN` and `auth/*.json` are secrets, chmod 600, never committed (confirm `.gitignore` covers `.agent-cache/` and `auth/`)
-- [ ] A "first publish" walkthrough: start agent → click Publish on the dashboard → expect the browser popup → log in → watch the chip go `awaiting_auth → posting → posted`
-- [ ] Typecheck passes
+- [x] `workers/posting/AGENT.md`: prerequisites (Node version, `npm install`, `npx playwright install chromium`), the three env vars with an example `.env.local`, how to point `DASHBOARD_URL` at the server (Tailscale or tunnel hostname), where sessions live locally, and how to wipe a bad session (`rm auth/<platform>.json`)
+- [x] Includes the security notes: `AGENT_TOKEN` and `auth/*.json` are secrets, chmod 600, never committed (confirm `.gitignore` covers `.agent-cache/` and `auth/`)
+- [x] A "first publish" walkthrough: start agent → click Publish on the dashboard → expect the browser popup → log in → watch the chip go `awaiting_auth → posting → posted`
+- [x] Typecheck passes
 
 ## Non-Goals
 

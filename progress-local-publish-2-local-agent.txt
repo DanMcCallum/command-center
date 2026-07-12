@@ -310,3 +310,30 @@
     session with rm auth/<platform>.json; chip flow to describe is
     queued -> posting -> awaiting_auth -> posting -> posted.
 ---
+## Iteration 7 - US-007: Operator setup guide
+- Wrote workers/posting/AGENT.md: prerequisites (Node 20+, npm install,
+  npx playwright install chromium), the three env vars with an example root
+  .env.local (env-first, project-root .env.local fallback — NOT
+  dashboard/.env.local), DASHBOARD_URL options (Tailscale recommended; the
+  Cloudflare tunnel hostname is gated by Access so agent requests need an
+  edge allowance — called out rather than glossed over; localhost for dev),
+  session location auth/<platform>.json chmod 600 + rm to wipe,
+  .agent-cache note, security notes (gitignore coverage of auth/ and
+  .agent-cache/ confirmed via git check-ignore before documenting), and the
+  first-publish walkthrough (queued -> posting -> awaiting_auth -> posting ->
+  posted, 15-min login window, close-window = 'login cancelled', no
+  auto-retry).
+- Files changed: workers/posting/AGENT.md (new),
+  specs/local-publish-2-local-agent.md (US-007 checked off)
+- Verified: workers/posting typecheck clean; npm test 26/27 (the 1 failure is
+  the pre-existing parse-ad-output fixture issue from iteration 1 — still not
+  ours).
+- Learnings for future iterations:
+  - Doc facts were pulled from code, not memory: login wait is 15 min
+    (DEFAULT_LOGIN_TIMEOUT_MS in agent-auth.ts, PRD floor is 10), poll default
+    15s, trailing slash stripped from DASHBOARD_URL by loadConfig.
+  - All US-001..US-007 ACs are now [x]; header still says Status: Draft.
+    NEXT ITERATION IS THE SHIP STEP (specs.md summary + readme.md fixes +
+    flip header to Implemented). Remember the untracked
+    specs/local-publish-3-decommission.md references and the dirty working
+    tree: commit only the files the ship step touches.
