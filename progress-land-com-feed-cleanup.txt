@@ -15,3 +15,17 @@
   - The working tree has many unrelated modified files (other in-flight work) — stage only this feature's files explicitly, never `git add -A`.
   - When rewording historical "key verified findings" bullets, point at the specs.md decision note without using the word LandFeed so the one-reference rule holds for later stories (US-007 sweep).
 ---
+
+## Iteration 2 - US-002: Scrub specs/land-com-connect.md
+- What was implemented:
+  - Removed all 18 LandFeed mention lines from specs/land-com-connect.md: intro families list now ends with a "feed API evaluated and rejected — see specs/specs.md" parenthetical; "comparing all four families" → "comparing the families"; Goals lost the LandFeed-endpoint clause and the whole "Re-anchor" bullet; OT-A probe description dropped LandFeed; OT-C operator task deleted entirely.
+  - US-001's section-headings criterion reworded (heading list minus LandFeed API, with a parenthetical noting the option was later rejected); US-002's description + probe-URL criterion dropped the three /LandFeed/ URLs and the block-scope conclusion now just says "which land.com surfaces are blocked".
+  - US-006 reduced to the PRD's stub form: "### US-006: Removed / Removed: the Land.com feed-API option was rejected — see the decision note in specs/specs.md." (worded without the word LandFeed so grep stays 0).
+  - US-008's "what would change this decision" example list, the sanctioned-options non-goal, the Technical Considerations citations, and the HTTP-200-on-07-10 bullet all cleaned.
+  - Verified: grep -ci landfeed = 0, grep OT-C = no hits, typecheck passes.
+- Files changed: specs/land-com-connect.md, specs/land-com-feed-cleanup.md (checkboxes), this file.
+- Learnings for future iterations:
+  - The PRD's suggested US-006 stub text says "LandFeed rejected" but the grep-0 criterion wins — word stubs as "the Land.com feed-API option was rejected" instead.
+  - An Edit spanning a paragraph break in this file failed to match once; splitting into two smaller edits (one per paragraph) worked. Prefer tight, single-paragraph old_strings.
+  - Historical [x] criteria may be reworded to keep coherence — the pattern used: state what the section covered, add "(that option was later rejected — see specs/specs.md)" where needed.
+---

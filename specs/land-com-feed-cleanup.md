@@ -36,10 +36,10 @@ This feature removes every LandFeed reference repo-wide and leaves exactly **one
 **Description:** As the operator, I want the Land.com connect spike spec cleaned of LandFeed references (17 matches) so no spec still treats the feed as a live option.
 
 **Acceptance Criteria:**
-- [ ] LandFeed mentions removed or reworded throughout: the intro/context paragraphs, US-002's probe-URL criteria (drop the three `/LandFeed/` URLs and the block-scope conclusion about them), US-006 ("Re-anchor the LandFeed API option" — remove the story or reduce it to a one-line "removed: LandFeed rejected, see specs.md" stub), the OT-C operator task, the "what would change this decision" bullets, the sanctioned-options constraint sentence, and the source-citation pointers to LandFeed report sections
-- [ ] `grep -ci landfeed specs/land-com-connect.md` returns 0
-- [ ] Remaining checked acceptance criteria still read as complete, coherent sentences
-- [ ] Typecheck passes
+- [x] LandFeed mentions removed or reworded throughout: the intro/context paragraphs, US-002's probe-URL criteria (drop the three `/LandFeed/` URLs and the block-scope conclusion about them), US-006 ("Re-anchor the LandFeed API option" — remove the story or reduce it to a one-line "removed: LandFeed rejected, see specs.md" stub), the OT-C operator task, the "what would change this decision" bullets, the sanctioned-options constraint sentence, and the source-citation pointers to LandFeed report sections
+- [x] `grep -ci landfeed specs/land-com-connect.md` returns 0
+- [x] Remaining checked acceptance criteria still read as complete, coherent sentences
+- [x] Typecheck passes
 
 ### US-003: Scrub the four remaining spec files
 **Description:** As the operator, I want the light-touch spec files cleaned so `specs/` carries no LandFeed references outside the specs.md note.
