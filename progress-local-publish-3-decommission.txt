@@ -28,3 +28,16 @@
   - `page.unroute()` then re-`route()` swaps a fixture between scenarios on the same page.
   - The tasks-page indicator hides (not "offline") until the first /api/agent-status fetch resolves — avoids an offline flash on load.
   - US-003 can reuse useAgentLiveness + GET /api/agent-status `platforms` array for the Settings panel rewrite.
+
+## Iteration 3 - US-003: Rework the Settings auth panel to read-only agent reports
+- Rewrote `dashboard/components/PostingAuthPanel.tsx` from scratch: read-only per-platform rows (Session held with captured + expiry dates / No session / "No report from agent yet") sourced from the agent's report, plus a small online/offline dot; static text explains sessions are established on the operator's machine at Publish time. Connect button, live-view iframe, paste box + paste modal, and the capture polling loop are all gone.
+- `dashboard/lib/agent-liveness.ts`: useAgentLiveness() now also returns `platforms` (the hook already fetched the full AgentStatus and discarded them) — one shared poller feeds both the tasks-page indicator and the Settings panel.
+- Deleted `dashboard/app/api/posting-auth/route.ts` (the auth/*.json-statting GET) in favor of `/api/agent-status`; the connect/status/type subroutes remain for US-004 to delete.
+- Files changed: dashboard/components/PostingAuthPanel.tsx (rewrite), dashboard/lib/agent-liveness.ts, dashboard/app/api/posting-auth/route.ts (deleted), workers/posting/verify-auth-panel.ts (new committed harness), specs/local-publish-3-decommission.md.
+- Verified: dashboard `npx tsc --noEmit` clean (after `rm` of both stale `.next` validator files, then again after the dev-server run regenerated them); workers/posting `npm run typecheck` clean; Playwright harness verify-auth-panel.ts all 10 checks pass (dates, fallbacks, disabled-platform filtering, no Connect/iframe/paste UI, real 404 on the deleted route).
+- Learnings for future iterations:
+  - The rewrite deliberately discarded the pre-existing UNCOMMITTED paste-relay edits in PostingAuthPanel.tsx (working-tree dirt from before this feature) — US-003 removes that UI anyway. `dashboard/app/api/posting-auth/status/route.ts` still carries uncommitted paste-relay edits; US-004 deletes that whole route, so don't bother reconciling them.
+  - Mixed-fixture verification works: page.route fixtures for the APIs + page.request.get against the REAL server in the same harness proves a route deletion (404) without touching fixtures.
+  - toLocaleDateString() in checks: Playwright's chromium here renders en-US (7/10/2026) — harness date assertions must match that format.
+  - US-004 can now delete posting-auth/connect|status|type + dashboard/lib/capture-server.ts; nothing in components references them anymore (PostingAuthPanel was the last consumer).
+---

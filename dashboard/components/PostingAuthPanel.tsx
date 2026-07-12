@@ -1,289 +1,103 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useAgentLiveness } from '@/lib/agent-liveness';
+import type { AgentPlatformSession } from '@/lib/types';
 
-interface PostingAuthStatus {
+interface PlatformRow {
   platform: string;
   displayName: string;
-  hasSession: boolean;
-  savedAt: string | null;
 }
 
-type CaptureMode = 'live-view' | 'cli';
-
-type Capture =
-  | { phase: 'idle' }
-  | { phase: 'connecting'; platform: string }
-  | { phase: 'active'; platform: string; sessionId: string; liveViewUrl: string }
-  | { phase: 'error'; platform: string; message: string };
-
-const POLL_INTERVAL_MS = 3_000;
-const LOGIN_TIMEOUT_MINUTES = 5;
-const LOGIN_TIMEOUT_MS = LOGIN_TIMEOUT_MINUTES * 60_000;
-
-const CHIP_CLASS =
-  'inline-flex items-center px-2 py-0.5 text-xs rounded-full whitespace-nowrap';
-
 export default function PostingAuthPanel() {
-  const [statuses, setStatuses] = useState<PostingAuthStatus[] | null>(null);
-  const [modes, setModes] = useState<Record<string, CaptureMode>>({});
+  const { online, platforms: reported } = useAgentLiveness();
+  const [rows, setRows] = useState<PlatformRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [capture, setCapture] = useState<Capture>({ phase: 'idle' });
-  const [pasteText, setPasteText] = useState('');
-  const [pasteBusy, setPasteBusy] = useState(false);
-  const [pasteError, setPasteError] = useState<string | null>(null);
-
-  async function load() {
-    try {
-      const [authRes, platRes] = await Promise.all([
-        fetch('/api/posting-auth', { cache: 'no-store' }),
-        fetch('/api/posting-platforms', { cache: 'no-store' }),
-      ]);
-      const authData = await authRes.json();
-      if (!authRes.ok) throw new Error(authData.error ?? `HTTP ${authRes.status}`);
-      const platData = await platRes.json();
-      if (!platRes.ok) throw new Error(platData.error ?? `HTTP ${platRes.status}`);
-      const nextModes: Record<string, CaptureMode> = {};
-      for (const [key, cfg] of Object.entries(
-        platData.platforms as Record<string, { capture?: string }>,
-      )) {
-        nextModes[key] = cfg.capture === 'live-view' ? 'live-view' : 'cli';
-      }
-      setStatuses(authData.platforms as PostingAuthStatus[]);
-      setModes(nextModes);
-      setError(null);
-    } catch (err) {
-      setError((err as Error).message);
-    }
-  }
 
   useEffect(() => {
-    load();
-    const t = setInterval(load, 30_000);
-    return () => clearInterval(t);
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/posting-platforms', { cache: 'no-store' });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`);
+        if (cancelled) return;
+        const next: PlatformRow[] = Object.entries(
+          data.platforms as Record<string, { display_name: string; enabled: boolean }>,
+        )
+          .filter(([, cfg]) => cfg.enabled)
+          .map(([key, cfg]) => ({ platform: key, displayName: cfg.display_name }));
+        setRows(next);
+        setError(null);
+      } catch (err) {
+        if (!cancelled) setError((err as Error).message);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  // While a capture is active, poll login status until success, error, or timeout.
-  useEffect(() => {
-    if (capture.phase !== 'active') return;
-    const { sessionId, platform } = capture;
-    const deadline = Date.now() + LOGIN_TIMEOUT_MS;
-    let stopped = false;
-    const t = setInterval(async () => {
-      try {
-        const res = await fetch(
-          `/api/posting-auth/status?sessionId=${encodeURIComponent(sessionId)}&platform=${encodeURIComponent(platform)}`,
-          { cache: 'no-store' },
-        );
-        const data = await res.json().catch(() => null);
-        if (stopped) return;
-        if (!res.ok) throw new Error(data?.error ?? `HTTP ${res.status}`);
-        if (data?.loggedIn === true) {
-          setCapture({ phase: 'idle' });
-          load();
-        } else if (Date.now() > deadline) {
-          setCapture({
-            phase: 'error',
-            platform,
-            message: `Login not detected within ${LOGIN_TIMEOUT_MINUTES} minutes`,
-          });
-        }
-      } catch (err) {
-        if (!stopped) {
-          setCapture({ phase: 'error', platform, message: (err as Error).message });
-        }
-      }
-    }, POLL_INTERVAL_MS);
-    return () => {
-      stopped = true;
-      clearInterval(t);
-    };
-  }, [capture]);
-
-  // Reset the paste box whenever the capture ends or restarts.
-  useEffect(() => {
-    if (capture.phase !== 'active') {
-      setPasteText('');
-      setPasteBusy(false);
-      setPasteError(null);
-    }
-  }, [capture.phase]);
-
-  // OS-clipboard paste can't cross into the sandboxed noVNC iframe, so this
-  // relays pasted text server-side and Playwright types it into whatever
-  // field is focused in the live view (US-008).
-  async function sendPaste() {
-    if (capture.phase !== 'active' || !pasteText || pasteBusy) return;
-    setPasteBusy(true);
-    setPasteError(null);
-    try {
-      const res = await fetch('/api/posting-auth/type', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionId: capture.sessionId, text: pasteText }),
-      });
-      const data = await res.json().catch(() => null);
-      if (!res.ok || data?.typed !== true) {
-        throw new Error(data?.error ?? `HTTP ${res.status}`);
-      }
-      setPasteText('');
-    } catch (err) {
-      setPasteError((err as Error).message);
-    } finally {
-      setPasteBusy(false);
-    }
-  }
-
-  async function connect(platform: string) {
-    setCapture({ phase: 'connecting', platform });
-    try {
-      const res = await fetch('/api/posting-auth/connect', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ platform }),
-      });
-      const data = await res.json().catch(() => null);
-      if (!res.ok || !data?.liveViewUrl || !data?.sessionId) {
-        throw new Error(data?.error ?? `HTTP ${res.status}`);
-      }
-      setCapture({
-        phase: 'active',
-        platform,
-        sessionId: data.sessionId,
-        liveViewUrl: data.liveViewUrl,
-      });
-    } catch (err) {
-      setCapture({ phase: 'error', platform, message: (err as Error).message });
-    }
-  }
-
-  const busy = capture.phase === 'connecting' || capture.phase === 'active';
-  const activeName =
-    capture.phase === 'active'
-      ? (statuses?.find(s => s.platform === capture.platform)?.displayName ??
-        capture.platform)
-      : null;
+  const bySession = new Map<string, AgentPlatformSession>(
+    reported.map(s => [s.platform, s]),
+  );
 
   return (
     <div className="bg-[#202020] border border-[#373737] rounded-lg p-5 space-y-4">
       <div>
         <h2 className="text-base font-semibold">Marketplace logins</h2>
         <p className="text-xs text-[#6B6B6B] mt-1">
-          Saved browser sessions used by the ad poster. Connect opens the
-          marketplace login here in the dashboard; when a session expires,
-          re-connect (or re-run capture-login for CLI platforms).
+          Sessions are established on your machine when you click Publish — if a
+          login is needed, the poster agent opens a browser window there. This
+          panel shows what the agent last reported; nothing is stored on the
+          server.
         </p>
       </div>
 
-      {error && <div className="text-xs text-[#FF4D4D]">{error}</div>}
-
-      {!statuses && !error && (
-        <div className="text-sm text-[#6B6B6B]">Loading auth status…</div>
+      {online !== null && (
+        <div className="flex items-center gap-2 text-xs text-[#9B9B9B]">
+          <span
+            className="inline-block w-2 h-2 rounded-full"
+            style={{ backgroundColor: online ? '#4DAB9A' : '#D4A04D' }}
+          />
+          {online ? 'Poster agent online' : 'Poster agent offline'}
+        </div>
       )}
 
-      {statuses?.map(s => {
-        const liveView = modes[s.platform] === 'live-view';
+      {error && <div className="text-xs text-[#FF4D4D]">{error}</div>}
+
+      {!rows && !error && (
+        <div className="text-sm text-[#6B6B6B]">Loading platforms…</div>
+      )}
+
+      {rows?.map(r => {
+        const s = bySession.get(r.platform);
         return (
           <div
-            key={s.platform}
+            key={r.platform}
             className="flex items-center justify-between gap-3 text-sm"
           >
-            <span className="text-white">{s.displayName}</span>
-            <span className="flex items-center gap-2 min-w-0">
-              {s.hasSession ? (
-                <span className="text-[#4DAB9A] whitespace-nowrap">
-                  Session saved ({new Date(s.savedAt!).toLocaleDateString()})
-                </span>
-              ) : liveView ? (
-                <span className="text-[#E5A54B] whitespace-nowrap">No session</span>
-              ) : (
-                <span className="text-[#E5A54B]">
-                  No session — run{' '}
-                  <code className="font-mono text-xs bg-[#2F2F2F] px-1 py-0.5 rounded">
-                    npm run capture-login -- {s.platform}
-                  </code>
-                </span>
-              )}
-              {capture.phase === 'error' && capture.platform === s.platform && (
-                <span
-                  className={`${CHIP_CLASS} max-w-72 truncate`}
-                  style={{ backgroundColor: '#FF4D4D20', color: '#FF4D4D' }}
-                  title={capture.message}
-                >
-                  {capture.message}
-                </span>
-              )}
-              {capture.phase === 'connecting' &&
-                capture.platform === s.platform && (
-                  <span
-                    className={CHIP_CLASS}
-                    style={{ backgroundColor: '#4DA3D420', color: '#4DA3D4' }}
-                  >
-                    Connecting…
-                  </span>
-                )}
-              {liveView && (
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={() => connect(s.platform)}
-                  className="px-2 py-0.5 text-xs font-medium rounded bg-[#2F2F2F] text-[#9B9B9B] hover:bg-[#373737] hover:text-white transition-colors disabled:opacity-50"
-                >
-                  {s.hasSession ? 'Re-connect' : 'Connect'}
-                </button>
-              )}
-            </span>
+            <span className="text-white">{r.displayName}</span>
+            {!s ? (
+              <span className="text-[#6B6B6B] whitespace-nowrap">
+                No report from agent yet
+              </span>
+            ) : s.hasSession ? (
+              <span className="text-[#4DAB9A] whitespace-nowrap">
+                Session held
+                {s.capturedAt &&
+                  ` (captured ${new Date(s.capturedAt).toLocaleDateString()}`}
+                {s.capturedAt &&
+                  s.earliestCookieExpiry &&
+                  `, expires ${new Date(s.earliestCookieExpiry).toLocaleDateString()}`}
+                {s.capturedAt && ')'}
+              </span>
+            ) : (
+              <span className="text-[#E5A54B] whitespace-nowrap">No session</span>
+            )}
           </div>
         );
       })}
-
-      {capture.phase === 'active' && (
-        <div className="space-y-2 pt-1">
-          <span
-            className={CHIP_CLASS}
-            style={{ backgroundColor: '#4DA3D420', color: '#4DA3D4' }}
-          >
-            Log in to {activeName} below — waiting for login…
-          </span>
-          <iframe
-            src={capture.liveViewUrl}
-            sandbox="allow-same-origin allow-scripts"
-            title={`Live login for ${capture.platform}`}
-            className="w-full h-[600px] rounded border border-[#2F2F2F] bg-black"
-          />
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <input
-                type="password"
-                value={pasteText}
-                onChange={e => setPasteText(e.target.value)}
-                onKeyDown={e => {
-                  if (e.key === 'Enter') sendPaste();
-                }}
-                autoComplete="off"
-                placeholder="Paste text here, then Send…"
-                className="flex-1 px-2 py-1 text-sm rounded bg-[#2F2F2F] border border-[#373737] text-white placeholder-[#6B6B6B] focus:outline-none focus:border-[#4DA3D4]"
-              />
-              <button
-                type="button"
-                disabled={pasteBusy || !pasteText}
-                onClick={sendPaste}
-                className="px-3 py-1 text-xs font-medium rounded bg-[#2F2F2F] text-[#9B9B9B] hover:bg-[#373737] hover:text-white transition-colors disabled:opacity-50"
-              >
-                {pasteBusy ? 'Sending…' : 'Send'}
-              </button>
-            </div>
-            <p className="text-xs text-[#6B6B6B]">
-              Your clipboard can’t reach the embedded browser directly. Click
-              the target field above first, then paste here and press Enter —
-              it will be typed into that field. Nothing is stored or logged.
-            </p>
-            {pasteError && (
-              <div className="text-xs text-[#FF4D4D]">{pasteError}</div>
-            )}
-          </div>
-        </div>
-      )}
     </div>
   );
 }

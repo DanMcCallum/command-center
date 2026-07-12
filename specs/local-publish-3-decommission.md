@@ -41,11 +41,11 @@ Deletion is the point: every line of the VNC stack that survives is a line someo
 **Description:** As the operator, I want Settings to show each platform's session state from the agent, replacing the connect-via-live-view flow.
 
 **Acceptance Criteria:**
-- [ ] `PostingAuthPanel.tsx` shows per-platform: session held or not, captured date, expiry if known — sourced from `GET /api/agent-status`
-- [ ] The Connect button, live-view iframe/embed, and paste-helper UI are removed; in their place, static text: sessions are established on your machine when you click Publish
-- [ ] `GET /api/posting-auth` no longer stats server-side `auth/*.json` (rewrite to serve agent-reported data, or delete the route in favor of `/api/agent-status`)
-- [ ] Typecheck passes
-- [ ] Verify changes work in browser
+- [x] `PostingAuthPanel.tsx` shows per-platform: session held or not, captured date, expiry if known — sourced from `GET /api/agent-status`
+- [x] The Connect button, live-view iframe/embed, and paste-helper UI are removed; in their place, static text: sessions are established on your machine when you click Publish
+- [x] `GET /api/posting-auth` no longer stats server-side `auth/*.json` (rewrite to serve agent-reported data, or delete the route in favor of `/api/agent-status`)
+- [x] Typecheck passes
+- [x] Verify changes work in browser
 
 ### US-004: Delete the dashboard live-view proxy layer
 **Description:** As a developer, I want the capture proxy routes gone so the dashboard has no path to a capture server that no longer exists.

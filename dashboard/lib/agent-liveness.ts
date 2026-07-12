@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import type { AgentStatus } from '@/lib/types';
+import type { AgentPlatformSession, AgentStatus } from '@/lib/types';
 
 // The agent's default poll is 15s; AGENT_POLL_SECONDS is operator-tunable but
 // the server can't see the tuned value, so "online" is fixed at 3x the
@@ -13,10 +13,12 @@ export interface AgentLiveness {
   /** null until the first /api/agent-status fetch resolves. */
   online: boolean | null;
   lastSeenAt: string | null;
+  /** The agent's last per-platform session report. */
+  platforms: AgentPlatformSession[];
 }
 
 // One shared poller no matter how many components mount the hook.
-let current: AgentLiveness = { online: null, lastSeenAt: null };
+let current: AgentLiveness = { online: null, lastSeenAt: null, platforms: [] };
 const subscribers = new Set<(liveness: AgentLiveness) => void>();
 let timer: ReturnType<typeof setInterval> | null = null;
 
@@ -34,6 +36,7 @@ async function refresh() {
     current = {
       online: computeOnline(data.lastSeenAt),
       lastSeenAt: data.lastSeenAt,
+      platforms: data.platforms ?? [],
     };
   } catch {
     // Fetch failed: recompute from the last known lastSeenAt so a stale
