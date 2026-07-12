@@ -13,7 +13,7 @@ import type { Page } from 'playwright'
 import { authenticate } from './agent-auth'
 import { parseAdOutput } from './parse-ad-output'
 import { POSTERS } from './post'
-import { loadPlatformConfig, PROJECT_ROOT } from './post-common'
+import { AUTH_DIR, CONFIG_PATH, loadPlatformConfig, PROJECT_ROOT } from './post-common'
 import type { AdCopy, PlatformConfig, PosterTask, PostResult } from './post-common'
 
 interface AgentConfig {
@@ -192,6 +192,98 @@ async function reportPosting(
       `report ${patch.status} for ${job.platform}/${job.taskId} failed: ` +
         (err instanceof Error ? err.message : String(err))
     )
+  }
+}
+
+// --- session-status reporting ---------------------------------------------------
+
+interface PlatformSessionReport {
+  platform: string
+  hasSession: boolean
+  capturedAt: string | null
+  earliestCookieExpiry?: string
+}
+
+/**
+ * Earliest positive cookie expiry in a saved storageState file. Only the
+ * numeric expires field is ever read out — cookie values stay in the file.
+ * Unreadable/odd files just yield no expiry (the mtime still gets reported).
+ */
+function earliestCookieExpiry(authPath: string): string | undefined {
+  try {
+    const state = JSON.parse(fs.readFileSync(authPath, 'utf-8')) as {
+      cookies?: Array<{ expires?: number }>
+    }
+    const expiries = (state.cookies ?? [])
+      .map((c) => c.expires ?? -1)
+      .filter((e) => e > 0)
+    if (expiries.length === 0) return undefined
+    return new Date(Math.min(...expiries) * 1000).toISOString()
+  } catch {
+    return undefined
+  }
+}
+
+/**
+ * Scan the local auth/ dir into a per-platform session report: every enabled
+ * config platform, plus any platform that has a session file regardless.
+ * Names, mtimes, and expiry timestamps only — never cookie values.
+ */
+function buildSessionReport(): PlatformSessionReport[] {
+  const raw = fs.readFileSync(CONFIG_PATH, 'utf-8')
+  const configured = (JSON.parse(raw) as { platforms: Record<string, { enabled: boolean }> })
+    .platforms
+  const withAuthFile = fs.existsSync(AUTH_DIR)
+    ? fs
+        .readdirSync(AUTH_DIR)
+        .filter((f) => f.endsWith('.json'))
+        .map((f) => f.slice(0, -'.json'.length))
+    : []
+  const keys = [
+    ...new Set([
+      ...Object.keys(configured).filter((k) => configured[k].enabled),
+      ...withAuthFile,
+    ]),
+  ].sort()
+  return keys.map((platform) => {
+    const authPath = path.join(AUTH_DIR, `${platform}.json`)
+    if (!fs.existsSync(authPath)) return { platform, hasSession: false, capturedAt: null }
+    const expiry = earliestCookieExpiry(authPath)
+    return {
+      platform,
+      hasSession: true,
+      capturedAt: fs.statSync(authPath).mtime.toISOString(),
+      ...(expiry && { earliestCookieExpiry: expiry }),
+    }
+  })
+}
+
+/**
+ * POST the session report to the dashboard (startup and after every login
+ * capture). Never throws — the dashboard just shows the previous report until
+ * the next one lands.
+ */
+async function reportSessions(config: AgentConfig, reason: string): Promise<void> {
+  try {
+    const platforms = buildSessionReport()
+    const res = await fetch(`${config.dashboardUrl}/api/agent-status`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${config.agentToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ platforms }),
+    })
+    if (!res.ok) {
+      log(`session report (${reason}) failed: ${await apiError(res)}`)
+      return
+    }
+    const summary =
+      platforms.map((p) => `${p.platform}=${p.hasSession ? 'session' : 'none'}`).join(', ') ||
+      '(no platforms)'
+    log(`session report (${reason}): ${summary}`)
+  } catch (err) {
+    log(`session report (${reason}) failed: ${oneLineError(err)}`)
   }
 }
 
@@ -398,6 +490,8 @@ async function processJob(config: AgentConfig, job: PublishJob): Promise<void> {
   try {
     if (auth.usedHeadedLogin) {
       await reportPosting(config, job, { status: 'posting' })
+      // A fresh session was just captured to auth/ — tell the dashboard.
+      await reportSessions(config, 'login capture')
     }
 
     let result: PostResult
@@ -439,6 +533,7 @@ async function processJob(config: AgentConfig, job: PublishJob): Promise<void> {
 async function main(): Promise<void> {
   const config = loadConfig()
   log(`agent started — polling ${config.dashboardUrl} every ${config.pollSeconds}s`)
+  await reportSessions(config, 'startup')
 
   while (!shuttingDown) {
     try {

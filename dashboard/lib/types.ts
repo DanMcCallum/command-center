@@ -68,8 +68,21 @@ export interface WorkerState {
   lastTaskId: string | null;
 }
 
+/** One platform's session state as reported by the local poster agent
+ * (names, mtimes, expiry timestamps only — never cookie values). */
+export interface AgentPlatformSession {
+  platform: string;
+  hasSession: boolean;
+  /** mtime of the agent's local auth/<platform>.json; null when no session. */
+  capturedAt: string | null;
+  /** Earliest positive cookie expiry in the saved session, when known. */
+  earliestCookieExpiry?: string;
+}
+
 export interface AgentStatus {
   lastSeenAt: string | null;
+  /** Per-platform session reports from the agent's last POST /api/agent-status. */
+  platforms: AgentPlatformSession[];
 }
 
 export const SUPPORTED_INTERVALS = [5, 10, 15, 30, 60, 120, 240] as const;

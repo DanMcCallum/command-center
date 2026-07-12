@@ -1,0 +1,17 @@
+# Progress — Local Publish 3/3: Decommission (specs/local-publish-3-decommission.md)
+
+## Iteration 1 - US-001: Agent heartbeat and session-status reporting
+- Implemented the agent → dashboard session-reporting channel:
+  - `dashboard/lib/types.ts`: `AgentPlatformSession {platform, hasSession, capturedAt, earliestCookieExpiry?}`; `AgentStatus` now `{lastSeenAt, platforms}`.
+  - `dashboard/lib/data.ts`: `getAgentStatus()` normalizes old `{lastSeenAt}`-only files (`platforms: []`); `recordAgentSeen()` now PRESERVES the stored platforms report (it used to overwrite the whole file); new `saveAgentPlatformReport()` stamps `lastSeenAt` too (a report is proof of life).
+  - New `dashboard/app/api/agent-status/route.ts`: GET (browser, no token) returns the full AgentStatus; POST (requireAgentToken) validates each entry (platform `/^[a-z0-9_]+$/`, hasSession boolean, capturedAt string|null required, expiry optional string) and rebuilds entries so unknown fields are never stored.
+  - `workers/posting/agent.ts`: `buildSessionReport()` scans AUTH_DIR — reports every ENABLED config platform plus any platform with an auth file; capturedAt = file mtime, earliestCookieExpiry = min positive `expires` in the storageState (only the numeric field is read; values never logged). `reportSessions()` (never throws) fires on startup in main() and after `auth.usedHeadedLogin` in processJob.
+- Files changed: dashboard/lib/types.ts, dashboard/lib/data.ts, dashboard/app/api/agent-status/route.ts (new), workers/posting/agent.ts, specs/local-publish-3-decommission.md (ACs + header QUEUED→Draft since Part 2 shipped and this loop targets Part 3).
+- Verified: `npm run typecheck` (workers/posting) and `npx tsc --noEmit` (dashboard) both clean; throwaway sandbox route test (process.chdir + dynamic import pattern) covered 401/400/round-trip/old-shape-normalization/field-stripping; live agent run against a stub HTTP dashboard produced the exact report shape (`land_com=none, landmodo=session` with mtime + expiry).
+- Learnings for future iterations:
+  - PRE-EXISTING TEST FAILURE (not ours): `parse-ad-output.test.ts` "real landmodo sample" fails against the WORKING TREE because workers/workspace/outputs/task-1780891259218-ppunbv/landmodo.md was edited (nickname tag "(Property: Desert Basecamp)" appended) in uncommitted changes that predate this feature. Passes on HEAD (verified via stash). 26/27 pass otherwise. Don't chase it; don't commit those workspace files.
+  - The working tree carries MANY unrelated dirty files (capture/, PostingAuthPanel, configs) from before this feature — commit only the files you touched, by name.
+  - `agent-status.json` old shape was `{lastSeenAt}` only — every reader/writer must keep normalizing until nothing old remains.
+  - Agent run for testing: stub dashboard with plain node http on 127.0.0.1, then `cd workers/posting && DASHBOARD_URL=... AGENT_TOKEN=... timeout 12 npx tsx agent.ts`. Note `cd x && cmd &` backgrounds the whole list — use a subshell. tsx must resolve from workers/posting (its node_modules), not repo root.
+  - US-002 liveness rule: online = lastSeenAt within 3× poll interval; the agent's default poll is 15s but AGENT_POLL_SECONDS is operator-tunable and the SERVER can't see its value — pick a sensible fixed window (e.g. 3×15s=45s or a slightly forgiving 60s) and document it.
+---

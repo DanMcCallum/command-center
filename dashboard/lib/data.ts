@@ -1,6 +1,6 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
-import type { AgentStatus, CronConfig, Task, Todo, WorkerState } from './types';
+import type { AgentPlatformSession, AgentStatus, CronConfig, Task, Todo, WorkerState } from './types';
 import { generateTaskId, nowIso } from './utils';
 
 const DATA_DIR = path.join(process.cwd(), 'data');
@@ -188,13 +188,31 @@ export async function saveWorkerState(state: WorkerState): Promise<void> {
 }
 
 export async function getAgentStatus(): Promise<AgentStatus> {
-  return readJson<AgentStatus>(AGENT_STATUS_FILE, { lastSeenAt: null });
+  // Files written before session reporting existed lack `platforms`.
+  const raw = await readJson<Partial<AgentStatus>>(AGENT_STATUS_FILE, {});
+  return { lastSeenAt: raw.lastSeenAt ?? null, platforms: raw.platforms ?? [] };
 }
 
-/** Stamps the poster agent's last poll time (backs a future online/offline UI). */
+/** Stamps the poster agent's last poll time (backs the online/offline UI). */
 export async function recordAgentSeen(): Promise<void> {
   return serialize(async () => {
-    await writeJson(AGENT_STATUS_FILE, { lastSeenAt: nowIso() });
+    const raw = await readJson<Partial<AgentStatus>>(AGENT_STATUS_FILE, {});
+    await writeJson(AGENT_STATUS_FILE, {
+      lastSeenAt: nowIso(),
+      platforms: raw.platforms ?? [],
+    });
+  });
+}
+
+/**
+ * Stores the agent's per-platform session report (POST /api/agent-status).
+ * The report itself is proof of life, so lastSeenAt is stamped too.
+ */
+export async function saveAgentPlatformReport(
+  platforms: AgentPlatformSession[],
+): Promise<void> {
+  return serialize(async () => {
+    await writeJson(AGENT_STATUS_FILE, { lastSeenAt: nowIso(), platforms });
   });
 }
 
