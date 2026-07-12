@@ -100,11 +100,11 @@ Operator's machine                        Linode server
 **Description:** As the local agent, I need to upload the proof-of-posting screenshot so it appears in the dashboard like today.
 
 **Acceptance Criteria:**
-- [ ] `POST /api/tasks/[id]/proof?platform=<key>` guarded by `requireAgentToken`, body = PNG bytes
-- [ ] Writes to `workers/workspace/outputs/<taskId>/postings/<platform>.png` (same path the old poster used, so existing screenshot display keeps working)
-- [ ] Rejects non-PNG payloads and paths outside the outputs dir
-- [ ] Verified with `curl --data-binary @some.png` and the file appearing on disk
-- [ ] Typecheck passes
+- [x] `POST /api/tasks/[id]/proof?platform=<key>` guarded by `requireAgentToken`, body = PNG bytes
+- [x] Writes to `workers/workspace/outputs/<taskId>/postings/<platform>.png` (same path the old poster used, so existing screenshot display keeps working)
+- [x] Rejects non-PNG payloads and paths outside the outputs dir
+- [x] Verified with `curl --data-binary @some.png` and the file appearing on disk
+- [x] Typecheck passes
 
 ### US-008: Per-site Publish buttons on the task card
 **Description:** As an operator, I want a Publish button per land site on each ad task so I control exactly what gets posted where, one site at a time.

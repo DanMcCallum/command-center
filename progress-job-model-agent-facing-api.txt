@@ -183,3 +183,31 @@
   - dashboard/app/api/tasks/[id]/ contains stray task-* DIRECTORIES (route
     dirs with task-id names, from some earlier accident). Harmless but
     surprising in ls output; don't mistake them for real routes.
+
+## Iteration 7 - US-007: Proof screenshot upload (agent API)
+- Added POST /api/tasks/[id]/proof?platform=<key>
+  (dashboard/app/api/tasks/[id]/proof/route.ts): requireAgentToken guard,
+  400 on missing platform or platform not matching /^[a-z0-9_]+$/ (same
+  path-traversal guard as publish-bundle), 404 unknown task, 400 when the
+  body doesn't start with the 8-byte PNG signature, belt-and-suspenders
+  path.resolve check that the target stays inside postings/, then
+  mkdir -p postings/ and write <platform>.png. Returns {path, size} with
+  the repo-relative path (servable via /api/files like screenshotPath).
+- No enabled-platform config check (matches the old poster, which wrote
+  whatever platform script ran; the platform key only becomes a filename).
+- Files changed: dashboard/app/api/tasks/[id]/proof/route.ts (new)
+- Verified: npx tsc --noEmit exits 0. Curl against npx next dev -p 3001
+  using real task task-1783741999340-sfsooi and one of its photo PNGs:
+  no/wrong token -> 401, missing platform -> 400, platform=..%2F.. -> 400,
+  unknown task -> 404, text body -> 400 with PNG-signature message,
+  real PNG --data-binary -> 200; file on disk verified with `file` (PNG
+  1086x1448) and `cmp` (byte-identical to source). Test postings/ dir
+  removed afterward so no test artifact lingers in outputs/.
+- Learnings for future iterations:
+  - request.arrayBuffer() handles multi-MB raw bodies in App Router with
+    no route config (2.6 MB PNG worked out of the box), same as formData
+    did for photos.
+  - PNG magic is the full 8 bytes 89 50 4E 47 0D 0A 1A 0A — check all 8,
+    not just "starts with 0x89PNG".
+  - fuser -k 3001/tcp remains the safe dev-server kill (iteration 6
+    learning confirmed again).
