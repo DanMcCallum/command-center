@@ -211,3 +211,114 @@
     not just "starts with 0x89PNG".
   - fuser -k 3001/tcp remains the safe dev-server kill (iteration 6
     learning confirmed again).
+---
+
+## Iteration 8 - US-008: Per-site Publish buttons on the task card
+- New dashboard/components/PublishButtons.tsx: fetches /api/posting-platforms
+  (module-level cached promise, same pattern as PostingChips' display-name
+  loader), renders one button per enabled platform in the expanded card for
+  ad-builder tasks. Label "Publish" (no entry / failed), "Publish again"
+  (posted), disabled while queued/posting/awaiting_auth or while its own
+  POST is in flight. Click -> POST /api/tasks/[id]/publish {platform} then
+  onChange(); API errors surface as an inline red line (the route's
+  {error} body is shown verbatim, e.g. the 409 in-flight message). The
+  component renders its own "Publish" section header so a failed config
+  fetch leaves no empty header behind.
+- TaskCard.tsx: deleted buildQueuedPostings() and the POST /api/run-poster
+  fire; approve() now PATCHes only {status, completedAt}. AdPosting import
+  dropped. PublishButtons mounted in the expanded section above the action
+  row, gated on isAdBuilderTask (any status — the endpoint is the guard).
+- Files changed: dashboard/components/PublishButtons.tsx (new),
+  dashboard/components/TaskCard.tsx
+- Verified: npx tsc --noEmit exits 0. Browser (Playwright against
+  npx next dev -p 3001, script placed in workers/posting/ then deleted):
+  page.route fixtures answered GET /api/tasks, PATCH /api/tasks/[id], and
+  POST .../publish in-page so NO real queued posting ever existed (poster
+  cron is still live until US-010 — a real one could get posted for real).
+  14/14 checks: 2 buttons only (4 disabled platforms absent), posted ->
+  "Publish again", click -> exactly one POST with {"platform":"landmodo"},
+  button disabled once queued, Approve PATCH = {status,completedAt} with
+  no postings key, /api/run-poster never called.
+- Learnings for future iterations:
+  - PostingChips still calls /api/run-poster in its retry() — that is
+    US-009's rewiring job, left untouched here. US-010's "all remaining
+    callers" grep should find only PostingChips + the route itself.
+  - grep -rn over dashboard/ matches .next/ sourcemaps (200 KB of noise);
+    grep dashboard/app dashboard/components dashboard/lib instead.
+  - Route-fixture UI testing works fine with the library API (no
+    @playwright/test): page.route + fulfill({json}), mutate a shared
+    fixture object in the POST handler, page.waitForFunction on body text
+    for the post-onChange re-render.
+
+## Iteration 9 - US-009: Posting chips reflect the new lifecycle
+- Rewired PostingChips.tsx retry(): now POST /api/tasks/[id]/publish
+  {platform} (the publish route owns the queued/attempts+1 semantics)
+  instead of the old refetch -> full-array PATCH -> POST /api/run-poster
+  dance. Removed the MAX_ATTEMPTS const, the "of 3" attempts copy, and the
+  "Will retry automatically on the next poster run" branch — Retry is now
+  offered on every failed chip regardless of attempt count. Publish-route
+  errors (e.g. the 409 in-flight message) render as an inline red line in
+  the popover; the popover only closes when the re-publish succeeded
+  (onRetry returns Promise<boolean>). retryError state is keyed by
+  platform so it only shows on the chip that failed.
+- awaiting_auth chip needed nothing — iteration 1 already added it to
+  POSTING_COLORS with the "Waiting for login…" label.
+- Files changed: dashboard/components/PostingChips.tsx
+- Verified: npx tsc --noEmit exits 0. Browser (Playwright route-fixture
+  script in workers/posting/, deleted after; dev server on 3001, killed
+  with fuser -k 3001/tcp): 12/12 checks — awaiting_auth chip label,
+  lastError in popover, no "of 3"/auto-retry copy, Retry visible at
+  attempts=1, 409 keeps popover open + shows API error inline, success
+  path sends exactly one POST .../publish {"platform":"landmodo"} with
+  no /api/run-poster and no PATCH, chip re-renders Queued after onChange.
+- Learnings for future iterations:
+  - US-010's live run-poster references are now exactly: the route dir
+    dashboard/app/api/run-poster/route.ts, dashboard/lib/cron.ts (POSTER_SCRIPT
+    + the # COMMAND-CENTER-POSTER install), and workers/run-poster.sh itself.
+    PostingChips is clean.
+  - PostingFailureBanner.tsx keeps its own private MAX_ATTEMPTS=3 filter
+    ("permanently failed" banner). US-009 didn't touch it; if the manual
+    re-publish model makes that banner threshold meaningless, that's a
+    Part 2/3 or follow-up decision, not silently changed here.
+  - Route-fixture pattern refinement: fulfill unexpected API calls with a
+    loud 500 {error:'unexpected call'} while recording them — makes
+    "no run-poster / no PATCH" assertions trivial and any missed fixture
+    obvious in the UI.
+---
+
+## Iteration 10 - US-010: Retire server-side poster kickoff
+- Deleted dashboard/app/api/run-poster/route.ts (route dir had only that
+  file) and workers/run-poster.sh. No remaining callers existed —
+  iteration 8/9 had already rewired TaskCard and PostingChips.
+- dashboard/lib/cron.ts: installCron() now writes only the worker line.
+  POSTER_MARKER kept as LEGACY_POSTER_MARKER solely inside stripMarker(),
+  so any future installCron/removeCron scrubs a leftover poster line from
+  crontabs written before the retirement. POSTER_SCRIPT/POSTER_CRON_LOG
+  constants removed.
+- Removed the live '# COMMAND-CENTER-POSTER' line from the actual crontab
+  (crontab -l | grep -v | crontab -) since it fired every 5 min and now
+  pointed at a deleted script; verified the # COMMAND-CENTER-WORKER line
+  survived (grep -c = 1). Queued publish jobs are now consumable only by
+  the future local agent.
+- Fixed the one stale code mention: workers/posting/post.ts header comment
+  said "so run-poster.sh (US-007) can parse" -> "so the caller can parse".
+  Comment-only change; post.ts mechanics untouched per the PRD's Technical
+  Considerations.
+- Files changed: dashboard/lib/cron.ts, workers/posting/post.ts,
+  deleted dashboard/app/api/run-poster/route.ts + workers/run-poster.sh
+- Verified: grep -rn "run-poster" over dashboard/app, dashboard/components,
+  dashboard/lib, workers/ -> zero matches. npx tsc --noEmit -> TSC_OK.
+- Learnings for future iterations:
+  - DELETING a route breaks tsc: .next/dev/types/validator.ts and
+    .next/types/validator.ts are generated files that import every known
+    route; they go stale and error with TS2307. Fix: rm both validator.ts
+    files (safe — typegen only, regenerated by next dev/build; the running
+    :3000 prod server doesn't read them at runtime). Adding routes never
+    hits this.
+  - The live crontab is real operator state: code changes to cron.ts don't
+    retro-edit it. Any story that stops installing a cron line must also
+    remove the already-installed line by hand.
+  - All 10 stories are now [x]; next iteration is the Ship step (feature-log
+    summary, readme fixes incl. the run-poster.sh repo-map entry + the
+    approve->poster data-flow line, header to Implemented).
+---

@@ -130,11 +130,11 @@ Operator's machine                        Linode server
 **Description:** As a developer, I must make sure the worker box can never pick up a publish job, because posting from its blocked datacenter IP is the known-bad path.
 
 **Acceptance Criteria:**
-- [ ] Delete `dashboard/app/api/run-poster/route.ts` and all remaining callers
-- [ ] `dashboard/lib/cron.ts` no longer installs the `# COMMAND-CENTER-POSTER` crontab line, and removes it from the crontab if present (the `# COMMAND-CENTER-WORKER` line is untouched)
-- [ ] Delete `workers/run-poster.sh`
-- [ ] `grep -r "run-poster" dashboard/ workers/` returns no live references (docs/specs mentions are fine)
-- [ ] Typecheck passes
+- [x] Delete `dashboard/app/api/run-poster/route.ts` and all remaining callers
+- [x] `dashboard/lib/cron.ts` no longer installs the `# COMMAND-CENTER-POSTER` crontab line, and removes it from the crontab if present (the `# COMMAND-CENTER-WORKER` line is untouched)
+- [x] Delete `workers/run-poster.sh`
+- [x] `grep -r "run-poster" dashboard/ workers/` returns no live references (docs/specs mentions are fine)
+- [x] Typecheck passes
 
 ## Non-Goals
 

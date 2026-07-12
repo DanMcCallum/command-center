@@ -6,7 +6,7 @@
  * Fetches the task from the dashboard API (DASHBOARD_URL, default
  * http://localhost:3000), parses the generated ad copy for the platform, and
  * hands both to the platform's posting script. Logs go to stderr; the final
- * line on stdout is a JSON PostResult so run-poster.sh (US-007) can parse
+ * line on stdout is a JSON PostResult so the caller can parse
  * listingUrl/screenshotPath.
  */
 import * as path from 'node:path'
