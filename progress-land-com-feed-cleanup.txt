@@ -4,39 +4,39 @@
 - What was implemented:
   - Added the canonical decision note (verbatim from the PRD, single blockquote line) right after the PRD/Shipped line of the "Land.com access — research spike" entry in specs/specs.md.
   - Rewrote the Recommendation line: cookie export via extension (OT-B) + Tailscale exit node is primary; fallback chain "cookie export + Tailscale → run poster locally → commercial residential proxy".
-  - Removed OT-C from the open operator tasks bullet; dropped the "sanctioned (LandFeed)" parenthetical from the bot-evasion bullet; rewrote the Extending paragraph without the LandFeed-PRD promotion.
-  - Removed the Akamai `/LandFeed/`-exemption clause from the block-scope bullet.
-  - Auth-capture spike entry: replaced the LandFeed key-findings bullet with a one-line "evaluated and later rejected (Corporate Account with a large number of ads required)" pointer to the decision note (this also removed the loa_* credential-field mentions); reworded the land_com recommendation to cookie export + Tailscale; dropped US-101–104 and the "email Land.com" prerequisite from the §7 paragraph.
+  - Removed OT-C from the open operator tasks bullet; dropped the "sanctioned (feed-API)" parenthetical from the bot-evasion bullet; rewrote the Extending paragraph without the feed-API-PRD promotion.
+  - Removed the Akamai `/feed-API/`-exemption clause from the block-scope bullet.
+  - Auth-capture spike entry: replaced the feed-API key-findings bullet with a one-line "evaluated and later rejected (Corporate Account with a large number of ads required)" pointer to the decision note (this also removed the loa_* credential-field mentions); reworded the land_com recommendation to cookie export + Tailscale; dropped US-101–104 and the "email Land.com" prerequisite from the §7 paragraph.
 - Files changed: specs/specs.md, specs/land-com-feed-cleanup.md (checkboxes), this file.
 - Learnings for future iterations:
-  - `grep -c` counts matching LINES, not occurrences — the decision note is one line, so `grep -ci landfeed specs/specs.md` == 1 is the pass condition. Keep the note on a single line when copying it anywhere.
-  - specs.md LandFeed lines were exactly 8 (found via `grep -ni landfeed`); locate by quoted text, line numbers drift.
+  - `grep -c` counts matching LINES, not occurrences — the decision note is one line, so `grep -ci <feed-kw> specs/specs.md` == 1 is the pass condition. Keep the note on a single line when copying it anywhere.
+  - specs.md feed-API lines were exactly 8 (found via `grep -ni <feed-kw>`); locate by quoted text, line numbers drift.
   - Typecheck is `cd workers/posting && npm run typecheck` (tsc -p tsconfig.json), passes trivially for markdown-only stories (~30 s).
   - The working tree has many unrelated modified files (other in-flight work) — stage only this feature's files explicitly, never `git add -A`.
-  - When rewording historical "key verified findings" bullets, point at the specs.md decision note without using the word LandFeed so the one-reference rule holds for later stories (US-007 sweep).
+  - When rewording historical "key verified findings" bullets, point at the specs.md decision note without using the word feed-API so the one-reference rule holds for later stories (US-007 sweep).
 ---
 
 ## Iteration 2 - US-002: Scrub specs/land-com-connect.md
 - What was implemented:
-  - Removed all 18 LandFeed mention lines from specs/land-com-connect.md: intro families list now ends with a "feed API evaluated and rejected — see specs/specs.md" parenthetical; "comparing all four families" → "comparing the families"; Goals lost the LandFeed-endpoint clause and the whole "Re-anchor" bullet; OT-A probe description dropped LandFeed; OT-C operator task deleted entirely.
-  - US-001's section-headings criterion reworded (heading list minus LandFeed API, with a parenthetical noting the option was later rejected); US-002's description + probe-URL criterion dropped the three /LandFeed/ URLs and the block-scope conclusion now just says "which land.com surfaces are blocked".
-  - US-006 reduced to the PRD's stub form: "### US-006: Removed / Removed: the Land.com feed-API option was rejected — see the decision note in specs/specs.md." (worded without the word LandFeed so grep stays 0).
+  - Removed all 18 feed-API mention lines from specs/land-com-connect.md: intro families list now ends with a "feed API evaluated and rejected — see specs/specs.md" parenthetical; "comparing all four families" → "comparing the families"; Goals lost the feed-API-endpoint clause and the whole "Re-anchor" bullet; OT-A probe description dropped feed-API; OT-C operator task deleted entirely.
+  - US-001's section-headings criterion reworded (heading list minus feed-API API, with a parenthetical noting the option was later rejected); US-002's description + probe-URL criterion dropped the three feed-path URLs and the block-scope conclusion now just says "which land.com surfaces are blocked".
+  - US-006 reduced to the PRD's stub form: "### US-006: Removed / Removed: the Land.com feed-API option was rejected — see the decision note in specs/specs.md." (worded without the word feed-API so grep stays 0).
   - US-008's "what would change this decision" example list, the sanctioned-options non-goal, the Technical Considerations citations, and the HTTP-200-on-07-10 bullet all cleaned.
-  - Verified: grep -ci landfeed = 0, grep OT-C = no hits, typecheck passes.
+  - Verified: grep -ci <feed-kw> = 0, grep OT-C = no hits, typecheck passes.
 - Files changed: specs/land-com-connect.md, specs/land-com-feed-cleanup.md (checkboxes), this file.
 - Learnings for future iterations:
-  - The PRD's suggested US-006 stub text says "LandFeed rejected" but the grep-0 criterion wins — word stubs as "the Land.com feed-API option was rejected" instead.
+  - The PRD's suggested US-006 stub text says "feed-API rejected" but the grep-0 criterion wins — word stubs as "the Land.com feed-API option was rejected" instead.
   - An Edit spanning a paragraph break in this file failed to match once; splitting into two smaller edits (one per paragraph) worked. Prefer tight, single-paragraph old_strings.
   - Historical [x] criteria may be reworded to keep coherence — the pattern used: state what the section covered, add "(that option was later rejected — see specs/specs.md)" where needed.
 ---
 
 ## Iteration 3 - US-003: Scrub the four remaining spec files
 - What was implemented:
-  - specs/auth-research.md (5 mentions): key-findings bullet reworded to "official bulk XML feed API ... (that option was later rejected — see the decision note in specs/specs.md)"; US-002 retitled "Verify the Land.com feed API" with rejection parenthetical in the description; Docs-fetch criterion now says "the feed-API docs page on landsofamerica.com" (URL contained /LandFeed/); US-006 example list says "feed-API access denied".
+  - specs/auth-research.md (5 mentions): key-findings bullet reworded to "official bulk XML feed API ... (that option was later rejected — see the decision note in specs/specs.md)"; US-002 retitled "Verify the Land.com feed API" with rejection parenthetical in the description; Docs-fetch criterion now says "the feed-API docs page on landsofamerica.com" (URL contained /feed-API/); US-006 example list says "feed-API access denied".
   - specs/job-model-agent-facing-api.md: non-goal is now plain "No Land.com feed/API integration." (OT-C mention gone too).
   - specs/live-view-browser.md: non-goal reworded to "No Land.com feed-API work." and the "(report §2)" pointer dropped (US-004 will stub that section anyway).
-  - specs/local-publish-2-local-agent.md: dropped "No LandFeed, " from the combined non-goal.
-  - Verified: grep -rci landfeed specs/ | grep -v ':0' → only specs/specs.md:1 plus this feature's own PRD (exempt while in flight per Non-Goals); typecheck passes.
+  - specs/local-publish-2-local-agent.md: dropped "No feed-API, " from the combined non-goal.
+  - Verified: grep -rci <feed-kw> specs/ | grep -v ':0' → only specs/specs.md:1 plus this feature's own PRD (exempt while in flight per Non-Goals); typecheck passes.
 - Files changed: the four spec files above, specs/land-com-feed-cleanup.md (checkboxes), this file.
 - Learnings for future iterations:
   - specs/live-view-browser.md carries an UNRELATED uncommitted hunk (a paste-attempt-detection [x] criterion, other in-flight work) — do NOT plain `git add` that file. Pattern that works: write a patch with only your hunk, `git apply --cached --recount /tmp/x.patch`, then commit; the foreign hunk stays unstaged in the working tree. Check `git diff <file>` before staging any file this feature touches.
@@ -48,43 +48,58 @@
 - What was implemented:
   - §2 (173 lines: doc-fetch table, feed mechanics, auth model/loa_* fields, schema table, latency, cost, open questions, the draft shared-key email, fallback, sources) replaced with a one-paragraph stub headed "## 2. Land.com — feed API (evaluated and rejected)" pointing at the specs/specs.md decision note. Section numbering preserved so all "(§2)" cross-refs still resolve.
   - §4 cost-projection sentence reworded: only Landmodo uses hosted-browser hours; land_com stays on the Playwright poster with extension-exported cookies.
-  - §6: bottom line + per-platform recommendation promote cookie export (§5a) + Tailscale exit node for land_com (fallback: run poster locally → commercial residential proxy); LandFeed row dropped from the comparison matrix; the two LandFeed "what would change this decision" bullets removed; "Landmodo ships an API" bullet no longer says "same API-first path as land_com"; three UX-gains clauses cleaned.
+  - §6: bottom line + per-platform recommendation promote cookie export (§5a) + Tailscale exit node for land_com (fallback: run poster locally → commercial residential proxy); feed-API row dropped from the comparison matrix; the two feed-API "what would change this decision" bullets removed; "Landmodo ships an API" bullet no longer says "same API-first path as land_com"; three UX-gains clauses cleaned.
   - §7: intro/Introduction/Goals reworded Landmodo-only (land_com cookie export flagged as an operator flow, no Ralph stories); added a "No Land.com feed/API work" non-goal; OT-1 and OT-3 removed with a parenthetical explaining OT-2 keeps its number; US-101–104 section removed entirely; sequencing reduced to the Landmodo chain.
-  - PDF regenerated (218 KB, zero raw "landfeed" byte hits); grep -ci landfeed report.md = 0; loa_shared_key/loa_account/OT-C = 0; typecheck passes.
+  - PDF regenerated (218 KB, zero raw keyword byte hits); grep -ci <feed-kw> report.md = 0; shared-key/account credential-field greps and OT-C = 0; typecheck passes.
 - Files changed: research/auth-capture-spike/report.md, research/auth-capture-spike/auth-capture-proposal.pdf, specs/land-com-feed-cleanup.md (checkboxes), this file.
 - Learnings for future iterations:
   - For a 170-line section replacement, Edit's exact-match old_string is impractical — a python3 splice via Bash with asserted boundary lines is reliable; do all subsequent replacements with assert count==1 in the same style once the file diverges from the last Read.
   - Iteration 3's progress-notes entry was left uncommitted (in the working tree only) — it rode along in this commit. Check `git status` for the progress file at commit time.
-  - For US-007's spot-read: specs/specs.md's auth-capture entry still says the §7 prerequisites include "decide public photo hosting" — that was OT-3, now removed from the report; specs.md may want that clause dropped for coherence (no LandFeed word involved, so grep still passes).
+  - For US-007's spot-read: specs/specs.md's auth-capture entry still says the §7 prerequisites include "decide public photo hosting" — that was OT-3, now removed from the report; specs.md may want that clause dropped for coherence (no feed-API word involved, so grep still passes).
   - The PDF renderer prints "Wrote ... auth-capture-proposal.pdf" with an absolute path and exits 0; verify with a raw-bytes scan (uncompressed streams keep text greppable).
 
 ## Iteration 5 - US-005: Scrub the land-com-connect spike report and home-probe.sh
 - What was implemented:
-  - report.md header: dropped the "; OT-C (LandFeed key email) pending" clause from the Open operator gates line.
-  - Block Scope: three /LandFeed/ rows removed from the probe table; the "first-line checks of the three 200s" paragraph deleted; conclusion rewritten as "the Akamai block covers the whole consumer surface from this box"; table caption's 200-classification clause dropped; home-IP-probe paragraph's "/LandFeed/ endpoints return 200" clause removed.
+  - report.md header: dropped the "; OT-C (feed shared-key email) pending" clause from the Open operator gates line.
+  - Block Scope: three /feed-API/ rows removed from the probe table; the "first-line checks of the three 200s" paragraph deleted; conclusion rewritten as "the Akamai block covers the whole consumer surface from this box"; table caption's 200-classification clause dropped; home-IP-probe paragraph's "/feed-API/ endpoints return 200" clause removed.
   - Replay-caveat closer reworded: comparison matrix weighs the pairings; parenthetical notes the feed API was evaluated and rejected (points at specs/specs.md).
-  - "## LandFeed API" section (~100 lines: auth model/loa_* fields, feed mechanics, exemption table, OT-C email, fallback chain) replaced via python splice with a one-paragraph "## Land.com Feed API (evaluated and rejected)" stub pointing at the specs.md decision note.
-  - Comparison matrix: LandFeed row and the "sidesteps both problems" preamble clause removed. Recommendation rewritten: primary is cookie export §a + Tailscale exit node §b; fallback chain "cookie export + Tailscale → run poster locally → commercial residential proxy". First three "what would change this decision" bullets (all LandFeed) removed; three surviving bullets reworded.
-  - home-probe.sh AND the untracked zsh port home-probe.zsh: three /LandFeed/ URLs removed; bash -n and zsh -n both pass.
-  - Verified: grep -rci landfeed research/land-com-connect-spike/ → no output; no OT-C/US-006 refs left in report.md; typecheck passes.
+  - "## Land.com feed API" section (~100 lines: auth model/loa_* fields, feed mechanics, exemption table, OT-C email, fallback chain) replaced via python splice with a one-paragraph "## Land.com Feed API (evaluated and rejected)" stub pointing at the specs.md decision note.
+  - Comparison matrix: feed-API row and the "sidesteps both problems" preamble clause removed. Recommendation rewritten: primary is cookie export §a + Tailscale exit node §b; fallback chain "cookie export + Tailscale → run poster locally → commercial residential proxy". First three "what would change this decision" bullets (all feed-API) removed; three surviving bullets reworded.
+  - home-probe.sh AND the untracked zsh port home-probe.zsh: three feed-path URLs removed; bash -n and zsh -n both pass.
+  - Verified: grep -rci <feed-kw> research/land-com-connect-spike/ → no output; no OT-C/US-006 refs left in report.md; typecheck passes.
 - Files changed: research/land-com-connect-spike/{report.md,home-probe.sh,home-probe.zsh}, specs/land-com-feed-cleanup.md (checkboxes), this file.
 - Learnings for future iterations:
   - report.md carried large UNCOMMITTED foreign hunks (2026-07-12 OT-A'/OT-B resolution content — home probes, two-cookie session capture). My scrub edits are interleaved with them (same header line), so the file was committed whole; that content rode along deliberately. operator-input/README.md is also modified (foreign, non-goal area) — left unstaged.
   - home-probe.zsh (untracked zsh port) isn't named by any US-005 criterion but the directory-wide grep criterion forces cleaning it; it was added to the commit.
-  - For US-007: the top-level operator-input/home-probes.txt (OT-A raw output) likely contains /LandFeed/ URLs — it's gitignored and a non-goal area, but the US-007 repo grep may hit it; exclude operator-input/ or note the exemption.
+  - For US-007: the top-level operator-input/home-probes.txt (OT-A raw output) likely contains feed-path URLs — it's gitignored and a non-goal area, but the US-007 repo grep may hit it; exclude operator-input/ or note the exemption.
   - US-006 next: initial-research.md (10), progress-auth-research.txt (13), progress-land-com-connect.txt (18).
 ---
 
 ## Iteration 6 - US-006: Scrub initial-research.md and the progress logs
 - What was implemented:
   - research/auth-capture-spike/initial-research.md (10 mention lines): headline-finding paragraph reworded as "later invalidated" pointing at specs/specs.md; the Land.com feed-API deep-dive section reduced to a 4-line rejection stub; the comparison-matrix feed row deleted; Recommendation #1 rewritten as "feed-API path rejected, Playwright path stays"; the unverified-items (a) entry and the docs-URL key source removed; remaining unverified items relettered a/b/c.
-  - progress-auth-research.txt (13): Iteration 2 retitled "Verify the Land.com feed API" and its body compressed (fetch URLs + loa_* auth fields stripped, replaced with a dated summary + rejection parenthetical); iterations 5/6/7/9 mentions reworded to "feed API" with "later rejected — see specs/specs.md" parentheticals; "LOA_SHARED_KEY env" became "shared-key env var".
+  - progress-auth-research.txt (13): Iteration 2 retitled "Verify the Land.com feed API" and its body compressed (fetch URLs + loa_* auth fields stripped, replaced with a dated summary + rejection parenthetical); iterations 5/6/7/9 mentions reworded to "feed API" with "later rejected — see specs/specs.md" parentheticals; the shared-key env-var mention was generalized.
   - progress-land-com-connect.txt (18): Iteration 2 probe summary keeps the 200 results but the exemption conclusion is flagged as later removed; iteration 3/5 learnings reworded; Iteration 6 retitled "Re-anchor the feed-API option", body compressed with loa_* fields and OT-C stripped, rejection block added; Iteration 8's matrix/recommendation/fallback-chain lines reworded as "at the time / then" with the cookie-export+Tailscale promotion noted; Iteration 9's OT-A/OT-B/OT-C lists reduced to OT-A/OT-B with "since-dropped shared-key task" wording.
-  - Verified: grep -ci landfeed = 0 on all three files; grep loa_shared_key/loa_account/OT-C = 0 on all three (pre-clearing part of US-007's sweep); typecheck passes.
+  - Verified: grep -ci <feed-kw> = 0 on all three files; grep shared-key/account credential-field greps and OT-C = 0 on all three (pre-clearing part of US-007's sweep); typecheck passes.
 - Files changed: research/auth-capture-spike/initial-research.md, progress-auth-research.txt, progress-land-com-connect.txt, specs/land-com-feed-cleanup.md (checkboxes), this file.
 - Learnings for future iterations:
   - initial-research.md was UNTRACKED (?? in git status) — cleaned and committed anyway (same precedent as home-probe.zsh in iteration 5): untracked files still hit US-007's filesystem-wide grep.
   - The two progress logs had no foreign uncommitted hunks, so plain git add by path was safe.
   - For historical log entries the pattern that keeps dates/structure: keep the entry title + what-was-done summary, strip URLs/field names, add a "(later rejected — see specs/specs.md; detail stripped in the 2026-07-12 cleanup)" parenthetical.
-  - US-007 next: remember operator-input/ is gitignored and may contain /LandFeed/ URLs in home-probes.txt (OT-A raw output) — exclude it from the repo grep or note the exemption; also the PRD itself (specs/land-com-feed-cleanup.md) is exempt per Non-Goals but --exclude=PRD.md in the criterion names the wrong filename — use the spirit (exclude the in-flight PRD).
+  - US-007 next: remember operator-input/ is gitignored and may contain feed-path URLs in home-probes.txt (OT-A raw output) — exclude it from the repo grep or note the exemption; also the PRD itself (specs/land-com-feed-cleanup.md) is exempt per Non-Goals but --exclude=PRD.md in the criterion names the wrong filename — use the spirit (exclude the in-flight PRD).
+---
+
+## Iteration 7 - US-007: Repo-wide verification sweep
+- What was implemented:
+  - Ran all four sweep greps. Initial repo-wide keyword grep surfaced two extra files beyond specs/specs.md: this feature's own progress log (its iteration notes used the keyword and the shared-key field names) and the untracked operator-input/home-probes.txt (OT-A raw probe output).
+  - Scrubbed this progress log itself via a python replacement pass ("feed-API"/"<feed-kw>" rewording); operator-input/home-probes.txt was NOT touched (Non-Goals forbids it) — documented as a sweep exemption in the PRD under US-007 instead.
+  - Verified: repo-wide keyword grep (excluding .git, node_modules, PDFs, the in-flight PRD, and operator-input/) returns only specs/specs.md; specs.md's single match line (97) is the canonical decision note; OT-C grep over specs/ research/ progress-*.txt has no hits outside the exempt PRD and this log's removal descriptions; shared-key/account credential-field grep is clean repo-wide outside the PRD.
+  - Spot-read every edited recommendation/fallback sentence (specs.md x2, both spike reports, land-com-connect spec, initial-research.md) — all coherent. Fixed the one dangler iteration 4 flagged: specs.md's auth-capture entry claimed §7 prerequisites included "decide public photo hosting" (a removed feed-path prerequisite, ex-OT-3); now says "(create a Browserbase account)" matching the report's surviving OT-2.
+  - Typecheck passes.
+- Files changed: progress-land-com-feed-cleanup.txt (self-scrub + this entry), specs/specs.md (one dangling-prerequisite fix), specs/land-com-feed-cleanup.md (checkboxes + exemption note).
+- Learnings for future iterations:
+  - operator-input/home-probes.txt is untracked but NOT gitignored (iteration 5's note said gitignored — that's only true of research/land-com-connect-spike/operator-input/, which has a scoped .gitignore; the top-level dir has none). If the top-level dir should be ignored, that's an open follow-up outside this feature.
+  - A feature's own progress log accumulates the very strings a cleanup feature is sweeping for — write log entries keyword-free from iteration 1 next time a scrub feature runs.
+  - The Bash working directory persists between calls — a `cd workers/posting && npm run typecheck` leaves later relative-path greps running from workers/posting (they fail with "No such file"). cd back to the repo root explicitly.
+  - All acceptance criteria are now [x]; next iteration is the Ship step (feature-log entry + readme sweep + Status: Implemented).
 ---

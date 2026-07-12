@@ -87,12 +87,14 @@ This feature removes every LandFeed reference repo-wide and leaves exactly **one
 **Description:** As the operator, I want proof that exactly one LandFeed reference remains and nothing was left dangling, so the decision is cleanly recorded.
 
 **Acceptance Criteria:**
-- [ ] `grep -rli landfeed . --exclude-dir=node_modules --exclude-dir=.git --exclude=PRD.md` returns exactly one file: `specs/specs.md` (binary PDF excluded via `grep -I` or `--exclude=*.pdf`)
-- [ ] The only match lines in `specs/specs.md` belong to the canonical decision note
-- [ ] `grep -rn "OT-C" specs/ research/ progress-*.txt` returns no hits describing an open shared-key task
-- [ ] `grep -rni "loa_shared_key\|loa_account" --exclude-dir=node_modules --exclude-dir=.git .` returns no hits outside git history
-- [ ] Spot-read every edited recommendation/fallback sentence and confirm none starts from or references a removed option
-- [ ] Typecheck passes
+- [x] `grep -rli landfeed . --exclude-dir=node_modules --exclude-dir=.git --exclude=PRD.md` returns exactly one file: `specs/specs.md` (binary PDF excluded via `grep -I` or `--exclude=*.pdf`)
+- [x] The only match lines in `specs/specs.md` belong to the canonical decision note
+- [x] `grep -rn "OT-C" specs/ research/ progress-*.txt` returns no hits describing an open shared-key task
+- [x] `grep -rni "loa_shared_key\|loa_account" --exclude-dir=node_modules --exclude-dir=.git .` returns no hits outside git history
+- [x] Spot-read every edited recommendation/fallback sentence and confirm none starts from or references a removed option
+- [x] Typecheck passes
+
+*Sweep exemptions (2026-07-12):* the in-flight PRD's real filename is `specs/land-com-feed-cleanup.md` (excluded per the Non-Goals exemption; the criterion's `PRD.md` name was a placeholder), and the untracked, operator-generated `operator-input/home-probes.txt` (OT-A raw probe output, containing three feed-path URLs) is excluded because Non-Goals forbids touching `operator-input/`. Everything else in the repo greps clean.
 
 ## Non-Goals
 
