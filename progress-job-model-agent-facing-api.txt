@@ -118,3 +118,68 @@
   - Dev-server curl loop: nohup npx next dev -p 3001, poll /api/tasks until
     ready (~10 s), kill the pid when done.
 ---
+
+## Iteration 5 - US-005: Claim a job (agent API)
+- Added POST /api/publish-jobs/claim
+  (dashboard/app/api/publish-jobs/claim/route.ts): requireAgentToken guard,
+  validates {taskId, platform} body (400 otherwise), then mutateTask() flips
+  that platform's posting queued -> posting atomically under the data.ts
+  serialize() mutex and returns the full updated task. 409 when the entry is
+  missing or not 'queued' (error message names the actual status), 404
+  unknown task. Reused the conflict-reason-in-closure pattern from the
+  publish route, exactly as iteration 3 predicted.
+- Files changed: dashboard/app/api/publish-jobs/claim/route.ts (new)
+- Verified: npx tsc --noEmit exits 0. Curl against npx next dev -p 3001 with
+  a throwaway completed task (one queued landflip + one posted landmodo
+  posting): no/wrong token -> 401, bad body -> 400, first claim -> 200 with
+  full task showing landflip status 'posting' (attempts untouched), second
+  identical claim -> 409, claiming the posted platform -> 409, claiming a
+  platform with no entry -> 409, unknown task -> 404; persisted state
+  confirmed via GET, task deleted after.
+- Learnings for future iterations:
+  - Claim does NOT touch attempts (publish already incremented at queue
+    time) and does NOT call recordAgentSeen (spec ties lastSeenAt to the
+    US-004 poll only).
+  - Killing the background dev server: a plain kill of the nohup pid leaves
+    a detached next-server child holding port 3001 — use
+    pkill -9 -f "next dev -p 3001" and re-check with curl. Do NOT pkill
+    "next-server" broadly; the production dashboard on :3000 is also Next
+    (it survived this time, but don't rely on it).
+---
+
+## Iteration 6 - US-006: Publish bundle endpoint (ad copy + photo list)
+- Added GET /api/tasks/[id]/publish-bundle?platform=<key>
+  (dashboard/app/api/tasks/[id]/publish-bundle/route.ts): requireAgentToken
+  guard, 400 on missing platform or platform not matching /^[a-z0-9_]+$/
+  (path-traversal guard — platform becomes a filename), 404 unknown task,
+  404 with a clear message when outputs/<id>/<platform>.md is missing,
+  otherwise {adCopy: <file contents>, photos: [sorted repo-relative
+  workers/workspace/outputs/<id>/photos/* paths]}. Missing/empty photos
+  dir -> photos: [] (readdir failure swallowed).
+- /api/files/[...path] GET was completely unauthenticated, so per the spec's
+  conditional criterion I added a NON-BREAKING token check: only when an
+  Authorization header is present, requireAgentToken must pass (401/503
+  otherwise); requests with no header (dashboard <img>, FileEditorModal)
+  behave exactly as before. PUT untouched.
+- Files changed: dashboard/app/api/tasks/[id]/publish-bundle/route.ts (new),
+  dashboard/app/api/files/[...path]/route.ts
+- Verified: npx tsc --noEmit exits 0 (run after both changes). Curl against
+  npx next dev -p 3001 using real tasks (no throwaway data needed):
+  no/wrong token -> 401; missing platform -> 400; platform=..%2F.. -> 400;
+  unknown task -> 404; platform with no ad file -> 404 with the outputs path
+  in the message; task-1783741999340-sfsooi landmodo -> 200 with full ad copy
+  + 15 sorted photo paths; first photo path fetched through
+  /api/files/<path> with the token -> 200 image/png (verified PNG on disk),
+  with no header -> 200 (dashboard unbroken), wrong token -> 401;
+  task-1783741270364-bo28kt (live, ads but no photos dir) -> photos: [].
+- Learnings for future iterations:
+  - Outputs dirs outlive tasks: task-1780891259218-ppunbv has full outputs
+    but is deleted from tasks.json. When picking a real task for curl tests,
+    cross-reference tasks.json with outputs/ first.
+  - Do NOT kill the dev server with pkill -f "next dev -p 3001" from a Bash
+    tool call — the pattern matches the calling shell's own command line and
+    kills it mid-script (and may leave the server running). Use
+    `fuser -k 3001/tcp` instead; it also can't touch production on :3000.
+  - dashboard/app/api/tasks/[id]/ contains stray task-* DIRECTORIES (route
+    dirs with task-id names, from some earlier accident). Harmless but
+    surprising in ls output; don't mistake them for real routes.

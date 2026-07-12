@@ -89,12 +89,12 @@ Operator's machine                        Linode server
 **Description:** As the local agent, I need to download everything required to post — the ad copy and the photos — since I don't share a filesystem with the server anymore.
 
 **Acceptance Criteria:**
-- [ ] `GET /api/tasks/[id]/publish-bundle?platform=<key>` guarded by `requireAgentToken`
-- [ ] Returns `{adCopy: <string, contents of outputs/<taskId>/<platform>.md>, photos: [<repo-relative paths servable via /api/files>]}`
-- [ ] 404 with a clear message if the ad-copy file is missing; `photos: []` if the photos dir is empty
-- [ ] Confirm `GET /api/files/[...path]` serves the listed photo paths with the agent token accepted (add the token check there only if the route is currently unauthenticated — do not break existing dashboard `<img>` usage)
-- [ ] Verified with `curl` against a real task in `outputs/`
-- [ ] Typecheck passes
+- [x] `GET /api/tasks/[id]/publish-bundle?platform=<key>` guarded by `requireAgentToken`
+- [x] Returns `{adCopy: <string, contents of outputs/<taskId>/<platform>.md>, photos: [<repo-relative paths servable via /api/files>]}`
+- [x] 404 with a clear message if the ad-copy file is missing; `photos: []` if the photos dir is empty
+- [x] Confirm `GET /api/files/[...path]` serves the listed photo paths with the agent token accepted (add the token check there only if the route is currently unauthenticated — do not break existing dashboard `<img>` usage)
+- [x] Verified with `curl` against a real task in `outputs/`
+- [x] Typecheck passes
 
 ### US-007: Proof screenshot upload (agent API)
 **Description:** As the local agent, I need to upload the proof-of-posting screenshot so it appears in the dashboard like today.

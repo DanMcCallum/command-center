@@ -1,6 +1,7 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { NextResponse } from 'next/server';
+import { requireAgentToken } from '@/lib/agent-auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -50,7 +51,18 @@ function resolveTarget(parts: string[] | undefined): string | NextResponse {
   return target;
 }
 
-export async function GET(_req: Request, { params }: Params) {
+export async function GET(req: Request, { params }: Params) {
+  // The local poster agent downloads publish-bundle photos through this route
+  // with its bearer token. Browser usage (<img> tags, FileEditorModal) sends
+  // no Authorization header and stays unauthenticated as before; when the
+  // header IS present it must be the valid agent token, so an agent
+  // misconfiguration fails loudly instead of being silently served
+  // (specs/job-model-agent-facing-api.md US-006).
+  if (req.headers.get('authorization') !== null) {
+    const denied = requireAgentToken(req);
+    if (denied) return denied;
+  }
+
   const { path: parts } = await params;
   const resolved = resolveTarget(parts);
   if (resolved instanceof NextResponse) return resolved;
