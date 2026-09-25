@@ -1,0 +1,40 @@
+[project]
+name = "land-comps"
+version = "0.1.0"
+description = "Jev-ranked vacant-land comp finder for Park County, CO"
+authors = [
+    { name = "Dan McCallum", email = "daniel@ownaloha.land" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "typer>=0.15.0",
+    "rich>=13.9.0",
+]
+
+[project.scripts]
+comps = "land_comps.cli:app"
+
+[build-system]
+requires = ["uv_build>=0.12.19,<0.13.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "mypy>=1.13.0",
+    "pytest>=8.3.0",
+    "ruff>=0.8.0",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.mypy]
+strict = true
+python_version = "3.12"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

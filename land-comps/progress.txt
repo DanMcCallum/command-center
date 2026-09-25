@@ -3,4 +3,13 @@
 ## Learnings
 (Patterns discovered during implementation)
 
+- Typer collapses a single-command `Typer()` app into a bare command (no subcommand listed under `--help`). Defining an empty `@app.callback()` keeps it a group even with only one command, so `comps --help` lists `version` as a subcommand instead of merging it into the root.
+
 ---
+
+## US-001: uv project scaffold with a runnable `comps` CLI (2026-09-25)
+
+- `uv init --package` scaffolded the project; bumped `requires-python` to `>=3.12` (uv defaulted to the installed 3.13) and pointed `project.scripts.comps` at `land_comps.cli:app`.
+- Added typer + rich runtime deps, mypy/pytest/ruff as a `dependency-groups.dev` group, `[tool.mypy] strict = true`, and ruff config, all in `pyproject.toml`.
+- `comps version` prints `land-comps 0.1.0` from `land_comps.__version__`; `comps --help` lists it as a subcommand.
+- All three gates verified from repo root: `uv --directory land-comps run ruff check .`, `... run mypy --strict src`, `... run pytest -q`.
