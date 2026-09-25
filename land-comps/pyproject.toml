@@ -9,6 +9,9 @@ requires-python = ">=3.12"
 dependencies = [
     "typer>=0.15.0",
     "rich>=13.9.0",
+    "pydantic>=2.13.5",
+    "pydantic-settings>=2.15.0",
+    "pyyaml>=6.0.3",
 ]
 
 [project.scripts]
@@ -23,6 +26,7 @@ dev = [
     "mypy>=1.13.0",
     "pytest>=8.3.0",
     "ruff>=0.8.0",
+    "types-pyyaml>=6.0.12.20260906",
 ]
 
 [tool.ruff]

@@ -6,6 +6,7 @@ Jev-ranked vacant-land comp finder. MVP scope: Park County, CO (FIPS 08093). See
 
 ```
 cp .env.example .env   # fill in TYPESAFE_API_KEY, APIFY_TOKEN, REGRID_TOKEN
+cp config.example.yaml config.yaml   # fill in actor IDs and county-specific values
 uv sync
 ```
 

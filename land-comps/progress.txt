@@ -13,3 +13,13 @@
 - Added typer + rich runtime deps, mypy/pytest/ruff as a `dependency-groups.dev` group, `[tool.mypy] strict = true`, and ruff config, all in `pyproject.toml`.
 - `comps version` prints `land-comps 0.1.0` from `land_comps.__version__`; `comps --help` lists it as a subcommand.
 - All three gates verified from repo root: `uv --directory land-comps run ruff check .`, `... run mypy --strict src`, `... run pytest -q`.
+
+---
+
+## US-002: YAML config loading into a validated Settings model (2026-09-25)
+
+- `config.py` defines one pydantic v2 `BaseModel` per PRD section (`SearchConfig`, `ScoringConfig` plus nested `TierFloors`, `ApifyConfig`, `CountyConfig`, `RegridConfig`) plus a `Secrets` `pydantic-settings` `BaseSettings` (env, with `.env` fallback via `env_file=".env"`) and a top-level `Settings` that nests them all. `load_settings(path="config.yaml")` reads YAML with `pyyaml` and validates via `Settings.model_validate`.
+- Cross-field checks live as `model_validator(mode="after")` on the section they belong to (e.g. `acreage_ratio_min <= acreage_ratio_max` on `SearchConfig`), so error messages name the offending fields directly. `max_radius_mi`'s hard 5-mile ceiling and `red_flag_policy`'s `warn|reject` set are enforced by plain `Field(le=5)` and `Literal` constraints, which pydantic already reports clearly by field path.
+- `county.fips` is typed `str` with a `field_validator` requiring digits only, so `config.example.yaml` must quote `"08093"`: an unquoted `08093` is ambiguous under PyYAML's YAML 1.1 int resolver and better avoided entirely.
+- Added `pydantic`, `pydantic-settings`, `pyyaml` as runtime deps and `types-PyYAML` as a dev dep via `uv add` (updates `pyproject.toml` and `uv.lock` together rather than hand-editing).
+- `config.yaml` (the operator's live copy) is gitignored; `config.example.yaml` at the project root is committed with placeholder actor IDs, county paths, vacant-land codes, and excluded deed types per the PRD's US-002 "unconfirmed operator prerequisite" note.

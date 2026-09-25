@@ -1,0 +1,65 @@
+# Example land-comps config. Copy to config.yaml and fill in the placeholders
+# below (actor IDs, county file paths/codes) before running the pipeline.
+# Secrets (TYPESAFE_API_KEY, APIFY_TOKEN, REGRID_TOKEN) do NOT go here; they
+# come from the environment or a .env file (see .env.example).
+
+search:
+  initial_radius_mi: 1
+  max_radius_mi: 5
+  acreage_ratio_min: 0.33
+  acreage_ratio_max: 3.0
+  lookback_months: 24
+  max_lookback_months: 36
+  min_candidates: 8
+  nominal_price_floor: 1000
+
+scoring:
+  w1: 0.30 # is_good_comp
+  w2: 0.15 # physical_similarity
+  w3: 0.15 # access_utilities_similarity
+  w4: 0.15 # market_similarity
+  w5: 0.10 # recency (1 - months_since_event / lookback)
+  w6: 0.10 # proximity (1 - distance / max_radius)
+  w7: 0.05 # sold-status bonus
+  tier_floors:
+    excellent: 0.85
+    good: 0.65
+    marginal: 0.40
+  min_confidence: 0.5
+  red_flag_policy: warn # warn | reject
+
+apify:
+  # PLACEHOLDER: confirm actor IDs per PRD section 3 prerequisites.
+  landwatch_actor_id: "PLACEHOLDER_LANDWATCH_ACTOR_ID"
+  realtor_actor_id: "PLACEHOLDER_REALTOR_ACTOR_ID"
+  max_items: 500
+  cache_ttl_days: 7
+
+county:
+  # Park County, CO. FIPS must stay quoted so the leading zero survives YAML parsing.
+  fips: "08093"
+  # PLACEHOLDER: confirm the real Park County APN/schedule-number length.
+  apn_length: 10
+  sales_file: "data/county/park/sales.csv"
+  parcels_file: "data/county/park/parcels.csv"
+  centroids_file: "data/county/park/centroids.csv"
+  # PLACEHOLDER: maps canonical field name -> source CSV column name.
+  column_mapping:
+    apn: "SCHEDULE_NUMBER"
+    sale_date: "SALE_DATE"
+    sale_price: "SALE_PRICE"
+    deed_type: "DEED_TYPE"
+    land_use_code: "LAND_USE_CODE"
+    acreage: "ACRES"
+    lat: "LAT"
+    lon: "LON"
+  # PLACEHOLDER: confirm real Park County vacant-land use codes.
+  vacant_land_codes:
+    - "PLACEHOLDER_VACANT_LAND_CODE"
+  # PLACEHOLDER: confirm real Park County excluded (non-arm's-length) deed types.
+  excluded_deed_types:
+    - "QC" # quitclaim
+    - "TD" # tax deed
+
+regrid:
+  monthly_record_cap: 2000
