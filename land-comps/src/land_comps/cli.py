@@ -10,6 +10,7 @@ from rich.table import Table
 from land_comps import __version__
 from land_comps.apify_runner import ApifyRunner
 from land_comps.bench import BenchImportError, import_benchmark
+from land_comps.bench_run import BenchResult, BenchRunError, run_benchmark
 from land_comps.config import Settings, load_settings
 from land_comps.county import IngestError, geocode_county, ingest_county
 from land_comps.db import init_db
@@ -52,6 +53,7 @@ err_console = Console(stderr=True)
 
 NO_MATCH_EXIT_CODE = 2
 DEFAULT_DB_PATH = Path("data/land_comps.sqlite")
+DEFAULT_REPORTS_DIR = Path("reports")
 
 
 def default_regrid_factory(settings: Settings, conn: sqlite3.Connection) -> ParcelLookup:
@@ -299,6 +301,60 @@ def bench_import(
         console.print(f"Replaced {result.replaced} previously imported comps for those subjects.")
     for skipped in result.skipped:
         console.print(f"[yellow]Skipped line {skipped.line}:[/yellow] {escape(skipped.reason)}")
+
+
+@bench_app.command("run")
+def bench_run(
+    reports_dir: Annotated[
+        Path, typer.Option(help="Directory for the bench_<ts>.md and review_<ts>.csv reports.")
+    ] = DEFAULT_REPORTS_DIR,
+    config: Annotated[Path, typer.Option(help="Path to the YAML config file.")] = Path(
+        "config.yaml"
+    ),
+    db: Annotated[Path, typer.Option(help="Path to the SQLite database.")] = DEFAULT_DB_PATH,
+) -> None:
+    """Run `find` for every imported benchmark subject and write the metrics and review files."""
+    settings = _load_settings_or_exit(config)
+    if not db.exists():
+        err_console.print(f"[red]Error:[/red] database {escape(str(db))} does not exist.")
+        raise typer.Exit(code=1)
+
+    conn = init_db(db)
+    try:
+        clients = find_clients_factory(settings, conn)
+        result = run_benchmark(
+            conn, settings, lambda target: run_find(target, settings, conn, clients), reports_dir
+        )
+    except (BenchRunError, FindError, RegridError, JevError) as exc:
+        err_console.print(f"[red]Error:[/red] {escape(str(exc))}")
+        raise typer.Exit(code=1) from exc
+    finally:
+        conn.close()
+
+    _print_bench_summary(result)
+    if not result.succeeded:
+        raise typer.Exit(code=1)
+
+
+def _print_bench_summary(result: BenchResult) -> None:
+    overall = result.overall
+
+    def pct(value: float | None) -> str:
+        return "n/a" if value is None else f"{value * 100:.0f}%"
+
+    console.print(
+        f"Ran {len(result.subjects)} benchmark subjects ({len(result.succeeded)} succeeded): "
+        f"recall {pct(overall.recall)}, ranking agreement {pct(overall.agreement)}, "
+        f"filter loss {pct(overall.filter_loss)}, overlap@5 {pct(overall.overlap_at_5)}."
+    )
+    for subject in result.subjects:
+        if not subject.ok:
+            err_console.print(
+                f"[yellow]Subject {escape(subject.subject_id)} failed:[/yellow] "
+                f"{escape(subject.error or '')}"
+            )
+    console.print(f"Wrote {escape(str(result.bench_path))}")
+    console.print(f"Wrote {escape(str(result.review_path))}")
 
 
 @ingest_app.command("county")

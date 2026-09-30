@@ -139,3 +139,15 @@
 - `bench.import_benchmark(conn, settings, csv)`: normalizes `comp_apn` (`normalize_apn`), `comp_address` and `subject_id` (APN-like -> `normalize_apn`, else `normalize_address`, so subject keys match what `find` resolves). Skipped with a line number and reason: no subject, neither APN nor address, `comp_status` not sold/active, bad price (non-numeric/non-finite), bad date (non-ISO). Price, date and `crm_rating` may be blank. Re-import deletes and re-inserts every subject that has >=1 valid row in the file; other subjects are untouched. Table `benchmark_comps` is in the idempotent schema.
 - `tests/fixtures/benchmark/crm_comps.csv`: 2 subjects x 4 comps plus one row (line 10) with no identifiers.
 - Step 14 (`bench run`) reads `benchmark_comps.subject_id` (normalized) to pick subjects; APN subjects are zero-padded APNs, address subjects are normalized addresses.
+
+---
+
+## US-022: `comps bench run` (2026-09-30)
+
+- `bench_run.py`: `run_benchmark(conn, settings, pipeline, reports_dir, now=None) -> BenchResult` runs `pipeline(subject_id)` (a `Callable[[str], RunReport]`; the CLI passes `run_find` bound to one shared `FindClients`, so provider caches apply) for every subject in `benchmark_comps`, then writes `bench_<ts>.md` and `review_<ts>.csv` (same UTC timestamp; opened with `"x"`, never overwrites) under `reports_dir` (CLI `--reports-dir`, default `reports/`, gitignored).
+- `RunReport` gained `rejected` (guardrail drops with reason codes) and `unjudged_candidates`, set by `run_find` only (empty after `rescore`). Together with the judged `comps` they are the whole deduped pool the benchmark matches against.
+- Matching = `dedupe.is_same_parcel` (APN, coordinate, address) between the CRM comp (identifiers only, so in practice APN or address) and each pool entry; first match wins.
+- Metrics: recall = CRM comps in pool / CRM comps (target 70%); agreement = CRM comps tiered excellent/good / CRM comps in pool (target 60%; filtered and unjudged comps count as in-pool, never agreeing); filter loss = dropped by guardrails / CRM comps; overlap@5 = our top 5 (rejects excluded) that are CRM comps / min(5, CRM comps). Overall pools counts across subjects that ran. Reviewed precision is printed as PENDING.
+- Review CSV columns: `subject_id, category, detail, apn, address, status, price, date, our_rank, our_tier, composite, crm_rating, human_label` (blank). `category` = `crm_only` (not in pool / guardrail reason / unjudged), `ours_only` (top-5 not a CRM comp), `tier_conflict` (CRM comp we tier marginal/reject). Step 15 (`score-review`) reads this file and appends to the bench report with the same timestamp.
+- A subject whose pipeline raises (any exception) is listed under "Failed subjects" in the markdown, excluded from metrics, and does not stop the batch. CLI exits 1 if no subject ran (reports still written) or on setup errors (missing DB, no imported comps, client factory failure).
+- Subject targets are the normalized ids stored by import (zero-padded APN or upper-cased address), passed straight to `run_find`.

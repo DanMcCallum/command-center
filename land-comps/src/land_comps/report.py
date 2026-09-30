@@ -25,6 +25,7 @@ from rich.table import Table
 from rich.text import Text
 
 from land_comps.dedupe import provenance, source_urls
+from land_comps.guardrails import RejectedCandidate
 from land_comps.models import Candidate, CompResult, Parcel
 from land_comps.scoring import Features
 from land_comps.state import price_per_acre
@@ -118,8 +119,14 @@ class RankedComp:
 
 @dataclass(frozen=True)
 class RunReport:
+    """`rejected` and `unjudged_candidates` are set by a live run only (`comps bench run` reads
+    them to see the whole deduped pool); a report rebuilt by `comps rescore` leaves them empty.
+    """
+
     summary: RunSummary
     comps: list[RankedComp]  # every judged candidate, best first (rejects included)
+    rejected: list[RejectedCandidate] = field(default_factory=list)  # dropped by guardrails
+    unjudged_candidates: list[Candidate] = field(default_factory=list)  # Jev gave no answer
 
 
 def select_comps(

@@ -177,10 +177,12 @@ def run_find(
     scored: list[ScoredComp] = []
     detail: dict[int, tuple[Features, dict[str, Any]]] = {}
     unjudged: list[str] = []
+    unjudged_candidates: list[Candidate] = []
     input_tokens = 0
     for candidate, feats, state, outcome in zip(pool, features, states, outcomes, strict=True):
         if isinstance(outcome, JevUnavailableError):
             unjudged.append(f"{_describe(candidate)}: {outcome}")
+            unjudged_candidates.append(candidate)
             continue
         if not outcome.cached:
             input_tokens += outcome.input_tokens or 0
@@ -225,4 +227,4 @@ def run_find(
     )
     save_run(conn, summary, comps)
     logger.info("run %s saved: %d comps ranked", summary.run_id, len(comps))
-    return RunReport(summary, comps)
+    return RunReport(summary, comps, guarded.rejected, unjudged_candidates)
