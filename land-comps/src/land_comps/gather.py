@@ -17,10 +17,10 @@ from land_comps.config import Settings
 from land_comps.county_sales import SOURCE_NAME as COUNTY_SOURCE
 from land_comps.county_sales import CountySalesSource
 from land_comps.landwatch import SOURCE_NAME as LANDWATCH_SOURCE
-from land_comps.landwatch import LandWatchSource
+from land_comps.landwatch import LandWatchSource, landwatch_location
 from land_comps.models import Candidate, Parcel
 from land_comps.realtor import SOURCE_NAME as REALTOR_SOURCE
-from land_comps.realtor import RealtorSource
+from land_comps.realtor import RealtorSource, realtor_location
 from land_comps.sources import SourceError
 
 logger = logging.getLogger(__name__)
@@ -130,8 +130,13 @@ def build_sources(
                 for name in (LANDWATCH_SOURCE, REALTOR_SOURCE)
             ]
 
-    landwatch = LandWatchSource(runner, settings.apify.landwatch_actor_id)
-    realtor = RealtorSource(runner, settings.apify.realtor_actor_id)
+    county_name, state = settings.county.name, settings.county.state
+    landwatch_loc = realtor_loc = None
+    if county_name and state:
+        landwatch_loc = landwatch_location(county_name, state)
+        realtor_loc = realtor_location(county_name, state)
+    landwatch = LandWatchSource(runner, settings.apify.landwatch_actor_id, landwatch_loc)
+    realtor = RealtorSource(runner, settings.apify.realtor_actor_id, realtor_loc)
     sources.append(
         NamedSource(
             LANDWATCH_SOURCE, lambda subject, radius, _months: landwatch.fetch(subject, radius)

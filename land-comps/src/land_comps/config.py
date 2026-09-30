@@ -114,6 +114,10 @@ class ApifyConfig(BaseModel):
 
 class CountyConfig(BaseModel):
     fips: str
+    # Used to build the listing actors' county searches (e.g. "Park County" + "CO");
+    # without both, the LandWatch and Realtor.com sources report a SourceError.
+    name: str | None = None
+    state: str | None = None
     apn_length: int = Field(gt=0)
     sales_file: str
     parcels_file: str

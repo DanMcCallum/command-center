@@ -10,16 +10,15 @@ from land_comps.apify_runner import ActorRun, ApifyRunner
 from land_comps.config import ApifyConfig
 from land_comps.db import init_db
 from land_comps.models import Parcel
-from land_comps.realtor import RealtorSource
+from land_comps.realtor import RealtorSource, realtor_location, search_url
 from land_comps.sources import SourceError
 
-FIXTURES = Path(__file__).parent / "fixtures" / "apify"
+FIXTURE = Path(__file__).parent / "fixtures" / "apify" / "realtor_for_sale.json"
 SUBJECT = Parcel(apn="1", lat=39.0, lon=-105.5, acreage=5, county_fips="08093", zip="80440")
+LOCATION = "Park-County_CO"
 
 
 class FakeClient:
-    """Serves the sold fixture for `mode == "sold"` and the for-sale fixture otherwise."""
-
     def __init__(self, error: Exception | None = None) -> None:
         self.error = error
         self.calls: list[tuple[str, dict[str, Any]]] = []
@@ -30,8 +29,7 @@ class FakeClient:
         self.calls.append((actor_id, run_input))
         if self.error is not None:
             raise self.error
-        name = "realtor_sold.json" if run_input["mode"] == "sold" else "realtor_for_sale.json"
-        return ActorRun("run1", "SUCCEEDED", json.loads((FIXTURES / name).read_text()))
+        return ActorRun("run1", "SUCCEEDED", json.loads(FIXTURE.read_text()))
 
 
 @pytest.fixture
@@ -39,69 +37,87 @@ def conn(tmp_path: Path) -> sqlite3.Connection:
     return init_db(tmp_path / "t.sqlite")
 
 
-def _source(conn: sqlite3.Connection, client: FakeClient) -> RealtorSource:
+def _source(
+    conn: sqlite3.Connection, client: FakeClient, location: str | None = LOCATION
+) -> RealtorSource:
     config = ApifyConfig(landwatch_actor_id="lw", realtor_actor_id="rt")
-    return RealtorSource(ApifyRunner(client, conn, config), "rt")
+    return RealtorSource(ApifyRunner(client, conn, config), "rt", location)
 
 
-def test_runs_sold_and_for_sale_modes_for_subject_zip(conn: sqlite3.Connection) -> None:
+def test_location_and_search_url_follow_realtor_com_county_format() -> None:
+    assert realtor_location("Park County", "co") == "Park-County_CO"
+    assert realtor_location("  Rio  Blanco County ", "CO") == "Rio-Blanco-County_CO"
+    assert (
+        search_url("Park-County_CO")
+        == "https://www.realtor.com/realestateandhomes-search/Park-County_CO/type-land"
+    )
+
+
+def test_runs_the_county_for_sale_land_search_once(conn: sqlite3.Connection) -> None:
     client = FakeClient()
     _source(conn, client).fetch(SUBJECT, 5)
 
-    assert [(c[0], c[1]["mode"], c[1]["postalCode"]) for c in client.calls] == [
-        ("rt", "sold", "80440"),
-        ("rt", "for_sale", "80440"),
+    assert [(c[0], c[1]["startUrls"]) for c in client.calls] == [
+        ("rt", [{"url": search_url(LOCATION)}])
     ]
-    assert all(c[1]["propertyType"] == "land/lot" for c in client.calls)
+    run_input = client.calls[0][1]
+    assert run_input["maxItems"] == 500  # ApifyConfig.max_items default
+    assert run_input["csvFriendly"] is True
+    assert run_input["getDetails"] is False
+    assert run_input["fullScrape"] is False
 
 
 def test_non_land_and_improved_records_are_filtered(conn: sqlite3.Connection) -> None:
     ids = [c.source_id for c in _source(conn, FakeClient()).fetch(SUBJECT, 5)]
 
-    assert "RT-2002" not in ids  # single family
-    assert "RT-2004" not in ids  # farm with a house
-    assert "RT-2003" in ids  # vacant farm/ranch is kept
+    assert "RT-3004" not in ids  # single family
+    assert "RT-3006" not in ids  # farm with a house
+    assert "RT-3005" in ids  # vacant farm/ranch is kept
 
 
-def test_priceless_and_out_of_radius_dropped_no_gps_kept(conn: sqlite3.Connection) -> None:
+def test_priceless_and_out_of_radius_dropped_no_gps_kept_in_zip(conn: sqlite3.Connection) -> None:
     ids = [c.source_id for c in _source(conn, FakeClient()).fetch(SUBJECT, 5)]
 
-    assert ids == ["RT-2001", "RT-2003", "RT-3001", "RT-3002"]  # 2005 no price, 3003 too far
+    # 3003 too far, 3007 no price, 3008 no GPS in another ZIP; 3002 no GPS in the subject's ZIP
+    assert ids == ["RT-3001", "RT-3002", "RT-3005"]
 
 
-def test_sold_candidate_mapping(conn: sqlite3.Connection) -> None:
-    sold = _source(conn, FakeClient()).fetch(SUBJECT, 5)[0]
+def test_no_gps_items_are_kept_when_subject_has_no_zip(conn: sqlite3.Connection) -> None:
+    subject = SUBJECT.model_copy(update={"zip": None})
+    ids = [c.source_id for c in _source(conn, FakeClient()).fetch(subject, 5)]
 
-    assert sold.source == "realtor"
-    assert sold.status == "sold"
-    assert sold.price == 90000
-    assert sold.sold_price == 90000
-    assert sold.list_price == 95000
-    assert sold.event_date == date(2026, 3, 15)
-    assert sold.acreage == pytest.approx(5.0)  # 217,800 sqft
-    assert sold.price_per_acre == pytest.approx(18000)
-    assert (sold.lat, sold.lon) == (39.005, -105.5)
-    assert sold.address == "TBD County Road 59, Fairplay, CO 80440"
-    assert sold.description == "Five acres, sold."
-    assert sold.url is not None and sold.url.endswith("/2001")
+    assert "RT-3008" in ids
 
 
-def test_for_sale_candidates_are_active_or_pending(conn: sqlite3.Connection) -> None:
+def test_active_candidate_mapping(conn: sqlite3.Connection) -> None:
+    active = _source(conn, FakeClient()).fetch(SUBJECT, 5)[0]
+
+    assert active.source == "realtor"
+    assert active.status == "active"
+    assert active.price == 65000
+    assert active.list_price == 65000
+    assert active.sold_price is None  # last_sold_* is the parcel's prior sale, raw only
+    assert active.raw["last_sold_price"] == 20000
+    assert active.event_date == date(2026, 8, 20)  # from the actor's ISO timestamp
+    assert active.acreage == pytest.approx(2.5)  # 108,900 sqft
+    assert active.price_per_acre == pytest.approx(26000)
+    assert (active.lat, active.lon) == (39.006, -105.49)
+    assert active.address == "TBD Aspen Way, Fairplay, CO 80440"
+    assert active.description is None  # description_text needs getDetails
+    assert active.url is not None and active.url.endswith("/3001")
+
+
+def test_pending_comes_from_is_pending_flag_or_status(conn: sqlite3.Connection) -> None:
     by_id = {c.source_id: c for c in _source(conn, FakeClient()).fetch(SUBJECT, 5)}
 
-    active, pending = by_id["RT-3001"], by_id["RT-3002"]
-    assert (active.status, pending.status) == ("active", "pending")
-    assert active.price == 65000 and active.sold_price is None
-    assert active.event_date == date(2026, 8, 20)
-    assert active.acreage == pytest.approx(2.5)  # 108,900 sqft
-    assert pending.lat is None
+    assert by_id["RT-3002"].status == "pending"  # status "for_sale" but is_pending true
+    assert by_id["RT-3002"].lat is None
+    assert by_id["RT-3005"].status == "pending"  # status "pending", no is_pending flag
 
 
-def test_missing_zip_raises_source_error(conn: sqlite3.Connection) -> None:
-    subject = SUBJECT.model_copy(update={"zip": None})
-
-    with pytest.raises(SourceError, match="rt"):
-        _source(conn, FakeClient()).fetch(subject, 5)
+def test_missing_county_location_raises_source_error(conn: sqlite3.Connection) -> None:
+    with pytest.raises(SourceError, match="county.name"):
+        _source(conn, FakeClient(), location=None).fetch(SUBJECT, 5)
 
 
 def test_actor_failure_raises_source_error(conn: sqlite3.Connection) -> None:

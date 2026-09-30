@@ -22,4 +22,4 @@ def test_to_float_takes_the_first_number(raw: object, expected: float | None) ->
 
 
 def test_realtor_land_lot_label_counts_as_land() -> None:
-    assert _is_vacant_land({"propertyType": "Land/Lot"})
+    assert _is_vacant_land({"property_type": "Land/Lot"})

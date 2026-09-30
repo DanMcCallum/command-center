@@ -9,7 +9,7 @@ import pytest
 from land_comps.apify_runner import ActorRun, ApifyRunner
 from land_comps.config import ApifyConfig
 from land_comps.db import init_db
-from land_comps.landwatch import LandWatchSource
+from land_comps.landwatch import LandWatchSource, landwatch_location
 from land_comps.models import Parcel
 from land_comps.sources import SourceError
 
@@ -29,7 +29,14 @@ class FakeClient:
         self.calls.append((actor_id, run_input))
         if self.error is not None:
             raise self.error
-        return ActorRun(run_id="run1", status="SUCCEEDED", items=self.items)
+        # Like the real actor, the sold archive and the available search are disjoint.
+        want_sold = run_input.get("availability") == "sold"
+        items = [
+            item
+            for item in self.items
+            if (str(item.get("listingStatus", "")).lower() == "sold") == want_sold
+        ]
+        return ActorRun(run_id="run1", status="SUCCEEDED", items=items)
 
 
 @pytest.fixture
@@ -37,9 +44,11 @@ def conn(tmp_path: Path) -> sqlite3.Connection:
     return init_db(tmp_path / "t.sqlite")
 
 
-def _source(conn: sqlite3.Connection, client: FakeClient) -> LandWatchSource:
+def _source(
+    conn: sqlite3.Connection, client: FakeClient, location: str | None = "Park County, CO"
+) -> LandWatchSource:
     config = ApifyConfig(landwatch_actor_id="lw", realtor_actor_id="rt")
-    return LandWatchSource(ApifyRunner(client, conn, config), "lw")
+    return LandWatchSource(ApifyRunner(client, conn, config), "lw", location)
 
 
 def _fixture_client() -> FakeClient:
@@ -116,21 +125,39 @@ def test_string_utilities_and_us_date_format(conn: sqlite3.Connection) -> None:
     assert pending.event_date == date(2026, 6, 1)
 
 
-def test_actor_input_targets_subject_county_and_zip(conn: sqlite3.Connection) -> None:
+def test_location_follows_the_actor_county_format() -> None:
+    assert landwatch_location("Park County", "co") == "Park County, CO"
+    assert landwatch_location("  Rio  Blanco County ", "CO") == "Rio Blanco County, CO"
+
+
+def test_actor_input_searches_county_available_then_sold(conn: sqlite3.Connection) -> None:
     client = _fixture_client()
     _source(conn, client).fetch(SUBJECT, 3)
 
-    assert len(client.calls) == 1
-    actor_id, run_input = client.calls[0]
-    assert actor_id == "lw"
-    assert run_input["countyFips"] == "08093"
-    assert run_input["zip"] == "80440"
-    assert run_input["radiusMiles"] == 3
-    assert set(run_input["statuses"]) == {"available", "under contract", "sold"}
+    assert [c[0] for c in client.calls] == ["lw", "lw"]
+    assert [c[1]["availability"] for c in client.calls] == ["available", "sold"]
+    for _, run_input in client.calls:
+        assert run_input["operation"] == "search"
+        assert run_input["locations"] == ["Park County, CO"]
+        assert run_input["propertyType"] == "undeveloped-land"
+        assert run_input["maxResults"] == 500  # ApifyConfig.max_items default
+        assert run_input["includeDetails"] is False
+
+
+def test_missing_county_location_raises_source_error(conn: sqlite3.Connection) -> None:
+    with pytest.raises(SourceError, match="county.name"):
+        _source(conn, _fixture_client(), location=None).fetch(SUBJECT, 5)
+
+
+def test_error_row_raises_source_error_with_the_actor_message(conn: sqlite3.Connection) -> None:
+    row = {"status": "error", "errorMessage": "LandWatch returned a page without its data payload."}
+
+    with pytest.raises(SourceError, match="data payload"):
+        _source(conn, FakeClient([row])).fetch(SUBJECT, 5)
 
 
 def test_item_without_id_or_url_gets_stable_source_id(conn: sqlite3.Connection) -> None:
-    item = {"status": "Available", "price": 1000, "acres": 1}
+    item = {"listingStatus": "Available", "price": 1000, "acres": 1}
     first = _source(conn, FakeClient([item])).fetch(SUBJECT, 5)
     second = _source(init_db(Path(":memory:")), FakeClient([item])).fetch(SUBJECT, 5)
 

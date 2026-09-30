@@ -22,7 +22,7 @@ uv --directory land-comps run pytest -q
 
 ## Operator prerequisites
 
-- `config.yaml` (copy of `config.example.yaml`): county file paths, Apify actor IDs, scoring weights and gates.
+- `config.yaml` (copy of `config.example.yaml`): county name/state and file paths, Apify actor IDs, scoring weights and gates.
 - `.env`: `TYPESAFE_API_KEY` (Jev), `REGRID_TOKEN` (subject lookup and geocoding, capped by the monthly record limit), `APIFY_TOKEN` (LandWatch and Realtor.com sources).
 - Park County sales and parcels CSVs (plus an optional centroids CSV), loaded once with `comps ingest county`.
 - A CRM comps CSV for benchmarking (see PRD US-021 for columns), loaded with `comps bench import`.

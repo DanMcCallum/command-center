@@ -75,7 +75,8 @@ def test_missing_config_file_raises() -> None:
         load_settings("does-not-exist.yaml")
 
 
-def test_secrets_are_optional_without_env(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_secrets_are_optional_without_env(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    monkeypatch.chdir(tmp_path)  # an operator's real land-comps/.env must not leak in
     monkeypatch.delenv("TYPESAFE_API_KEY", raising=False)
     monkeypatch.delenv("APIFY_TOKEN", raising=False)
     monkeypatch.delenv("REGRID_TOKEN", raising=False)

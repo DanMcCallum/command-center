@@ -2,7 +2,6 @@
   {
     "id": "LW-1001",
     "url": "https://www.landwatch.com/park-county-colorado-land-for-sale/pid/1001",
-    "status": "Available",
     "price": "$85,000",
     "acres": 5.0,
     "pricePerAcre": 17000,
@@ -11,15 +10,18 @@
     "address": "Lot 12 County Road 59, Fairplay, CO 80440",
     "roadFrontage": "660 ft",
     "access": "Year-round county road",
-    "utilities": ["Electric", "Well permit"],
+    "utilities": [
+      "Electric",
+      "Well permit"
+    ],
     "topography": "Gently rolling",
     "description": "Five acres of open meadow with mountain views.",
-    "listDate": "2026-07-15T00:00:00Z"
+    "listDate": "2026-07-15T00:00:00Z",
+    "listingStatus": "Available"
   },
   {
     "id": "LW-1002",
     "url": "https://www.landwatch.com/park-county-colorado-land-for-sale/pid/1002",
-    "status": "Under Contract",
     "price": 120000,
     "acres": 10,
     "latitude": 39.02,
@@ -28,12 +30,12 @@
     "utilities": "Electric, Phone",
     "topography": "Sloped, treed",
     "description": "Ten treed acres, under contract.",
-    "listDate": "06/01/2026"
+    "listDate": "06/01/2026",
+    "listingStatus": "Under Contract"
   },
   {
     "id": "LW-1003",
     "url": "https://www.landwatch.com/park-county-colorado-land-for-sale/pid/1003",
-    "status": "Sold",
     "price": "$60,000",
     "soldPrice": "$57,500",
     "acres": 2.5,
@@ -42,44 +44,45 @@
     "roadFrontage": "300 ft",
     "description": "Sold parcel near the reservoir.",
     "listDate": "2026-01-10",
-    "soldDate": "2026-04-02"
+    "soldDate": "2026-04-02",
+    "listingStatus": "Sold"
   },
   {
     "id": "LW-1004",
     "url": "https://www.landwatch.com/park-county-colorado-land-for-sale/pid/1004",
-    "status": "Sold",
     "price": 40000,
     "acres": 4,
     "description": "Sold parcel with no GPS; price is the sale price.",
-    "soldDate": "2026-02-20"
+    "soldDate": "2026-02-20",
+    "listingStatus": "Sold"
   },
   {
     "id": "LW-1005",
     "url": "https://www.landwatch.com/park-county-colorado-land-for-sale/pid/1005",
-    "status": "Available",
     "acres": 8,
     "latitude": 39.003,
     "longitude": -105.5,
-    "description": "Call for price."
+    "description": "Call for price.",
+    "listingStatus": "Available"
   },
   {
     "id": "LW-1006",
     "url": "https://www.landwatch.com/park-county-colorado-land-for-sale/pid/1006",
-    "status": "Available",
     "price": 200000,
     "acres": 20,
     "latitude": 39.3,
     "longitude": -105.5,
-    "description": "Too far away."
+    "description": "Too far away.",
+    "listingStatus": "Available"
   },
   {
     "id": "LW-1007",
     "url": "https://www.landwatch.com/park-county-colorado-land-for-sale/pid/1007",
-    "status": "Withdrawn",
     "price": 50000,
     "acres": 3,
     "latitude": 39.0,
     "longitude": -105.5,
-    "description": "Unrecognized status."
+    "description": "Unrecognized status.",
+    "listingStatus": "Withdrawn"
   }
 ]

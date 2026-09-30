@@ -36,9 +36,14 @@ scoring:
   red_flags_max: 0.7 # red_flags probability above this rejects or warns (per red_flag_policy)
 
 apify:
-  # PLACEHOLDER: confirm actor IDs per PRD section 3 prerequisites.
-  landwatch_actor_id: "PLACEHOLDER_LANDWATCH_ACTOR_ID"
-  realtor_actor_id: "PLACEHOLDER_REALTOR_ACTOR_ID"
+  # sian.agency/landwatch-property-scraper: county search, sold + available undeveloped land.
+  # As of 2026-09-30 it returns an error row for every search (LandWatch blocks it);
+  # the source then reports a SourceError and the run continues without it.
+  landwatch_actor_id: "sian.agency/landwatch-property-scraper"
+  # scrapemind/realtor-com-scraper takes Realtor.com search URLs; src/land_comps/realtor.py
+  # builds the county's `type-land` URL for it. For-sale/pending only: the actor ignores
+  # Realtor.com's recently-sold filter.
+  realtor_actor_id: "scrapemind/realtor-com-scraper"
   max_items: 500
   cache_ttl_days: 7
   run_timeout_secs: 300 # per-actor run timeout; a timeout raises SourceError
@@ -46,6 +51,10 @@ apify:
 county:
   # Park County, CO. FIPS must stay quoted so the leading zero survives YAML parsing.
   fips: "08093"
+  # County name and state: the LandWatch and Realtor.com actors search by county
+  # ("Park County, CO" and Realtor.com's "Park-County_CO"); the radius is applied afterwards.
+  name: "Park County"
+  state: "CO"
   # PLACEHOLDER: confirm the real Park County APN/schedule-number length.
   apn_length: 10
   sales_file: "data/county/park/sales.csv"

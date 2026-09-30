@@ -112,6 +112,11 @@ class ApifyRunner:
         self._write_lock = threading.Lock()
         self._items_fetched = 0
 
+    @property
+    def max_items(self) -> int:
+        """`apify.max_items`: the per-run item cap, for sources that pass it to the actor."""
+        return self._config.max_items
+
     @classmethod
     def from_settings(cls, settings: Settings, conn: sqlite3.Connection) -> "ApifyRunner":
         """Build a runner on the real Apify client using `APIFY_TOKEN` from the environment."""
