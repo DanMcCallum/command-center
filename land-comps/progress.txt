@@ -44,3 +44,12 @@
 - `ParcelLookup` Protocol is what commands depend on. `cli.regrid_client_factory(settings, conn)` is the injectable hook; tests monkeypatch it with a fake.
 - `comps subject <APN|address> [--config config.yaml] [--db data/land_comps.sqlite]`: `looks_like_apn` -> `normalize_apn` + `by_apn`, else `by_address`. No match: message on stderr, exit 2. Config/token/Regrid failures: message, exit 1.
 - Added `httpx` as a runtime dependency (`uv add`). Tests use `httpx.MockTransport`; no network.
+
+---
+
+## US-007 + US-008: county sales ingest and coordinate backfill (2026-09-30)
+
+- `county.py`: `ingest_county` reads the sales/parcels/(centroids) CSVs, maps columns through `county.column_mapping`, and upserts into `county_sales` on `(apn, sale_date, sale_price)`. Each canonical field is read from whichever file has its mapped column (sales, then parcels; lat/lon prefer centroids), so it works whether land-use code/acreage ship on the sales or parcel extract. Rows lacking an APN, parseable date, or price are skipped and counted, because SQLite treats NULLs in a UNIQUE key as distinct and they would duplicate on every re-run. Re-ingest keeps already-geocoded coords/acreage (`COALESCE(excluded.x, x)`).
+- `geocode_county` selects vacant sales lacking coords within `search.max_lookback_months` (newest first, optional `--limit`), calls `by_apn`, commits per row, fills acreage only when null, and stops on `QuotaExceeded` (exit 0, prints remaining). Other `RegridError`s exit 1 after earlier rows are saved.
+- CLI: `comps ingest county` (paths default to `county.*_file` from config) and `comps ingest geocode-county`, under an `ingest` sub-app.
+- Fixtures in `tests/fixtures/county/` are hand-built placeholders (20 sales, 12 vacant, 6 vacant missing coords, 4 of those in window).
