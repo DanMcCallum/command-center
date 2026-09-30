@@ -60,9 +60,12 @@ class NoulAnswer(BaseModel):
 
 
 class ScoreAnswer(BaseModel):
-    """A 4-level (0-3) similarity judgment from Jev, with the level definitions it saw."""
+    """A 4-level (0-3) similarity judgment from Jev, with the level definitions it saw.
 
-    score: int = Field(ge=0, le=3)
+    `score` is Jev's expected level (probability-weighted), so it may fall between levels.
+    """
+
+    score: float = Field(ge=0, le=3)
     confidence: float = Field(ge=0, le=1)
     legend: dict[int, str] = Field(default_factory=dict)
 

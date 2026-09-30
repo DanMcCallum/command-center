@@ -94,3 +94,14 @@
 - Kept candidates first admitted by a widened pass get `widened=True` and `widen_step` (e.g. `radius:1.5mi`, `acreage:0.165-6x`, `lookback:36mo`); identity across passes is the merged-from (source, source_id) set. Candidates admitted by the initial pass are never marked. `Candidate` gained `widened` / `widen_step`.
 - Config: `search.lookback_step_months` (12), `search.widened_acreage_ratio_min/max` (default: half the min, double the max). The widened band is never exceeded. `dedupe.provenance` is now public.
 - Not reached from a CLI command yet: `comps find` (step 12) is the caller.
+
+---
+
+## US-016 + US-017: Jev state assembly, question set, and cached Jev client (2026-09-30)
+
+- `state.py`: `build_state(subject, candidate, pool, today=None)` returns the PRD section 5 `subject`/`candidate`/`comparison` dict. None/empty fields are omitted (a `False` boolean is kept), descriptions are cut to 1,500 chars, `comparison.price_per_acre_vs_pool_median` uses the median over *sold* pool candidates and is omitted below 3. `Candidate` has no zoning or ZIP field, so candidate zoning is read from `raw["zoning"]` and candidate ZIP from a trailing 5-digit ZIP in `address`; `same_zoning`/`same_zip` are omitted when either side is unknown (today no normalizer sets `raw["zoning"]`, so `same_zoning` is usually absent). `Parcel` has no road access/utilities/description, so the subject block carries only apn, address, acreage, zoning, land_use.
+- `questions.py`: the 7 questions as plain `QuestionSpec` data, independent of the SDK. `questions_json()` feeds the cache key.
+- `jev.py`: `JevJudge(transport, conn, model="jev-latest", sleep=time.sleep)` with `judge`, `judge_with_usage`, `judge_many(states, concurrency=8)`. `JevTransport` protocol keeps `typesafe-sdk` (pinned `==0.7.1`) behind `TypeSafeTransport`, which turns SDK retries off so the judge's backoff (1s doubling, cap 30s, honors Retry-After, 5 tries) is the only layer. Retried: 408/429/5xx (529 included) and connection errors; 401/422/other 4xx raise `JevFatalError` at once. Tries exhausted raise `JevUnavailableError`; `judge_many` returns that error in the slot for that state and raises only fatal errors.
+- `jev_cache` stores `JevAnswers` JSON plus the input tokens Jev reported; a cache hit returns the stored tokens with `cached=True` (not billed).
+- SDK Noul answers carry only a probability, so `NoulAnswer.confidence` is derived as `|2p - 1|`. `ScoreAnswer.score` changed from int to float because Jev returns an expected level (e.g. 1.7); rounding would lose information the scorer can use.
+- `JevJudge.from_settings(settings, conn)` builds the real client from `TYPESAFE_API_KEY`. Nothing calls `build_state`/`JevJudge` until `comps find` (US-019).

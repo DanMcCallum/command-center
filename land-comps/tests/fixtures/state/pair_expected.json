@@ -1,0 +1,33 @@
+{
+  "subject": {
+    "apn": "0000100000",
+    "address": "1 Subject Rd, Fairplay, CO 80440",
+    "acreage": 5.1,
+    "zoning": "RR-5",
+    "land_use": "Vacant Residential"
+  },
+  "candidate": {
+    "source": "landwatch",
+    "status": "sold",
+    "apn": "0000200000",
+    "address": "Lot 4 County Road 12, Fairplay, CO 80440",
+    "acreage": 4.6,
+    "zoning": "rr-5",
+    "price": 85000,
+    "price_per_acre": 18478,
+    "event_date": "2026-03-14",
+    "deed_type": "WD",
+    "road_access": "county road",
+    "utilities": ["electric at street"],
+    "topography": "gentle slope",
+    "description": "Level building site with mountain views."
+  },
+  "comparison": {
+    "distance_miles": 1.8,
+    "acreage_ratio": 0.9,
+    "months_since_event": 6,
+    "same_zoning": true,
+    "same_zip": true,
+    "price_per_acre_vs_pool_median": 0.92
+  }
+}
