@@ -105,3 +105,14 @@
 - `jev_cache` stores `JevAnswers` JSON plus the input tokens Jev reported; a cache hit returns the stored tokens with `cached=True` (not billed).
 - SDK Noul answers carry only a probability, so `NoulAnswer.confidence` is derived as `|2p - 1|`. `ScoreAnswer.score` changed from int to float because Jev returns an expected level (e.g. 1.7); rounding would lose information the scorer can use.
 - `JevJudge.from_settings(settings, conn)` builds the real client from `TYPESAFE_API_KEY`. Nothing calls `build_state`/`JevJudge` until `comps find` (US-019).
+
+---
+
+## US-018: composite scoring, hard gates, tier demotion, and ranking (2026-09-30)
+
+- `scoring.py`: `score(candidate, answers, features, config: Settings) -> CompResult` implements the section 5 formula with `scoring.w1..w7`. Similarity scores are divided by 3; recency = `1 - months/search.lookback_months` and proximity = `1 - distance/search.max_radius_mi`, both clamped to [0, 1]. A feature that is None (no coordinates / no event date) contributes 0. Composite is not clamped (weights are not forced to sum to 1).
+- `Features(distance_miles, months_since_event)` is the pydantic feature record (JSON-storable for `comps rescore`); `compute_features(subject, candidate, today)` builds it (step 12 calls it and persists it next to the answers).
+- Gates: `arms_length < scoring.arms_length_min` (0.5) forces `reject`; `red_flags > scoring.red_flags_max` (0.7) rejects (policy `reject`, gate `red_flags_reject`) or only adds the `red_flag` marker (policy `warn`). Both thresholds are new config keys with those defaults; comparisons are strict.
+- Demotion: from `quality_tier.choice`, ONE level when composite < that choice's floor or `quality_tier.confidence < min_confidence`. Both triggering still demotes once (conservative reading); both reasons are recorded (`below_tier_floor`, `low_tier_confidence`). `reject` has no floor and never demotes; a forced reject skips demotion. `gates_triggered` therefore holds gates, the warn marker, and demotion reasons.
+- `rank(results: Sequence[ScoredComp])` sorts by tier, composite desc (rounded to 9 places so float noise is not a tie), then sold before active/pending; stable. `ScoredComp(candidate, result)` exists because `CompResult` does not carry status.
+- Not reached from a CLI command yet: `comps find` (step 12 / US-019) and `comps rescore` are the callers.

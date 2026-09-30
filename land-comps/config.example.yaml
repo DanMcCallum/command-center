@@ -32,6 +32,8 @@ scoring:
     marginal: 0.40
   min_confidence: 0.5
   red_flag_policy: warn # warn | reject
+  arms_length_min: 0.5 # arms_length probability below this forces tier = reject
+  red_flags_max: 0.7 # red_flags probability above this rejects or warns (per red_flag_policy)
 
 apify:
   # PLACEHOLDER: confirm actor IDs per PRD section 3 prerequisites.

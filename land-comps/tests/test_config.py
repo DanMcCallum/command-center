@@ -24,6 +24,8 @@ def test_loads_example_config_with_documented_defaults() -> None:
     assert settings.search.nominal_price_floor == 1000
 
     assert settings.scoring.red_flag_policy == "warn"
+    assert settings.scoring.arms_length_min == 0.5
+    assert settings.scoring.red_flags_max == 0.7
 
     assert settings.apify.cache_ttl_days == 7
 

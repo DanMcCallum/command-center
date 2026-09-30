@@ -99,6 +99,9 @@ class ScoringConfig(BaseModel):
     tier_floors: TierFloors = Field(default_factory=TierFloors)
     min_confidence: float = Field(default=0.5, ge=0, le=1)
     red_flag_policy: Literal["warn", "reject"] = "warn"
+    # Hard gates: arms_length probability below the first, or red_flags above the second, trips.
+    arms_length_min: float = Field(default=0.5, ge=0, le=1)
+    red_flags_max: float = Field(default=0.7, ge=0, le=1)
 
 
 class ApifyConfig(BaseModel):
