@@ -17,6 +17,9 @@ def test_loads_example_config_with_documented_defaults() -> None:
     assert settings.search.acreage_ratio_max == 3.0
     assert settings.search.lookback_months == 24
     assert settings.search.max_lookback_months == 36
+    assert settings.search.lookback_step_months == 12
+    assert settings.search.widened_ratio_min == 0.165
+    assert settings.search.widened_ratio_max == 6.0
     assert settings.search.min_candidates == 8
     assert settings.search.nominal_price_floor == 1000
 

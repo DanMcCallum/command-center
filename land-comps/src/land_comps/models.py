@@ -47,6 +47,8 @@ class Candidate(BaseModel):
     topography: str | None = None
     description: str | None = None
     url: str | None = None
+    widened: bool = False
+    widen_step: str | None = None
     raw: dict[str, Any] = Field(default_factory=dict)
 
 

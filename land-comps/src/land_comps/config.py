@@ -20,6 +20,9 @@ class SearchConfig(BaseModel):
     acreage_ratio_max: float = Field(default=3.0, gt=0)
     lookback_months: int = Field(default=24, gt=0)
     max_lookback_months: int = Field(default=36, gt=0)
+    lookback_step_months: int = Field(default=12, gt=0)
+    widened_acreage_ratio_min: float | None = Field(default=None, gt=0)
+    widened_acreage_ratio_max: float | None = Field(default=None, gt=0)
     min_candidates: int = Field(default=8, ge=0)
     nominal_price_floor: float = Field(default=1000, ge=0)
 
@@ -41,9 +44,33 @@ class SearchConfig(BaseModel):
                 f"search.lookback_months ({self.lookback_months}) must be <= "
                 f"search.max_lookback_months ({self.max_lookback_months})"
             )
+        if self.widened_ratio_min > self.acreage_ratio_min:
+            errors.append(
+                f"search.widened_acreage_ratio_min ({self.widened_ratio_min}) must be <= "
+                f"search.acreage_ratio_min ({self.acreage_ratio_min})"
+            )
+        if self.widened_ratio_max < self.acreage_ratio_max:
+            errors.append(
+                f"search.widened_acreage_ratio_max ({self.widened_ratio_max}) must be >= "
+                f"search.acreage_ratio_max ({self.acreage_ratio_max})"
+            )
         if errors:
             raise ValueError("; ".join(errors))
         return self
+
+    @property
+    def widened_ratio_min(self) -> float:
+        """Lower acreage ratio once the band is widened: configured, else half the normal min."""
+        if self.widened_acreage_ratio_min is not None:
+            return self.widened_acreage_ratio_min
+        return self.acreage_ratio_min / 2
+
+    @property
+    def widened_ratio_max(self) -> float:
+        """Upper acreage ratio once the band is widened: configured, else double the normal max."""
+        if self.widened_acreage_ratio_max is not None:
+            return self.widened_acreage_ratio_max
+        return self.acreage_ratio_max * 2
 
 
 class TierFloors(BaseModel):

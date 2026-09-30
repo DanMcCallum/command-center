@@ -112,7 +112,8 @@ def _union(a: Sequence[str], b: Sequence[str]) -> list[str]:
     return list(dict.fromkeys([*a, *b]))
 
 
-def _provenance(candidate: Candidate) -> list[dict[str, str]]:
+def provenance(candidate: Candidate) -> list[dict[str, str]]:
+    """The (source, source_id) records a candidate was merged from (itself if never merged)."""
     merged = candidate.raw.get("merged_from")
     if isinstance(merged, list):
         return [m for m in merged if isinstance(m, dict)]
@@ -171,7 +172,7 @@ def merge_candidates(a: Candidate, b: Candidate) -> Candidate:
         topography=lead.topography or other.topography,
         description=_longest(lead.description, other.description),
         url=lead.url or other.url,
-        raw={**lead.raw, "merged_from": _provenance(lead) + _provenance(other)},
+        raw={**lead.raw, "merged_from": provenance(lead) + provenance(other)},
     )
 
 

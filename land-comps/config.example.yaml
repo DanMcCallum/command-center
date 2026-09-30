@@ -10,6 +10,11 @@ search:
   acreage_ratio_max: 3.0
   lookback_months: 24
   max_lookback_months: 36
+  lookback_step_months: 12 # auto-widen adds this much lookback per step, up to the max
+  # Auto-widen makes one acreage step to this band (candidate acres / subject acres).
+  # Omit to derive it: acreage_ratio_min / 2 and acreage_ratio_max * 2.
+  widened_acreage_ratio_min: 0.165
+  widened_acreage_ratio_max: 6.0
   min_candidates: 8
   nominal_price_floor: 1000
 
