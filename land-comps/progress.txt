@@ -64,3 +64,13 @@
 - Config: added `apify.run_timeout_secs` (default 300) so the timeout is tunable.
 - Added `apify-client` as a runtime dependency (`uv add`).
 - Neither class is reached from a CLI command yet: step 8 (`gather`) and the LandWatch/Realtor sources (steps 7 and after) are their callers.
+
+---
+
+## US-011 + US-012: LandWatch and Realtor.com listing source normalizers (2026-09-30)
+
+- `landwatch.py`: `LandWatchSource(runner, actor_id).fetch(subject, radius_mi)` makes one actor run (county FIPS + ZIP + center/radius, statuses available/under contract/sold) and maps items to `Candidate`. Status: Available->active, Under Contract->pending, Sold->sold; anything else is dropped. Sold items take `soldPrice`, falling back to `price`; `price` is the sale price for sold and the list price otherwise; `event_date` is sold date for sold, list date otherwise.
+- `realtor.py`: `RealtorSource(runner, actor_id).fetch(...)` runs the actor twice (sold, for_sale) for the subject's ZIP (no ZIP -> `SourceError`). Keeps property types land/lot/vacant land, plus farm/ranch only when it has no beds/baths/building sqft. Lot sqft / 43,560 = acres. for_sale items with pending/contingent status become pending.
+- `listing_fields.py`: shared parsing (`$1,200` strings, ISO and MM/DD/YYYY dates, comma lists), `within_radius` (records without GPS are kept), and a hash fallback `source_id` when the actor gives neither ID nor URL.
+- Actor field names are placeholders: each source has one `_F` table (plus `build_input`) to edit when actor IDs are chosen. Fixtures in `tests/fixtures/apify/`.
+- Neither source is reached from a CLI command yet: step 8 (`gather`) is the caller.
