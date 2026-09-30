@@ -74,3 +74,13 @@
 - `listing_fields.py`: shared parsing (`$1,200` strings, ISO and MM/DD/YYYY dates, comma lists), `within_radius` (records without GPS are kept), and a hash fallback `source_id` when the actor gives neither ID nor URL.
 - Actor field names are placeholders: each source has one `_F` table (plus `build_input`) to edit when actor IDs are chosen. Fixtures in `tests/fixtures/apify/`.
 - Neither source is reached from a CLI command yet: step 8 (`gather`) is the caller.
+
+---
+
+## US-013 + US-014: concurrent gathering and cross-source dedup (2026-09-30)
+
+- `gather.py`: `gather(subject, radius_mi, lookback_months, sources) -> GatherResult(candidates, source_errors, counts)` runs each `NamedSource(name, fetch)` on its own thread (`ThreadPoolExecutor`), returns candidates in source order, and logs per-source counts. A `SourceError` is recorded; any other exception is logged and recorded as a `SourceError` too, so one buggy source cannot sink the run. `build_sources(settings, conn)` builds county_sales + landwatch + realtor; without `APIFY_TOKEN` the two listing sources are still returned and fail with the runner's `SourceError`, so the gap shows up in `source_errors`.
+- `db.init_db` now opens the connection with `check_same_thread=False` because worker threads share it (county reads, Apify cache). Python's sqlite3 reports threadsafety 3 (serialized).
+- `dedupe.py`: `dedupe(candidates, county, apn_resolver=None)` runs three passes in PRD order (APN, coordinates within 0.05 mi and acreage within 10% of the larger, normalized address), each on the survivors of the last, so merges are transitive. `match_reason` / `is_same_parcel(a, b, county)` are the reusable pairwise predicate for the benchmark (step 14). Two records with different APNs never merge under rules 2/3. Address rule needs a leading street number (road-only addresses would merge distinct lots).
+- `merge_candidates`: lead record = county source, then one with a sold price, then richest; it supplies each field, the other fills gaps. `sold_price` prefers the lead's (county's), `list_price` kept, `price` = sold price when present, status becomes sold, `sources` unioned, `raw["merged_from"]` lists (source, source_id) pairs.
+- `resolve_apns(candidates, client, county)`: `by_point` for candidates with coordinates and no APN; stops at the first `RegridError` (incl. `QuotaExceeded`) and reports it in `stopped_early`. Wiring `--resolve-apn` onto `comps find` is step 12; neither `gather` nor `dedupe` is reached from a CLI command yet.

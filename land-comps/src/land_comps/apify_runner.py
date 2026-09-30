@@ -10,6 +10,7 @@ actor, so a scraper outage shows up in the run instead of as an empty result.
 
 import json
 import sqlite3
+import threading
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
@@ -106,6 +107,9 @@ class ApifyRunner:
         self._conn = conn
         self._config = config
         self._clock = clock
+        # `gather` runs LandWatch and Realtor on separate threads sharing one connection;
+        # unsynchronized `with conn:` blocks interleave BEGIN/COMMIT and fail or drop writes.
+        self._write_lock = threading.Lock()
 
     @classmethod
     def from_settings(cls, settings: Settings, conn: sqlite3.Connection) -> "ApifyRunner":
@@ -180,7 +184,7 @@ class ApifyRunner:
 
     def _write_cache(self, key: str, result: ApifyResult) -> None:
         payload = json.dumps({"run_id": result.run_id, "items": result.items})
-        with self._conn:
+        with self._write_lock, self._conn:
             self._conn.execute(
                 "INSERT OR REPLACE INTO source_cache (key, payload, fetched_at) VALUES (?, ?, ?)",
                 (key, payload, result.fetched_at.isoformat()),

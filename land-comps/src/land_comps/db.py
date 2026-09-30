@@ -104,7 +104,11 @@ def init_db(path: str | Path) -> sqlite3.Connection:
 
     Safe to call repeatedly: every statement is `CREATE ... IF NOT EXISTS`.
     """
-    conn = sqlite3.connect(path)
+    # `gather` runs sources on worker threads that share this connection (the county
+    # source reads it, Apify-backed sources use it as their response cache).
+    # Reads are safe once the same-thread check is off; writers must serialize their own
+    # `with conn:` blocks (see `ApifyRunner._write_lock`).
+    conn = sqlite3.connect(path, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
     conn.executescript(_SCHEMA)
