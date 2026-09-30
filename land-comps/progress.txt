@@ -53,3 +53,14 @@
 - `geocode_county` selects vacant sales lacking coords within `search.max_lookback_months` (newest first, optional `--limit`), calls `by_apn`, commits per row, fills acreage only when null, and stops on `QuotaExceeded` (exit 0, prints remaining). Other `RegridError`s exit 1 after earlier rows are saved.
 - CLI: `comps ingest county` (paths default to `county.*_file` from config) and `comps ingest geocode-county`, under an `ingest` sub-app.
 - Fixtures in `tests/fixtures/county/` are hand-built placeholders (20 sales, 12 vacant, 6 vacant missing coords, 4 of those in window).
+
+---
+
+## US-009 + US-010: county sales candidate source and cached Apify runner (2026-09-30)
+
+- `sources.py`: `SourceError(source, reason)`, the shared failure type for every candidate source (step 8's `gather` records these in `source_errors`).
+- `county_sales.py`: `CountySalesSource(conn, county).fetch(subject, radius_mi, lookback_months, today=None)`. SQL prefilter (`is_vacant=1`, sale_date >= lookback cutoff, lat/lon bounding box; longitude bound skipped near the poles), then exact haversine. The subject's APN is compared after `normalize_apn`, so Regrid's formatting can't leak the subject in as its own comp. `source_id` is `apn:sale_date:price`; distance is kept in `raw["distance_mi"]`. Results are newest sale first.
+- `apify_runner.py`: `ApifyRunner(client, conn, config, clock=)` depends on the `ActorClient` protocol (`run_actor`); `ApifyActorClient` is the real `apify-client` adapter (`actor().call(run_timeout=, wait_duration=)`, then `dataset().list_items(limit=max_items)`). `run()` returns items; `run_with_provenance()` also returns actor ID, Apify run ID, fetched_at, and whether the cache answered. Cache key is `apify:{actor_id}:{sorted input JSON}` in `source_cache`; payload stores the run ID with the items. `cache_ttl_days=0` disables caching. Only SUCCEEDED runs are cached. Any client exception, non-SUCCEEDED status, or timeout becomes `SourceError` naming the actor. `ApifyRunner.from_settings` builds the real client from `APIFY_TOKEN`.
+- Config: added `apify.run_timeout_secs` (default 300) so the timeout is tunable.
+- Added `apify-client` as a runtime dependency (`uv add`).
+- Neither class is reached from a CLI command yet: step 8 (`gather`) and the LandWatch/Realtor sources (steps 7 and after) are their callers.

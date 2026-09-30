@@ -79,6 +79,7 @@ class ApifyConfig(BaseModel):
     realtor_actor_id: str
     max_items: int = Field(default=500, gt=0)
     cache_ttl_days: int = Field(default=7, ge=0)
+    run_timeout_secs: int = Field(default=300, gt=0)
 
 
 class CountyConfig(BaseModel):

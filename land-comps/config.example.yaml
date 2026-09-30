@@ -34,6 +34,7 @@ apify:
   realtor_actor_id: "PLACEHOLDER_REALTOR_ACTOR_ID"
   max_items: 500
   cache_ttl_days: 7
+  run_timeout_secs: 300 # per-actor run timeout; a timeout raises SourceError
 
 county:
   # Park County, CO. FIPS must stay quoted so the leading zero survives YAML parsing.
