@@ -11,6 +11,7 @@ EXPECTED_TABLES = {
     "jev_cache",
     "runs",
     "run_results",
+    "benchmark_comps",
 }
 
 

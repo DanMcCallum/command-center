@@ -9,6 +9,7 @@ from rich.table import Table
 
 from land_comps import __version__
 from land_comps.apify_runner import ApifyRunner
+from land_comps.bench import BenchImportError, import_benchmark
 from land_comps.config import Settings, load_settings
 from land_comps.county import IngestError, geocode_county, ingest_county
 from land_comps.db import init_db
@@ -24,7 +25,17 @@ from land_comps.pipeline import (
     run_find,
 )
 from land_comps.regrid import ParcelLookup, RegridClient, RegridError
-from land_comps.report import ExportError, export_format, render_report, select_comps, write_export
+from land_comps.report import (
+    ExportError,
+    RankedComp,
+    RunReport,
+    export_format,
+    render_report,
+    select_comps,
+    write_export,
+)
+from land_comps.rescore import rescore_run
+from land_comps.runs import RunNotFoundError, StoredRunError
 from land_comps.sources import SourceError
 
 app = typer.Typer(
@@ -34,6 +45,8 @@ app = typer.Typer(
 )
 ingest_app = typer.Typer(help="Load and enrich local data sources.", no_args_is_help=True)
 app.add_typer(ingest_app, name="ingest")
+bench_app = typer.Typer(help="Benchmark against the CRM tool's comps.", no_args_is_help=True)
+app.add_typer(bench_app, name="bench")
 console = Console()
 err_console = Console(stderr=True)
 
@@ -196,13 +209,96 @@ def find(
 
     render_report(console, report, top=top, include_rejects=include_rejects)
     if out is not None:
-        shown = select_comps(report.comps, top, include_rejects)
+        _write_export_or_exit(out, report, select_comps(report.comps, top, include_rejects))
+
+
+def _write_export_or_exit(out: Path, report: RunReport, shown: list[RankedComp]) -> None:
+    try:
+        write_export(out, report, shown)
+    except OSError as exc:
+        err_console.print(f"[red]Could not write {escape(str(out))}:[/red] {escape(str(exc))}")
+        raise typer.Exit(code=1) from exc
+    console.print(f"Wrote {len(shown)} comps to {escape(str(out))}")
+
+
+@app.command()
+def rescore(
+    run_id: Annotated[str, typer.Argument(help="ID of a past run (shown in its report header).")],
+    top: Annotated[
+        int | None, typer.Option(min=1, help="Show only the N best-ranked comps.")
+    ] = None,
+    include_rejects: Annotated[
+        bool, typer.Option("--include-rejects", help="Also show reject-tier comps.")
+    ] = False,
+    out: Annotated[
+        Path | None, typer.Option(help="Also write the shown comps to this .json or .csv file.")
+    ] = None,
+    config: Annotated[Path, typer.Option(help="Path to the YAML config file.")] = Path(
+        "config.yaml"
+    ),
+    db: Annotated[Path, typer.Option(help="Path to the SQLite database.")] = DEFAULT_DB_PATH,
+) -> None:
+    """Re-rank a past run under the current scoring config (offline; nothing is saved)."""
+    settings = _load_settings_or_exit(config)
+    if out is not None:
         try:
-            write_export(out, report, shown)
-        except OSError as exc:
-            err_console.print(f"[red]Could not write {escape(str(out))}:[/red] {escape(str(exc))}")
+            export_format(out)  # reject a bad extension before doing any work
+        except ExportError as exc:
+            err_console.print(f"[red]Error:[/red] {escape(str(exc))}")
             raise typer.Exit(code=1) from exc
-        console.print(f"Wrote {len(shown)} comps to {escape(str(out))}")
+
+    if not db.exists():
+        err_console.print(f"[red]Error:[/red] database {escape(str(db))} does not exist.")
+        raise typer.Exit(code=1)
+    conn = init_db(db)
+    try:
+        report = rescore_run(conn, settings, run_id)
+    except (RunNotFoundError, StoredRunError) as exc:
+        err_console.print(f"[red]Error:[/red] {escape(str(exc))}")
+        raise typer.Exit(code=1) from exc
+    finally:
+        conn.close()
+
+    console.print(f"Rescored run {escape(run_id)} with the current scoring config (nothing saved).")
+    render_report(console, report, top=top, include_rejects=include_rejects)
+    if out is not None:
+        _write_export_or_exit(out, report, select_comps(report.comps, top, include_rejects))
+
+
+@bench_app.command("import")
+def bench_import(
+    csv_path: Annotated[Path, typer.Argument(help="CRM comps CSV (see PRD US-021 for columns).")],
+    config: Annotated[Path, typer.Option(help="Path to the YAML config file.")] = Path(
+        "config.yaml"
+    ),
+    db: Annotated[Path, typer.Option(help="Path to the SQLite database.")] = DEFAULT_DB_PATH,
+) -> None:
+    """Load CRM benchmark comps into SQLite (re-importing replaces each subject's comps)."""
+    settings = _load_settings_or_exit(config)
+    if not csv_path.is_file():
+        err_console.print(
+            f"[red]Import error:[/red] Cannot read {escape(str(csv_path))}: not a file."
+        )
+        raise typer.Exit(code=1)
+
+    db.parent.mkdir(parents=True, exist_ok=True)
+    conn = init_db(db)
+    try:
+        result = import_benchmark(conn, settings, csv_path)
+    except BenchImportError as exc:
+        err_console.print(f"[red]Import error:[/red] {escape(str(exc))}")
+        raise typer.Exit(code=1) from exc
+    finally:
+        conn.close()
+
+    console.print(
+        f"Read {result.rows_read} rows: stored {result.rows_stored} comps for "
+        f"{result.subjects} subjects, skipped {len(result.skipped)}."
+    )
+    if result.replaced:
+        console.print(f"Replaced {result.replaced} previously imported comps for those subjects.")
+    for skipped in result.skipped:
+        console.print(f"[yellow]Skipped line {skipped.line}:[/yellow] {escape(skipped.reason)}")
 
 
 @ingest_app.command("county")

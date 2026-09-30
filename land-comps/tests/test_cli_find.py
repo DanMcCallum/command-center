@@ -10,10 +10,11 @@ from rich.console import Console
 from typer.testing import CliRunner, Result
 
 from land_comps import cli
+from land_comps.apify_runner import ApifyRunner
 from land_comps.db import init_db
 from land_comps.gather import NamedSource
 from land_comps.geo import haversine_miles
-from land_comps.jev import JevFatalError, JevUnavailableError, JudgedAnswers
+from land_comps.jev import JevFatalError, JevJudge, JevUnavailableError, JudgedAnswers
 from land_comps.models import Candidate, JevAnswers, Parcel
 from land_comps.pipeline import FindClients
 from land_comps.regrid import QuotaExceeded
@@ -502,3 +503,115 @@ def test_default_clients_require_a_typesafe_key(
 
     assert result.exit_code == 1
     assert "TYPESAFE_API_KEY" in result.output
+
+
+# --- comps rescore -------------------------------------------------------------------------
+
+
+def _forbid_clients(monkeypatch: pytest.MonkeyPatch) -> None:
+    def factory(*args: Any, **kwargs: Any) -> Any:
+        raise AssertionError("rescore built a network client")
+
+    monkeypatch.setattr(cli, "find_clients_factory", factory)
+    monkeypatch.setattr(cli, "regrid_client_factory", factory)
+    monkeypatch.setattr(cli, "build_sources", factory)
+    monkeypatch.setattr(JevJudge, "from_settings", factory)
+    monkeypatch.setattr(ApifyRunner, "from_settings", factory)
+
+
+def _reweight(harness: Harness, **scoring: Any) -> None:
+    raw = yaml.safe_load(harness.config.read_text())
+    raw["scoring"].update(scoring)
+    harness.config.write_text(yaml.safe_dump(raw))
+
+
+def _run_id(harness: Harness) -> str:
+    conn = init_db(harness.db)
+    try:
+        return str(conn.execute("SELECT id FROM runs").fetchone()["id"])
+    finally:
+        conn.close()
+
+
+def _rescore(harness: Harness, run_id: str, *args: str) -> Result:
+    return runner.invoke(
+        cli.app,
+        ["rescore", run_id, "--config", str(harness.config), "--db", str(harness.db), *args],
+    )
+
+
+def test_rescore_with_changed_weight_reorders_without_any_client_call(
+    harness: Harness, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    before = _export_json(harness)
+    assert _keys(before) == EXPECTED_ORDER
+    judge_calls, run_id = harness.judge.calls, _run_id(harness)
+    # Recency alone: G Pine Rd (4 months old) now outranks B Aspen Rd (6 months old).
+    _reweight(harness, w1=0, w2=0, w3=0, w4=0, w5=1.0, w6=0, w7=0)
+    _forbid_clients(monkeypatch)
+    harness.regrid.points.clear()
+
+    out = harness.tmp_path / "rescored.json"
+    result = _rescore(harness, run_id, "--out", str(out))
+
+    assert result.exit_code == 0, result.output
+    assert result.output.index("G Pine Rd") < result.output.index("B Aspen Rd")
+    assert "Sold comps" in result.output and "Listing comps" in result.output
+    assert f"run {run_id}" in result.output
+    rescored = json.loads(out.read_text())
+    assert _keys(rescored) == ["0034567001", "G Pine Rd", "B Aspen Rd", "0034567003"]
+    assert [c["rank"] for c in rescored["comps"]] == [1, 2, 3, 4]
+    assert harness.judge.calls == judge_calls
+    assert harness.regrid.points == []
+    # Nothing is saved: the original run is untouched and no second run exists.
+    conn = init_db(harness.db)
+    assert conn.execute("SELECT COUNT(*) FROM runs").fetchone()[0] == 1
+    tiers = [r["tier"] for r in conn.execute("SELECT tier FROM run_results ORDER BY id")]
+    assert tiers[:4] == ["excellent", "good", "good", "marginal"]
+
+
+def test_rescore_with_unchanged_config_matches_the_original_ranking(
+    harness: Harness, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    before = _export_json(harness, "--include-rejects")
+    _forbid_clients(monkeypatch)
+    out = harness.tmp_path / "again.json"
+
+    result = _rescore(harness, _run_id(harness), "--include-rejects", "--out", str(out))
+
+    assert result.exit_code == 0, result.output
+    after = json.loads(out.read_text())
+    assert _keys(after) == _keys(before)
+    assert [c["result"]["composite"] for c in after["comps"]] == pytest.approx(
+        [c["result"]["composite"] for c in before["comps"]]
+    )
+
+
+def test_rescore_unknown_run_id_exits_nonzero_with_message(harness: Harness) -> None:
+    assert harness.invoke().exit_code == 0
+
+    result = _rescore(harness, "no-such-run")
+
+    assert result.exit_code == 1
+    assert "No run with id 'no-such-run'" in result.output
+
+
+def test_rescore_missing_database_exits_nonzero(harness: Harness) -> None:
+    result = _rescore(harness, "whatever")
+
+    assert result.exit_code == 1
+    assert "does not exist" in " ".join(result.output.split())
+    assert not harness.db.exists()
+
+
+def test_rescore_run_saved_without_detail_reports_it(harness: Harness) -> None:
+    assert harness.invoke().exit_code == 0
+    conn = init_db(harness.db)
+    with conn:
+        conn.execute("UPDATE run_results SET features_json = '{}'")
+    conn.close()
+
+    result = _rescore(harness, _run_id(harness))
+
+    assert result.exit_code == 1
+    assert "cannot be rescored" in result.output

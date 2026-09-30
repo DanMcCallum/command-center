@@ -2,7 +2,7 @@
 
 Everything the pipeline touches lives in one file-based SQLite database:
 resolved parcels, ingested county sales, normalized candidates, source/Jev
-response caches, and the ranked output of each `comps find` run.
+response caches, and the ranked output of each `comps find` run, and imported CRM benchmark comps.
 """
 
 import sqlite3
@@ -96,6 +96,19 @@ CREATE TABLE IF NOT EXISTS run_results (
 );
 
 CREATE INDEX IF NOT EXISTS idx_run_results_run_id ON run_results (run_id);
+
+CREATE TABLE IF NOT EXISTS benchmark_comps (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    subject_id TEXT NOT NULL,
+    comp_apn TEXT,
+    comp_address TEXT,
+    comp_price REAL,
+    comp_date TEXT,
+    comp_status TEXT NOT NULL,
+    crm_rating TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_benchmark_comps_subject ON benchmark_comps (subject_id);
 """
 
 

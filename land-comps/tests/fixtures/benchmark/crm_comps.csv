@@ -1,0 +1,10 @@
+subject_id,comp_apn,comp_address,comp_price,comp_date,comp_status,crm_rating
+0034567890,0034567001,,"$52,000",2026-03-15,sold,5
+0034567890,34-567-002,"12 Aspen Road",48000,2026-01-20,sold,4
+0034567890,,"7 Pine Lane, Fairplay",65000,2026-06-01,active,3
+0034567890,0034567004,,41000,2025-11-02,sold,
+"1500 County Road 18",0099887001,,30000,2026-02-10,sold,5
+"1500 County Road 18",,"88 Spruce Avenue",35000,2026-05-05,active,4
+"1500 County Road 18",0099887003,"90 Elk Court",28000,2025-12-12,sold,2
+"1500 County Road 18",0099887004,,,,active,
+0034567890,,,45000,2026-04-04,sold,3

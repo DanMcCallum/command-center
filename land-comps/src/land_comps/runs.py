@@ -14,10 +14,15 @@ import json
 import sqlite3
 import uuid
 from collections.abc import Sequence
+from dataclasses import dataclass
 from datetime import datetime
+from typing import Any
 
-from land_comps.models import Candidate
+from pydantic import ValidationError
+
+from land_comps.models import Candidate, JevAnswers
 from land_comps.report import RankedComp, RunSummary
+from land_comps.scoring import Features
 
 _CANDIDATE_UPSERT = """
 INSERT INTO candidates (
@@ -101,3 +106,58 @@ def save_run(conn: sqlite3.Connection, summary: RunSummary, comps: Sequence[Rank
                     features_json,
                 ),
             )
+
+
+class RunNotFoundError(Exception):
+    """No stored run has the requested ID."""
+
+
+class StoredRunError(Exception):
+    """A stored run is missing data `comps rescore` needs (e.g. saved by an older version)."""
+
+
+@dataclass(frozen=True)
+class StoredResult:
+    """One saved `run_results` row, decoded: everything needed to score it again offline."""
+
+    candidate: Candidate
+    answers: JevAnswers
+    features: Features
+    state: dict[str, Any]
+
+
+def load_run(conn: sqlite3.Connection, run_id: str) -> tuple[RunSummary, list[StoredResult]]:
+    """The saved summary and results of one run, results in their original rank order.
+
+    Raises `RunNotFoundError` for an unknown ID and `StoredRunError` for unreadable rows.
+    """
+    row = conn.execute("SELECT params_json FROM runs WHERE id = ?", (run_id,)).fetchone()
+    if row is None:
+        raise RunNotFoundError(f"No run with id {run_id!r}.")
+    try:
+        summary = RunSummary.model_validate_json(row["params_json"])
+    except ValidationError as exc:
+        raise StoredRunError(f"Run {run_id} has an unreadable summary: {exc}") from exc
+
+    rows = conn.execute(
+        "SELECT id, answers_json, features_json FROM run_results WHERE run_id = ? ORDER BY id",
+        (run_id,),
+    ).fetchall()
+    results: list[StoredResult] = []
+    for result_row in rows:
+        try:
+            detail = json.loads(result_row["features_json"])
+            results.append(
+                StoredResult(
+                    candidate=Candidate.model_validate(detail["candidate"]),
+                    answers=JevAnswers.model_validate_json(result_row["answers_json"]),
+                    features=Features.model_validate(detail["features"]),
+                    state=detail.get("state", {}),
+                )
+            )
+        except (ValueError, KeyError, TypeError) as exc:  # ValidationError is a ValueError
+            raise StoredRunError(
+                f"Run {run_id} result row {result_row['id']} cannot be rescored "
+                f"(stored without candidate/features detail): {exc}"
+            ) from exc
+    return summary, results

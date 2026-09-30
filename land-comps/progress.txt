@@ -129,3 +129,13 @@
 - `runs.py`: `save_run` writes one transaction. `runs.params_json` = full `RunSummary`; each `run_results` row = composite/tier/gates/`answers_json` plus `features_json` = `{"features", "state", "candidate"}`. Step 13's `rescore` should rebuild from the `candidate` snapshot in `features_json` (the shared `candidates` row is refreshed by later runs) and re-run `score`, `rank`, `render_report`. No schema change was needed.
 - `dedupe.merge_candidates` now also records `raw["urls"]` (every source URL), read via `source_urls`, so provenance URLs survive a merge.
 - `comps subject` now goes through the shared `resolve_subject`.
+
+---
+
+## US-020 + US-021: `comps rescore` and `comps bench import` (2026-09-30)
+
+- `runs.load_run(conn, run_id) -> (RunSummary, list[StoredResult])` decodes a saved run (candidate snapshot, answers, features, state) in original rank order; `RunNotFoundError` for an unknown ID, `StoredRunError` for rows saved without detail.
+- `rescore.rescore_run(conn, settings, run_id) -> RunReport` re-runs `score` + `rank` with the current `scoring` config (recency/proximity also use the current `search.lookback_months` / `max_radius_mi`). It takes no clients and writes nothing; `comps rescore <run_id> [--top --include-rejects --out]` prints through `render_report`, so the header/counts/cost are the original run's. Unknown run or missing DB file exits 1 (the DB is not created).
+- `bench.import_benchmark(conn, settings, csv)`: normalizes `comp_apn` (`normalize_apn`), `comp_address` and `subject_id` (APN-like -> `normalize_apn`, else `normalize_address`, so subject keys match what `find` resolves). Skipped with a line number and reason: no subject, neither APN nor address, `comp_status` not sold/active, bad price (non-numeric/non-finite), bad date (non-ISO). Price, date and `crm_rating` may be blank. Re-import deletes and re-inserts every subject that has >=1 valid row in the file; other subjects are untouched. Table `benchmark_comps` is in the idempotent schema.
+- `tests/fixtures/benchmark/crm_comps.csv`: 2 subjects x 4 comps plus one row (line 10) with no identifiers.
+- Step 14 (`bench run`) reads `benchmark_comps.subject_id` (normalized) to pick subjects; APN subjects are zero-padded APNs, address subjects are normalized addresses.
