@@ -10,7 +10,13 @@ from rich.table import Table
 from land_comps import __version__
 from land_comps.apify_runner import ApifyRunner
 from land_comps.bench import BenchImportError, import_benchmark
-from land_comps.bench_run import BenchResult, BenchRunError, run_benchmark
+from land_comps.bench_review import ScoreReviewError, score_review
+from land_comps.bench_run import (
+    REVIEWED_PRECISION_TARGET,
+    BenchResult,
+    BenchRunError,
+    run_benchmark,
+)
 from land_comps.config import Settings, load_settings
 from land_comps.county import IngestError, geocode_county, ingest_county
 from land_comps.db import init_db
@@ -334,6 +340,40 @@ def bench_run(
     _print_bench_summary(result)
     if not result.succeeded:
         raise typer.Exit(code=1)
+
+
+@bench_app.command("score-review")
+def bench_score_review(
+    review_csv: Annotated[
+        Path,
+        typer.Argument(help="review_<ts>.csv from `comps bench run`, with human_label filled in."),
+    ],
+) -> None:
+    """Score human labels (good/bad) and append reviewed precision to the matching bench report."""
+    try:
+        result = score_review(review_csv)
+    except ScoreReviewError as exc:
+        err_console.print(f"[red]Error:[/red] {escape(str(exc))}")
+        raise typer.Exit(code=1) from exc
+
+    score = result.score
+
+    def pct(value: float | None) -> str:
+        return "n/a" if value is None else f"{value * 100:.0f}%"
+
+    verdict = "n/a" if score.precision is None else ("PASS" if score.passes else "FAIL")
+    console.print(
+        f"Reviewed precision of our top 5: {pct(score.precision)} "
+        f"({score.top5_good}/{score.top5_labeled}), "
+        f"target >= {REVIEWED_PRECISION_TARGET * 100:.0f}%: {verdict}. "
+        f"CRM comps labeled bad: {pct(score.bad_share)} ({score.crm_bad}/{score.crm_labeled})."
+    )
+    if score.unlabeled:
+        console.print(
+            f"[yellow]{score.unlabeled} of {score.rows} review rows are unlabeled[/yellow] "
+            "and left out of both ratios; the result is provisional."
+        )
+    console.print(f"Appended results to {escape(str(result.bench_path))}")
 
 
 def _print_bench_summary(result: BenchResult) -> None:

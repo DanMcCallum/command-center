@@ -23,8 +23,8 @@ whose run succeeded, so a subject with many CRM comps weighs more):
   (informational).
 
 A subject whose run raises is reported as failed and left out of the metrics; it never aborts
-the batch. Reviewed precision needs human labels on the review CSV and is scored by a later
-step, so the report marks it pending.
+the batch. Reviewed precision needs human labels on the review CSV; the report marks it pending
+until `comps bench score-review` (see `bench_review`) appends the scored section.
 """
 
 import csv
@@ -48,6 +48,11 @@ AGREEMENT_TARGET = 0.60
 REVIEWED_PRECISION_TARGET = 0.70
 TOP_K = 5
 AGREEING_TIERS = ("excellent", "good")
+
+# The report carries the two agreement counts `comps bench score-review` needs (agreements are
+# not rows in the review CSV). Both the renderer and the scorer build their line from these.
+TOP5_AGREEMENTS_LABEL = "Top-5 comps that are CRM comps"
+CRM_AGREEMENTS_LABEL = "CRM comps we tier excellent or good"
 
 REVIEW_COLUMNS = (
     "subject_id",
@@ -401,6 +406,11 @@ def render_markdown(result: BenchResult, timestamp: str) -> str:
         "Recall counts CRM comps in our deduped pool before guardrails and Jev. Agreement is "
         "the share of those in-pool comps we tier excellent or good (filtered and unjudged "
         "comps never agree).",
+        "",
+        "## Review inputs",
+        "",
+        f"- {TOP5_AGREEMENTS_LABEL}: {overall.top5_hits}",
+        f"- {CRM_AGREEMENTS_LABEL}: {overall.agreeing}",
         "",
         "## Per subject",
         "",

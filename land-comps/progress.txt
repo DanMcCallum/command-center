@@ -151,3 +151,14 @@
 - Review CSV columns: `subject_id, category, detail, apn, address, status, price, date, our_rank, our_tier, composite, crm_rating, human_label` (blank). `category` = `crm_only` (not in pool / guardrail reason / unjudged), `ours_only` (top-5 not a CRM comp), `tier_conflict` (CRM comp we tier marginal/reject). Step 15 (`score-review`) reads this file and appends to the bench report with the same timestamp.
 - A subject whose pipeline raises (any exception) is listed under "Failed subjects" in the markdown, excluded from metrics, and does not stop the batch. CLI exits 1 if no subject ran (reports still written) or on setup errors (missing DB, no imported comps, client factory failure).
 - Subject targets are the normalized ids stored by import (zero-padded APN or upper-cased address), passed straight to `run_find`.
+
+---
+
+## US-023: `comps bench score-review` (2026-09-30)
+
+- `bench_review.py`: `score_review(review_csv, now=None) -> ReviewScoreResult` finds `bench_<ts>.md` beside `review_<ts>.csv` (file name must match `review_YYYYMMDD-HHMMSS.csv`), tallies `human_label` (case/space-insensitive good/bad, blank = unlabeled; any other value or an unknown category fails with line numbers before the report is touched) and appends a `## Reviewed precision results` section. A previously appended section is replaced, so re-scoring after more labeling is safe.
+- Agreements are not rows in the review CSV, so the bench report now has a "Review inputs" section (`bench_run.TOP5_AGREEMENTS_LABEL` / `CRM_AGREEMENTS_LABEL` lines: overall top-5 hits and CRM comps tiered excellent/good) that `score-review` parses. Bench reports written before this step lack it and fail with a message to re-run `bench run`.
+- Precision = (top-5 CRM agreements + `ours_only` labeled good) / (agreements + labeled `ours_only`). Bad share = (`crm_only`/`tier_conflict` labeled bad) / (CRM comps we tier excellent/good + labeled CRM rows). Unlabeled rows are excluded from both denominators and reported (by group); any unlabeled row marks the verdict "(provisional)". No labeled top-5 comps gives n/a, not a pass.
+- A marginal-tier top-5 hit that is also a `tier_conflict` row counts as an agreement for precision (the CRM lists it) and its label only feeds the CRM bad share.
+- CLI: `comps bench score-review <review.csv>` prints the two ratios, the verdict and the unlabeled count; missing review/bench file or bad labels exit 1. Tests import fixtures from `test_bench_run` (pytest rootdir mode, no `tests` package).
+- README now lists every command, the operator prerequisites, and the benchmark workflow. The MVP command set (PRD US-001..US-023) is complete.
