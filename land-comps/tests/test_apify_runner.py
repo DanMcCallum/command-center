@@ -90,6 +90,17 @@ def test_repeat_run_within_ttl_uses_cache(conn: sqlite3.Connection) -> None:
     assert second.actor_id == ACTOR
 
 
+def test_items_fetched_counts_only_live_items(conn: sqlite3.Connection) -> None:
+    runner = _runner(conn, FakeActorClient())
+
+    assert runner.items_fetched == 0
+    runner.run(ACTOR, {"a": 1})
+    runner.run(ACTOR, {"a": 1})  # cache hit: free
+    runner.run(ACTOR, {"a": 2})
+
+    assert runner.items_fetched == 6
+
+
 def test_expired_entry_reruns(conn: sqlite3.Connection) -> None:
     client, clock = FakeActorClient(), Clock()
     runner = _runner(conn, client, clock, cache_ttl_days=7)

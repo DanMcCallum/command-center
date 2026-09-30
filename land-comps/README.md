@@ -28,4 +28,7 @@ uv --directory land-comps run comps version
 uv --directory land-comps run comps subject <APN|address>   # needs config.yaml and REGRID_TOKEN
 uv --directory land-comps run comps ingest county --sales <csv> --parcels <csv> [--centroids <csv>]
 uv --directory land-comps run comps ingest geocode-county [--limit N]   # needs REGRID_TOKEN
+uv --directory land-comps run comps find <APN|address> [--radius R] [--top N] [--include-rejects] [--out results.json|results.csv] [--resolve-apn]
 ```
+
+`comps find` needs `TYPESAFE_API_KEY`, `REGRID_TOKEN`, and (for the LandWatch/Realtor.com sources) `APIFY_TOKEN`. `--radius` sets the initial search radius and is rejected above `search.max_radius_mi` (never more than 5 mi). Every run is saved to the `runs` / `run_results` tables.

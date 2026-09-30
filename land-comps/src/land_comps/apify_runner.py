@@ -110,6 +110,7 @@ class ApifyRunner:
         # `gather` runs LandWatch and Realtor on separate threads sharing one connection;
         # unsynchronized `with conn:` blocks interleave BEGIN/COMMIT and fail or drop writes.
         self._write_lock = threading.Lock()
+        self._items_fetched = 0
 
     @classmethod
     def from_settings(cls, settings: Settings, conn: sqlite3.Connection) -> "ApifyRunner":
@@ -151,8 +152,16 @@ class ApifyRunner:
             fetched_at=self._clock(),
             cached=False,
         )
+        with self._write_lock:
+            self._items_fetched += len(result.items)
         self._write_cache(key, result)
         return result
+
+    @property
+    def items_fetched(self) -> int:
+        """Dataset items pulled from Apify by this runner (cache hits are free and not counted)."""
+        with self._write_lock:
+            return self._items_fetched
 
     @staticmethod
     def _cache_key(actor_id: str, run_input: dict[str, Any]) -> str:

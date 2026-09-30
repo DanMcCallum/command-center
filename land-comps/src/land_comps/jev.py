@@ -47,6 +47,8 @@ MAX_TRIES = 5
 BASE_DELAY_SECS = 1.0
 MAX_DELAY_SECS = 30.0
 DEFAULT_CONCURRENCY = 8
+# List price of jev-latest input, USD per million tokens (PRD section 8); only for cost reports.
+JEV_INPUT_USD_PER_MTOK = 0.042
 
 _TRANSIENT_STATUSES = frozenset({408, 429, 500, 502, 503, 504, 529})
 

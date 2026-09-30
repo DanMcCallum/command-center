@@ -8,12 +8,24 @@ from rich.markup import escape
 from rich.table import Table
 
 from land_comps import __version__
+from land_comps.apify_runner import ApifyRunner
 from land_comps.config import Settings, load_settings
 from land_comps.county import IngestError, geocode_county, ingest_county
 from land_comps.db import init_db
+from land_comps.gather import build_sources
+from land_comps.jev import JevError, JevJudge
 from land_comps.models import Parcel
-from land_comps.normalize import looks_like_apn, normalize_apn
+from land_comps.pipeline import (
+    FindClients,
+    FindError,
+    SubjectNotFoundError,
+    effective_search,
+    resolve_subject,
+    run_find,
+)
 from land_comps.regrid import ParcelLookup, RegridClient, RegridError
+from land_comps.report import ExportError, export_format, render_report, select_comps, write_export
+from land_comps.sources import SourceError
 
 app = typer.Typer(
     name="comps",
@@ -39,6 +51,29 @@ def default_regrid_factory(settings: Settings, conn: sqlite3.Connection) -> Parc
 
 # Commands obtain their Regrid client through this hook so tests can substitute a fake.
 regrid_client_factory = default_regrid_factory
+
+
+def default_find_clients(settings: Settings, conn: sqlite3.Connection) -> FindClients:
+    """Live clients for `comps find`: Regrid, county + Apify sources, and the Jev judge.
+
+    The Jev key is checked here, before any paid Regrid or Apify call is made.
+    """
+    judge = JevJudge.from_settings(settings, conn)
+    regrid = regrid_client_factory(settings, conn)
+    try:
+        runner: ApifyRunner | None = ApifyRunner.from_settings(settings, conn)
+    except SourceError:
+        runner = None  # build_sources reports the missing token as a per-source error
+    return FindClients(
+        regrid=regrid,
+        sources=build_sources(settings, conn, runner),
+        judge=judge,
+        apify_items_fetched=(lambda: runner.items_fetched) if runner else (lambda: 0),
+    )
+
+
+# `comps find` obtains all of its clients through this hook so tests can substitute fakes.
+find_clients_factory = default_find_clients
 
 
 @app.callback()
@@ -92,12 +127,7 @@ def subject(
     db.parent.mkdir(parents=True, exist_ok=True)
     conn = init_db(db)
     try:
-        client = regrid_client_factory(settings, conn)
-        if looks_like_apn(target):
-            apn = normalize_apn(target, settings.county.fips, settings.county.apn_length)
-            parcel = client.by_apn(apn, settings.county.fips)
-        else:
-            parcel = client.by_address(target)
+        parcel = resolve_subject(regrid_client_factory(settings, conn), settings, target)
     except RegridError as exc:
         err_console.print(f"[red]Regrid error:[/red] {exc}")
         raise typer.Exit(code=1) from exc
@@ -109,6 +139,70 @@ def subject(
         raise typer.Exit(code=NO_MATCH_EXIT_CODE)
 
     console.print(_parcel_table(parcel))
+
+
+@app.command()
+def find(
+    target: Annotated[str, typer.Argument(help="Subject APN or street address.")],
+    radius: Annotated[
+        float | None,
+        typer.Option(help="Initial search radius in miles (may not exceed search.max_radius_mi)."),
+    ] = None,
+    top: Annotated[
+        int | None, typer.Option(min=1, help="Show only the N best-ranked comps.")
+    ] = None,
+    include_rejects: Annotated[
+        bool, typer.Option("--include-rejects", help="Also show reject-tier comps.")
+    ] = False,
+    out: Annotated[
+        Path | None, typer.Option(help="Also write the shown comps to this .json or .csv file.")
+    ] = None,
+    resolve_apn: Annotated[
+        bool,
+        typer.Option(
+            "--resolve-apn", help="Look up missing listing APNs via Regrid (uses Regrid records)."
+        ),
+    ] = False,
+    config: Annotated[Path, typer.Option(help="Path to the YAML config file.")] = Path(
+        "config.yaml"
+    ),
+    db: Annotated[Path, typer.Option(help="Path to the SQLite database.")] = DEFAULT_DB_PATH,
+) -> None:
+    """Find, judge, and rank comps for a subject APN or address, and save the run."""
+    settings = _load_settings_or_exit(config)
+    try:
+        if out is not None:
+            export_format(out)  # reject a bad extension before spending anything
+        effective_search(settings, radius)  # reject a bad radius before any network call
+    except (ExportError, FindError) as exc:
+        err_console.print(f"[red]Error:[/red] {escape(str(exc))}")
+        raise typer.Exit(code=1) from exc
+
+    db.parent.mkdir(parents=True, exist_ok=True)
+    conn = init_db(db)
+    try:
+        clients = find_clients_factory(settings, conn)
+        report = run_find(
+            target, settings, conn, clients, radius_mi=radius, resolve_apn=resolve_apn
+        )
+    except SubjectNotFoundError as exc:
+        err_console.print(f"{escape(str(exc))}")
+        raise typer.Exit(code=NO_MATCH_EXIT_CODE) from exc
+    except (FindError, RegridError, JevError) as exc:
+        err_console.print(f"[red]Error:[/red] {escape(str(exc))}")
+        raise typer.Exit(code=1) from exc
+    finally:
+        conn.close()
+
+    render_report(console, report, top=top, include_rejects=include_rejects)
+    if out is not None:
+        shown = select_comps(report.comps, top, include_rejects)
+        try:
+            write_export(out, report, shown)
+        except OSError as exc:
+            err_console.print(f"[red]Could not write {escape(str(out))}:[/red] {escape(str(exc))}")
+            raise typer.Exit(code=1) from exc
+        console.print(f"Wrote {len(shown)} comps to {escape(str(out))}")
 
 
 @ingest_app.command("county")

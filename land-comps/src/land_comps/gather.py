@@ -102,12 +102,16 @@ class _UnavailableSource:
         raise SourceError(self._name, self._error.reason)
 
 
-def build_sources(settings: Settings, conn: sqlite3.Connection) -> list[NamedSource]:
+def build_sources(
+    settings: Settings, conn: sqlite3.Connection, runner: ApifyRunner | None = None
+) -> list[NamedSource]:
     """The enabled sources: county sales always, plus LandWatch and Realtor.com via Apify.
 
     When `APIFY_TOKEN` is missing the two listing sources are still returned,
     each raising the runner's `SourceError`, so the gap shows up in
-    `source_errors` instead of silently shrinking the candidate pool.
+    `source_errors` instead of silently shrinking the candidate pool. Pass `runner` to
+    share one (so the caller can read its `items_fetched`); otherwise one is built from
+    settings.
     """
     county = CountySalesSource(conn, settings.county)
     sources = [
@@ -117,13 +121,14 @@ def build_sources(settings: Settings, conn: sqlite3.Connection) -> list[NamedSou
         )
     ]
 
-    try:
-        runner = ApifyRunner.from_settings(settings, conn)
-    except SourceError as exc:
-        return sources + [
-            NamedSource(name, _UnavailableSource(name, exc).fetch)
-            for name in (LANDWATCH_SOURCE, REALTOR_SOURCE)
-        ]
+    if runner is None:
+        try:
+            runner = ApifyRunner.from_settings(settings, conn)
+        except SourceError as exc:
+            return sources + [
+                NamedSource(name, _UnavailableSource(name, exc).fetch)
+                for name in (LANDWATCH_SOURCE, REALTOR_SOURCE)
+            ]
 
     landwatch = LandWatchSource(runner, settings.apify.landwatch_actor_id)
     realtor = RealtorSource(runner, settings.apify.realtor_actor_id)

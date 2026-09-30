@@ -34,7 +34,7 @@ def _truncate(text: str | None) -> str | None:
     return text[:DESCRIPTION_MAX_CHARS]
 
 
-def _price_per_acre(candidate: Candidate) -> float | None:
+def price_per_acre(candidate: Candidate) -> float | None:
     if candidate.price_per_acre is not None:
         return candidate.price_per_acre
     if candidate.price is not None and candidate.acreage:
@@ -71,7 +71,7 @@ def pool_median_price_per_acre(pool: Sequence[Candidate]) -> float | None:
     values = [
         value
         for candidate in pool
-        if candidate.status == "sold" and (value := _price_per_acre(candidate)) is not None
+        if candidate.status == "sold" and (value := price_per_acre(candidate)) is not None
     ]
     if len(values) < MIN_POOL_FOR_MEDIAN:
         return None
@@ -87,7 +87,7 @@ def build_state(
 ) -> dict[str, Any]:
     """The `subject` / `candidate` / `comparison` state Jev judges for one pair."""
     today = today or date.today()
-    per_acre = _price_per_acre(candidate)
+    per_acre = price_per_acre(candidate)
     cand_zoning = _candidate_zoning(candidate)
 
     subject_state = _clean(

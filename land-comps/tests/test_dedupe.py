@@ -1,7 +1,7 @@
 from datetime import date
 
 from land_comps.config import CountyConfig
-from land_comps.dedupe import dedupe, is_same_parcel, match_reason, resolve_apns
+from land_comps.dedupe import dedupe, is_same_parcel, match_reason, resolve_apns, source_urls
 from land_comps.models import Candidate, Parcel
 from land_comps.regrid import QuotaExceeded, RegridError
 
@@ -192,6 +192,17 @@ def test_merge_prefers_county_sold_price_and_keeps_list_price() -> None:
         {"source": "county_sales", "source_id": "c"},
         {"source": "landwatch", "source_id": "l"},
     ]
+
+
+def test_merge_keeps_every_source_url() -> None:
+    a = _cand("landwatch", "a", apn="0000000001", url="https://lw.test/a")
+    b = _cand("realtor", "b", apn="0000000001", url="https://rt.test/b")
+    c = _cand("realtor", "c", apn="0000000001")
+
+    (merged,) = dedupe([a, b, c], COUNTY)
+
+    assert source_urls(merged) == ["https://lw.test/a", "https://rt.test/b"]
+    assert source_urls(c) == []
 
 
 def test_active_and_pending_listings_merge_as_pending() -> None:

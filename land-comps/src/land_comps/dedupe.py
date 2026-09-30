@@ -120,6 +120,14 @@ def provenance(candidate: Candidate) -> list[dict[str, str]]:
     return [{"source": candidate.source, "source_id": candidate.source_id}]
 
 
+def source_urls(candidate: Candidate) -> list[str]:
+    """Every listing URL a candidate was merged from (its own URL if never merged)."""
+    urls = candidate.raw.get("urls")
+    if isinstance(urls, list):
+        return [u for u in urls if isinstance(u, str)]
+    return [candidate.url] if candidate.url else []
+
+
 def merge_candidates(a: Candidate, b: Candidate) -> Candidate:
     """Combine two records of one parcel into a single record with the richest attributes.
 
@@ -172,7 +180,11 @@ def merge_candidates(a: Candidate, b: Candidate) -> Candidate:
         topography=lead.topography or other.topography,
         description=_longest(lead.description, other.description),
         url=lead.url or other.url,
-        raw={**lead.raw, "merged_from": provenance(lead) + provenance(other)},
+        raw={
+            **lead.raw,
+            "merged_from": provenance(lead) + provenance(other),
+            "urls": _union(source_urls(lead), source_urls(other)),
+        },
     )
 
 
