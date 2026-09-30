@@ -1,0 +1,46 @@
+{
+  "parcels": {
+    "type": "FeatureCollection",
+    "features": [
+      {
+        "type": "Feature",
+        "properties": {
+          "headline": "0034567890",
+          "path": "/us/co/park/fairplay/0034567890",
+          "fields": {
+            "parcelnumb": "0034567890",
+            "parcelnumb_no_formatting": "0034567890",
+            "address": "1234 County Road 18",
+            "scity": "Fairplay",
+            "state2": "CO",
+            "szip": "80440-9123",
+            "szip5": "80440",
+            "geoid": "08093",
+            "county": "park",
+            "ll_gisacre": 4.87,
+            "gisacre": 4.9,
+            "deeded_acres": 5,
+            "zoning": "A-1",
+            "zoning_description": "Agricultural",
+            "usecode": "0100",
+            "usedesc": "Vacant Land",
+            "lat": "39.222615",
+            "lon": "-105.991278"
+          }
+        },
+        "geometry": {
+          "type": "Polygon",
+          "coordinates": [
+            [
+              [-105.9925, 39.2235],
+              [-105.9900, 39.2235],
+              [-105.9900, 39.2217],
+              [-105.9925, 39.2217],
+              [-105.9925, 39.2235]
+            ]
+          ]
+        }
+      }
+    ]
+  }
+}

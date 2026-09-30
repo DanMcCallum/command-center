@@ -25,4 +25,5 @@ uv --directory land-comps run pytest -q
 ```
 uv --directory land-comps run comps --help
 uv --directory land-comps run comps version
+uv --directory land-comps run comps subject <APN|address>   # needs config.yaml and REGRID_TOKEN
 ```

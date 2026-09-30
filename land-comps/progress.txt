@@ -34,3 +34,13 @@
 - `normalize.py`: `normalize_apn(raw, county_fips, apn_length)` strips non-alphanumerics and zero-pads; takes `apn_length` as a required explicit arg rather than loading `Settings` internally, so it stays a pure function (callers pass `settings.county.apn_length`). `normalize_address` upper-cases, strips `.`/`,`, maps `#` to a `UNIT` token, and canonicalizes suffix/unit words via lookup tables. `looks_like_apn` treats any 2+-letter word as proof of a street name/suffix (i.e. not an APN); everything else composed only of digits/letters/dashes/dots/spaces, with at least one digit, counts as an APN.
 - Added `tests/test_db.py`, `tests/test_geo.py`, `tests/test_normalize.py`, `tests/test_models.py` (36 tests total across the repo). The haversine test pins to the standard published Nashville->LA worked example (2887.26 km / 1794.06 mi) rather than a self-derived value, so it can't be tautological.
 - All three gates green: `ruff check .`, `mypy --strict src`, `pytest -q` (36 passed).
+
+---
+
+## US-005 + US-006: cached Regrid client and `comps subject` command (2026-09-30)
+
+- `regrid.py`: `RegridClient(token, conn, monthly_record_cap, transport=, base_url=, clock=)` with `by_apn(apn, county_fips)`, `by_address`, `by_point`, all returning `Parcel | None`. Targets Regrid's v2 parcels API (`/parcels/apn`, `/parcels/address`, `/parcels/point`, response `parcels.features[].properties.fields`); the shape comes from the hand-built fixture in `tests/fixtures/regrid/`, so adjust `parse_parcel` when a real key shows differences. `by_apn` post-filters on `geoid == county_fips`.
+- Caching and quota both live in `source_cache` (no schema change): responses under `regrid:{apn|address|point}:...` (empty results cached too), and the monthly billed-record counter under `regrid:usage:YYYY-MM`, bumped atomically with an UPSERT in the same transaction as the response write. The cap is checked before a live call (`used >= cap` raises `QuotaExceeded`); cache hits stay free after the cap. Records are counted as returned features, and requests send `limit=1`.
+- `ParcelLookup` Protocol is what commands depend on. `cli.regrid_client_factory(settings, conn)` is the injectable hook; tests monkeypatch it with a fake.
+- `comps subject <APN|address> [--config config.yaml] [--db data/land_comps.sqlite]`: `looks_like_apn` -> `normalize_apn` + `by_apn`, else `by_address`. No match: message on stderr, exit 2. Config/token/Regrid failures: message, exit 1.
+- Added `httpx` as a runtime dependency (`uv add`). Tests use `httpx.MockTransport`; no network.
