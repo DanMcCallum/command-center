@@ -5,13 +5,17 @@ import { useState } from 'react';
 import PhotoPicker, { type PickedPhoto } from '@/components/PhotoPicker';
 import type { Task } from '@/lib/types';
 
-const PLATFORMS = [
+// Keys match config/ad-platforms.json. `defaultChecked: false` marks an opt-in
+// platform: eBay generates a long-form listing (no length cap) from
+// knowledge-base/ebay/listing-template.md, so it is off unless asked for.
+const PLATFORMS: { key: string; label: string; defaultChecked?: boolean }[] = [
   { key: 'landmodo', label: 'Landmodo' },
   { key: 'land_century', label: 'Land Century' },
   { key: 'landflip', label: 'Landflip.com' },
   { key: 'land_com', label: 'Land.com' },
   { key: 'land_listings', label: 'Land-listings.com' },
   { key: 'landhub', label: 'Landhub.com' },
+  { key: 'ebay', label: 'eBay (long-form listing)', defaultChecked: false },
 ];
 
 const ACCESS_OPTIONS = [
@@ -84,7 +88,7 @@ export default function AdBuilderPage() {
   const [mustInclude, setMustInclude] = useState('');
   const [buyerHint, setBuyerHint] = useState('');
   const [platforms, setPlatforms] = useState<Record<string, boolean>>(
-    Object.fromEntries(PLATFORMS.map(p => [p.key, true])),
+    Object.fromEntries(PLATFORMS.map(p => [p.key, p.defaultChecked ?? true])),
   );
   const [photos, setPhotos] = useState<PickedPhoto[]>([]);
   // Index into `photos` of the starred (cover) image; consumed by the upload

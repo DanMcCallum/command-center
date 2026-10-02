@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import type { Task } from '@/lib/types';
 import { formatRelative } from '@/lib/utils';
+import EbayListingModal from './EbayListingModal';
 import FileEditorModal from './FileEditorModal';
 import PostingChips from './PostingChips';
 import PublishButtons from './PublishButtons';
@@ -41,6 +42,7 @@ export default function TaskCard({ task, parentTitle, onChange }: Props) {
   const [expanded, setExpanded] = useState(false);
   const [busy, setBusy] = useState(false);
   const [editingFile, setEditingFile] = useState<string | null>(null);
+  const [ebayListingOpen, setEbayListingOpen] = useState(false);
   const [savingToKb, setSavingToKb] = useState(false);
   const [entries, setEntries] = useState<WorkspaceEntry[] | null>(null);
   const [entriesError, setEntriesError] = useState<string | null>(null);
@@ -231,6 +233,16 @@ export default function TaskCard({ task, parentTitle, onChange }: Props) {
                             </span>
                           )}
                         </button>
+                        {e.name === 'ebay.md' && (
+                          <button
+                            type="button"
+                            onClick={() => setEbayListingOpen(true)}
+                            className="ml-3 px-2 py-0.5 text-[10px] uppercase tracking-wide rounded bg-[#2F2F2F] text-[#4DAB9A] hover:bg-[#373737] transition-colors"
+                            title="Render ebay.md as the HTML listing (photos included) and copy it for eBay's description editor."
+                          >
+                            Listing HTML
+                          </button>
+                        )}
                       </li>
                     );
                   })}
@@ -322,6 +334,10 @@ export default function TaskCard({ task, parentTitle, onChange }: Props) {
           filePath={editingFile}
           onClose={() => setEditingFile(null)}
         />
+      )}
+
+      {ebayListingOpen && (
+        <EbayListingModal task={task} onClose={() => setEbayListingOpen(false)} />
       )}
 
       {savingToKb && (

@@ -6,12 +6,14 @@
     "dev": "next dev 2>&1 | gawk '{ print strftime(\"[%FT%T%z]\"), $0; fflush() }'",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "node --import tsx --test lib/*.test.ts"
   },
   "dependencies": {
     "next": "16.2.6",
     "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "react-dom": "19.2.4",
+    "sharp": "0.34.5"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
@@ -21,6 +23,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.6",
     "tailwindcss": "^4",
+    "tsx": "^4.23.13",
     "typescript": "^5"
   }
 }

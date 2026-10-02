@@ -24,57 +24,6 @@
     "metadata": null
   },
   {
-    "id": "task-1779308355008-lg0z6q",
-    "title": "Generate ad: 4.13 ac · Elko County, Utah · $5,599",
-    "description": "Generate a real-estate ad for this property using the **generate-ad** workflow.\n\n## Property facts\n- Location: Elko County, Utah\n- Acreage: 4.13\n- Asking price: $5,599\n- Access: dirt-seasonal\n- Utilities on site: power\n- Terrain & features: This parcel adjoins thousands of acres of Bureau of Land Management (BLM) Land\n- Zoning: OS-Open Space\n- Comparable sales: 2.39 acres sold for 15.5k nearby\n- Must include: Down payment $350\n$179/month for 60 months\n- Target buyer hint: off-gridder\n\n## Platforms to generate variants for\n- craigslist\n- landwatch\n- lands_of_america\n- landsearch\n- land_co\n- zillow\n- realtor_com\n- redfin\n\nThe structured form data is also on this task's `metadata` field — that is authoritative if it disagrees with the rendered text above.",
-    "type": "Content",
-    "tags": [
-      "ad-builder"
-    ],
-    "status": "needs_review",
-    "priority": 1,
-    "model": "opus",
-    "acceptanceCriteria": [],
-    "slashCommand": "generate-ad",
-    "claudeNotes": "REVISION 7 COMPLETE. Operator: landmodo headline said nothing about what makes the lot unique; make that a requirement.\n\nRoot cause: in revision 5, when Landmodo dropped to a 60-char cap, I cut the standout and shipped a finance-only title (\"4.13 Ac Elko Co, BLM. $350 Down + $150/mo for 60 Months\"). Bare \"BLM\" is the generic standout the rules already warn against, and my rev-5 config note made it worse by telling future runs to prioritize the financing-as-entry standout.\n\nThree fixes:\n1. landmodo.md headline rewritten to \"4.13 Ac Elko Co. Walk Onto BLM Land. $350 Down, $150/mo\" (55/60, 92%). Restores a concrete standout (vivid public-land-access framing: step from your lot straight onto BLM) while keeping the lead and the two financing numbers. Comp value anchor stays in the description, which is the correct thing to drop at a tight cap. Description unchanged (1391/1500); why-this-angle footer updated.\n2. Generator requirement strengthened in ~/.claude/commands/generate-ad.md: ingredient B now states the standout is MANDATORY on every platform and is never the clause dropped to fit a cap; bare Borders BLM / On BLM does not satisfy B; added a vivid-framing fallback (Walk Off Your Lot Onto Public Land) for when no acreage figure exists. New Tight caps paragraph under the Headline length rule defines the drop order: value anchor first, then trim the offer, never the standout.\n3. config/ad-platforms.json landmodo buyer_profile note corrected to match: at the 60-char cap keep lead + standout, drop the comp to the description; financing terms are an offer, not a standout.\n\nThe other 5 platforms are unchanged from revision 6 (price $7,000, $150/mo already in place). All headlines within 90-100% of cap; no em dashes; config is valid JSON.\n\nOUTSTANDING DATA FLAGS (carried over): metadata.platforms array still the old 8-platform list; metadata.location says Utah but Elko County is NV; metadata.price_usd still 5599 and metadata.must_include still $179/month (should be $7,000 and $150/month); metadata.utilities still [power] though confirmed no-power.\n\nDeliverables: 6 platform .md files + README.md + notes/task-1779308355008-lg0z6q.md. Generator + config updated for future runs.",
-    "completionFile": "workers/workspace/outputs/task-1779308355008-lg0z6q/README.md",
-    "workspacePath": "workers/workspace/outputs/task-1779308355008-lg0z6q",
-    "parentTaskId": null,
-    "claudeSessionId": "be270408-04b3-4ee5-a185-9ad75078f7d9",
-    "captainNotes": "The headline in the landmodo output tells nothing about what makes the property unique. Make sure that is in the requirements for creating ads.",
-    "createdAt": "2026-05-20T20:19:15.008Z",
-    "updatedAt": "2026-06-07T05:58:37.451Z",
-    "startedAt": "2026-06-07T05:55:02+00:00",
-    "completedAt": null,
-    "estimatedMinutes": null,
-    "metadata": {
-      "kind": "ad-builder",
-      "location": "Elko County, Utah",
-      "acreage": 4.13,
-      "price_usd": 5599,
-      "access": "dirt-seasonal",
-      "utilities": [
-        "power"
-      ],
-      "utilities_notes": null,
-      "terrain": "This parcel adjoins thousands of acres of Bureau of Land Management (BLM) Land",
-      "zoning": "OS-Open Space",
-      "comparable_sales": "2.39 acres sold for 15.5k nearby",
-      "must_include": "Down payment $350\n$179/month for 60 months",
-      "buyer_hint": "off-gridder",
-      "platforms": [
-        "craigslist",
-        "landwatch",
-        "lands_of_america",
-        "landsearch",
-        "land_co",
-        "zillow",
-        "realtor_com",
-        "redfin"
-      ]
-    }
-  },
-  {
     "id": "task-1779331280300-4svouo",
     "title": "Clean voice transcripts (8 new)",
     "description": "Process new files in voice/raw/ into voice/clean/ using the clean-voice workflow.",
@@ -152,29 +101,535 @@
     "metadata": null
   },
   {
-    "id": "task-1780891259218-ppunbv",
-    "title": "Land ad from existing description",
-    "description": "Create an ad for my property, using the same criteria used in the ad builder, but instead generate the ad from this existing description:\nIf you're looking for a low-cost RV camp spot in wide-open Nevada, this parcel near Montello gives you space to escape without overthinking it. Located near vast stretches of BLM-managed public land, this property gives you easy access to thousands of acres for exploring, camping, hiking, hunting, and enjoying the open desert.\n\nThis is a great fit for overlanders, backcountry enthusiasts, hunters, campers, and RV travelers looking for an affordable basecamp near public land. Bring your RV, camp gear, hunting setup, or overlanding rig and use it as a simple launch point for desert trips.\n\nThe lot is 0.12 acres, making it easy to manage and perfect for short stays, road trips, hunting trips, off-grid camping, or a recurring weekend retreat. The area is known for its open land, quiet surroundings, wide-open skies, and easy access to popular hunting spots.\n\nUse: RV / Recreational / Hunting / Camping / Overlanding Basecamp\n\nCash Price: $1,500\nOwner Financing Available:\nOnly $99 down\n$99/month for 24 months\nDoc Fee: $249\nNo banks. No credit checks.\n\nThis is a straightforward parcel for people who want affordable access to Nevada land without complicated development plans. Whether you're an overlander looking for a simple stopover, a backcountry enthusiast wanting access to open terrain, or someone who just wants a quiet place to camp and unwind, this lot gives you an inexpensive way to own a piece of Nevada.\n\nLots like this tend to heat up when people start planning spring and summer trips.\n\nRequest Information now!",
+    "id": "task-1783741270364-bo28kt",
+    "title": "Generate ad: 0.12 ac · Elko, NV · $1,500",
+    "description": "Generate a real-estate ad for this property using the **generate-ad** workflow.\n\n## Property facts\n- Location: Elko, NV\n- Acreage: 0.12\n- Asking price: $1,500\n- Utilities notes: Power line nearby\n- Terrain & features: Access to BLM land nearby\n- Zoning: Rural recreation, camping, RV parking, hunting\n- Comparable sales: Nearby sale $2500\n- Must include: Owner financing available. $1 down $75/month for 24 months. \nDocument fee of $249\n- Target buyer hint: hunter\n\n## Platforms to generate variants for\n- landmodo\n- land_century\n- landflip\n- land_com\n- land_listings\n- landhub\n\nThe structured form data is also on this task's `metadata` field — that is authoritative if it disagrees with the rendered text above.",
     "type": "Content",
-    "tags": [],
+    "tags": [
+      "ad-builder"
+    ],
     "status": "needs_review",
     "priority": 1,
     "model": "opus",
-    "acceptanceCriteria": [
-      "A new ad title calling out what makes this property special and will stand out."
-    ],
-    "slashCommand": null,
-    "claudeNotes": "Revision 2 applied. Per operator feedback, every description now states that multiple comparable parcels are available, with distinct phrasing per platform (landmodo: grab a couple side by side; land_century: line you up with another at the same entry; landflip: buy more than one or hold a small group; land_com: reply for the current list to compare locations; land_listings: an Availability line / ask for the full list; landhub: a backup parcel or one for a hunting buddy). Trimmed redundant access/distance wording to keep all six descriptions at 99-100% of the 1500-char cap; no em dashes. Headlines unchanged (still meet the standout-title criterion). Updated files: README.md + 6 platform files, and notes.md. Copy stays general (several similar parcels) rather than naming a count, since no inventory list or APNs were provided - supply the parcel count/APNs to make it sharper.",
-    "completionFile": "/home/mazer/claude/command/command-center/workers/workspace/outputs/task-1780891259218-ppunbv/README.md",
-    "workspacePath": "workers/workspace/outputs/task-1780891259218-ppunbv",
+    "acceptanceCriteria": [],
+    "slashCommand": "generate-ad",
+    "claudeNotes": "Generated 6 platform ad variants (landmodo, land_century, landflip, land_com, land_listings, landhub) for the 0.12 ac Elko County, NV lot ($1,500). Nickname: Sage Basin (new). All headlines within 90-100% of caps with a concrete standout each (varied across platforms: hunting/BLM access, public-land buffer, camping/RV zoning, power-nearby buildability) plus the $2,500-comp value anchor; landmodo drops the comp per its 60-char cap. All descriptions 90-100% of the tag-adjusted budget, grounded only in task metadata, anti-slop + voice checked, no em dashes. DREAMS: all six categories Pass on all six platforms after 2 cycles. NOTE: E (objection handling) passes on affordability/usability, but legal road access to the parcel, title status, credit-check/viewing reassurance, and taxes are NOT in the metadata and would strengthen future ads (listed in notes.md). Deliverables: README.md, dreams-review.md, 6 platform files, notes.md.",
+    "completionFile": "workers/workspace/outputs/task-1783741270364-bo28kt/README.md",
+    "workspacePath": "workers/workspace/outputs/task-1783741270364-bo28kt",
     "parentTaskId": null,
-    "claudeSessionId": "eb54e33e-a80e-4d23-9776-fca49cdb09ea",
-    "captainNotes": "Add details in the description about how multiple of these properties are available",
-    "createdAt": "2026-06-08T04:00:59.218Z",
-    "updatedAt": "2026-06-08T04:22:29.935Z",
-    "startedAt": "2026-06-08T04:20:02+00:00",
+    "claudeSessionId": "c12e56fd-40b4-40df-a37a-94ed7d06a827",
+    "captainNotes": null,
+    "createdAt": "2026-07-11T03:41:10.364Z",
+    "updatedAt": "2026-07-12T01:40:35.607Z",
+    "startedAt": "2026-07-11T03:41:10+00:00",
     "completedAt": null,
     "estimatedMinutes": null,
-    "metadata": null
+    "metadata": {
+      "kind": "ad-builder",
+      "location": "Elko, NV",
+      "acreage": 0.12,
+      "price_usd": 1500,
+      "access": null,
+      "utilities": [],
+      "utilities_absent": [],
+      "utilities_notes": "Power line nearby",
+      "terrain": "Access to BLM land nearby",
+      "zoning": "Rural recreation, camping, RV parking, hunting",
+      "comparable_sales": "Nearby sale $2500",
+      "must_include": "Owner financing available. $1 down $75/month for 24 months. \nDocument fee of $249",
+      "buyer_hint": "hunter",
+      "platforms": [
+        "landmodo",
+        "land_century",
+        "landflip",
+        "land_com",
+        "land_listings",
+        "landhub"
+      ]
+    }
+  },
+  {
+    "id": "task-1783741999340-sfsooi",
+    "title": "Generate ad: 0.12 ac · Elko, NV · $1,500",
+    "description": "Generate a real-estate ad for this property using the **generate-ad** workflow.\n\n## Property facts\n- Location: Elko, NV\n- Acreage: 0.12\n- Asking price: $1,500\n- Access: dirt-seasonal\n- Utilities notes: Power on nearby dirt road\n- Terrain & features: Nearby BLM land\n- Zoning: Rural recreation\n- Comparable sales: Same acreage nearby sold for $2500\n- Must include: Financing available: $1 down, $75/month for 24 months\n- Target buyer hint: hunter\n\n## Platforms to generate variants for\n- landmodo\n- land_century\n- landflip\n- land_com\n- landhub\n\nThe structured form data is also on this task's `metadata` field — that is authoritative if it disagrees with the rendered text above.",
+    "type": "Content",
+    "tags": [
+      "ad-builder"
+    ],
+    "status": "completed",
+    "priority": 1,
+    "model": "opus",
+    "acceptanceCriteria": [],
+    "slashCommand": "generate-ad",
+    "claudeNotes": "Taxes of $17.47/yr added to all six variants, framed as a holding cost rather than a bare number since you asked to note how cheap it is. All caps/windows re-verified, DREAMS re-run, eBay render confirmed.\n\nBEST FACT ADDED SINCE THE FIRST RUN. The DREAMS rubric names \"Property taxes only $___ per year\" as a top-tier objection-killer under E, which is the category that has been weakest on this listing throughout. On eBay it also unblocked two template lines that had been dropped for want of the fact: the annual property taxes line in block I and the Taxes line in block T, plus a new FAQ entry.\n\nWHAT IT DOES NOT UNBLOCK: the TAXES ARE PAID CURRENT assurance line in eBay block F stays out. Knowing the annual bill is not the same as knowing the taxes are paid current and lien-free, and seller-terms treats that as a separate per-property fact belonging in must_include. The eBay FAQ states the amount and stops rather than implying the account is clear. If the taxes are current, tell me and that line goes in.\n\nFRAMINGS (arithmetic checked, varied per platform): $17.47/12 = $1.46, so about a dollar and a half a month on eBay. Against the $75 monthly it is 23%, so landhub says less than a quarter of one monthly payment. landflip took the investor angle (a long hold carries almost no cost), landmodo folded it into the low-outlay paragraph, land_century paired it with the monthly.\n\nHEADLINES UNCHANGED. All six were already at 92-98% of cap carrying lead, standout, value anchor and offer, and the sharpest tax framing needs more room than any has spare. You asked to note the taxes, which reads as a body ask. Closest call was landhub, whose Power Down the Road is the softest standout in the set. Say the word if you want taxes promoted to a title somewhere.\n\nANTI-SLOP CATCH: landhub closing paragraph was already 5 sentences before this change (the original run missed it) and my addition made it 6, against the 4-sentence max. Split into two paragraphs. I checked every paragraph in all six programmatically this time instead of by eye, which is how it surfaced.\n\nDREAMS: five land variants all-Pass across 3 cycles, no coaching notes. eBay still Weak on E but the gap is narrower: six of seven objections now answered, and what remains is purely \"can I find it and can I get to it legally\" (no legal access status, no GPS/APN).\n\nTHIRD FACT IN A ROW THE METADATA DOES NOT CARRY. Running tally: zoning NZ (metadata still says Rural recreation), dimensions 101x52, taxes $17.47. All three arrived as revision notes. If this task is ever regenerated from metadata alone, all three are lost and the zoning reverts to the wrong value. notes.md has the table.\n\nTests unchanged at 7 pass / 2 fail, same two brittle fixture assertions (patch in notes.md). Nothing new broken.",
+    "completionFile": "workers/workspace/outputs/task-1783741999340-sfsooi/README.md",
+    "workspacePath": "workers/workspace/outputs/task-1783741999340-sfsooi",
+    "parentTaskId": null,
+    "claudeSessionId": "da2068f6-8b1d-44b4-9d43-8fbd969e4540",
+    "captainNotes": "Also note how cheap the property taxes are. The taxes are $17.47 a year",
+    "createdAt": "2026-07-11T03:53:19.340Z",
+    "updatedAt": "2026-09-13T23:45:44.042Z",
+    "startedAt": "2026-09-08T04:15:01+00:00",
+    "completedAt": "2026-09-13T23:45:44.023Z",
+    "estimatedMinutes": null,
+    "metadata": {
+      "kind": "ad-builder",
+      "location": "Elko, NV",
+      "acreage": 0.12,
+      "price_usd": 1500,
+      "access": "dirt-seasonal",
+      "utilities": [],
+      "utilities_absent": [],
+      "utilities_notes": "Power on nearby dirt road",
+      "terrain": "Nearby BLM land",
+      "zoning": "Rural recreation",
+      "comparable_sales": "Same acreage nearby sold for $2500",
+      "must_include": "Financing available: $1 down, $75/month for 24 months",
+      "buyer_hint": "hunter",
+      "platforms": [
+        "landmodo",
+        "land_century",
+        "landflip",
+        "land_com",
+        "landhub"
+      ],
+      "photoCount": 15,
+      "primaryPhoto": "00_Sunset_Image_May_1_2026__4_.png"
+    }
+  },
+  {
+    "id": "task-1785732001581-x85y56",
+    "title": "Import 35 AZ parcels from Glenn R Rink into Investment Dominator (CSV)",
+    "description": "Produce a reviewed import CSV for 35 Arizona parcels submitted by Glenn R Rink via the aloha-seller.com contact form, for hand-upload to Investment Dominator.\n\nSource of truth: operator-input/seller-submissions/2026-08-03-glenn-rink.md\nColumn template: operator-input/seller-submissions/id-import-sample.csv (176 cols)\n\nSTRICTLY READ-ONLY against the live ID CRM. property_post.php and any create/update endpoint are FORBIDDEN. Nothing is written to the CRM; the operator uploads the CSV by hand.\n\nExecuted via in-session subagent fan-out (6 transcription + 6 independent verification), not by the cron worker.",
+    "type": "Admin",
+    "tags": [
+      "investment-dominator",
+      "seller-lead",
+      "rink-2026-08"
+    ],
+    "status": "needs_review",
+    "priority": 2,
+    "model": "opus",
+    "acceptanceCriteria": [
+      "import.csv headers match id-import-sample.csv byte-for-byte",
+      "APNs in import.csv union existing-records.md equal the 35 in the source table",
+      "No duplicate APNs; no APN missing from source",
+      "Phase C verification reports no unresolved mismatches",
+      "No property_post.php or any write call was made to the ID account",
+      "Task ends at needs_review, never completed"
+    ],
+    "slashCommand": null,
+    "claudeNotes": "35-row import CSV ready for hand-upload. Final review pass found and fixed one real defect: import.csv had CRLF line terminators while id-import-sample.csv uses LF, so the header was NOT byte-for-byte identical (2629 vs 2628 bytes) — the prior README had wrongly recorded that check as passing. Rewrote with LF; content verified byte-identical once normalized; original kept at parts/import.csv.crlf-backup. Independently re-verified everything else against the source of truth: header field lists identical (176 cols), 35 rows all 176 wide, APN set equal to the source table with no dupes/omissions, every APN verbatim in the raw email including the mixed-case 004G/010a/017a/017b/017c suffixes, and a row-by-row diff of county/legal/situs returning 0 mismatches. p_comments carries exactly the 7 source notes. Constants match the sample (Land, status 6, AZ, COUNTY-suffixed uppercase county, Pending Preliminary Research, Individual). All 6 Phase C verifiers clean. No property_post.php or any write call — read-only throughout, 0 of 35 APNs already in the CRM. One item left as an operator decision, not silently changed: the template has no middle-name column so Glenn R Rink is stored as Glenn/Rink; set or_fname to Glenn R if the full submitted name is wanted. Before upload see README for the 35-duplicate-contacts risk (owner block repeated, or_id empty), the 3 unreadable CRM records (ids 11/2318/7978) as the only dedupe blind spot, the Pinal 3-vs-4-char APN format question, the 3 UI-only steps (deal flow, 4 tags, seller terms), and 4 open questions for Glenn.",
+    "completionFile": "workers/workspace/outputs/task-1785732001581-x85y56/README.md",
+    "workspacePath": "workers/workspace/outputs/task-1785732001581-x85y56",
+    "parentTaskId": null,
+    "claudeSessionId": "0e337f25-e099-41a3-88ff-72f6d15e79a7",
+    "captainNotes": null,
+    "createdAt": "2026-08-03T04:40:01.580Z",
+    "updatedAt": "2026-08-03T05:03:33.295Z",
+    "startedAt": "2026-08-03T05:00:02+00:00",
+    "completedAt": null,
+    "estimatedMinutes": null,
+    "metadata": {
+      "kind": "id-import",
+      "requestor": "Glenn R Rink",
+      "email": "faroutbotany@gmail.com",
+      "leadsource": "Website-Contact Us Page",
+      "submittedAt": "2026-08-03",
+      "sourceFile": "operator-input/seller-submissions/2026-08-03-glenn-rink.md",
+      "parcelCount": 35,
+      "parcels": [
+        {
+          "county": "Apache",
+          "apn": "202-04-006",
+          "legalDescription": "",
+          "situsAddress": "",
+          "note": "just shy of 40 acres",
+          "package": false
+        },
+        {
+          "county": "Cochise",
+          "apn": "116-09-340",
+          "legalDescription": "Ariz sun sites #1, Lot 4 Block 151",
+          "situsAddress": "",
+          "note": "",
+          "package": false
+        },
+        {
+          "county": "Cochise",
+          "apn": "116-09-341",
+          "legalDescription": "Ariz sun sites #1, Lot 5 Block 151",
+          "situsAddress": "",
+          "note": "",
+          "package": false
+        },
+        {
+          "county": "Cochise",
+          "apn": "117-02-118",
+          "legalDescription": "Ariz sun sites #2, Lot 10 Block 200",
+          "situsAddress": "",
+          "note": "",
+          "package": false
+        },
+        {
+          "county": "Cochise",
+          "apn": "117-02-141",
+          "legalDescription": "Ariz sun sites #2, Lot 1 Block 202",
+          "situsAddress": "",
+          "note": "",
+          "package": false
+        },
+        {
+          "county": "Mohave",
+          "apn": "353-17-068",
+          "legalDescription": "",
+          "situsAddress": "",
+          "note": "about 10 acres",
+          "package": false
+        },
+        {
+          "county": "Pinal",
+          "apn": "403-18-188",
+          "legalDescription": "",
+          "situsAddress": "4620 N. Toltec",
+          "note": "",
+          "package": false
+        },
+        {
+          "county": "Pinal",
+          "apn": "404-02-056",
+          "legalDescription": "",
+          "situsAddress": "4455 N Rillito",
+          "note": "",
+          "package": false
+        },
+        {
+          "county": "Pinal",
+          "apn": "404-02-059",
+          "legalDescription": "",
+          "situsAddress": "4450 N Cortez",
+          "note": "",
+          "package": false
+        },
+        {
+          "county": "Pinal",
+          "apn": "404-02-092",
+          "legalDescription": "",
+          "situsAddress": "4445 N Cortez",
+          "note": "",
+          "package": false
+        },
+        {
+          "county": "Pinal",
+          "apn": "404-18-038",
+          "legalDescription": "",
+          "situsAddress": "3659 N Palm Circle",
+          "note": "",
+          "package": false
+        },
+        {
+          "county": "Pinal",
+          "apn": "404-18-061",
+          "legalDescription": "",
+          "situsAddress": "3740 N Palm Circle",
+          "note": "",
+          "package": false
+        },
+        {
+          "county": "Pinal",
+          "apn": "404-18-062",
+          "legalDescription": "",
+          "situsAddress": "3730 N Palm Circle",
+          "note": "",
+          "package": false
+        },
+        {
+          "county": "Pinal",
+          "apn": "404-18-066",
+          "legalDescription": "",
+          "situsAddress": "3640 N Palm Circle",
+          "note": "",
+          "package": false
+        },
+        {
+          "county": "Pinal",
+          "apn": "404-19-161",
+          "legalDescription": "",
+          "situsAddress": "3415 N. Bandelier",
+          "note": "",
+          "package": false
+        },
+        {
+          "county": "Pinal",
+          "apn": "511-70-004G",
+          "legalDescription": "",
+          "situsAddress": "",
+          "note": "",
+          "package": false
+        },
+        {
+          "county": "Pinal",
+          "apn": "511-70-010a",
+          "legalDescription": "",
+          "situsAddress": "",
+          "note": "these 5 to be sold in one sale",
+          "package": true
+        },
+        {
+          "county": "Pinal",
+          "apn": "511-70-017a",
+          "legalDescription": "",
+          "situsAddress": "",
+          "note": "these 5 to be sold in one sale",
+          "package": true
+        },
+        {
+          "county": "Pinal",
+          "apn": "511-70-017b",
+          "legalDescription": "",
+          "situsAddress": "",
+          "note": "these 5 to be sold in one sale",
+          "package": true
+        },
+        {
+          "county": "Pinal",
+          "apn": "511-70-017c",
+          "legalDescription": "",
+          "situsAddress": "",
+          "note": "these 5 to be sold in one sale",
+          "package": true
+        },
+        {
+          "county": "Pinal",
+          "apn": "511-70-018",
+          "legalDescription": "",
+          "situsAddress": "",
+          "note": "these 5 to be sold in one sale",
+          "package": true
+        },
+        {
+          "county": "Santa Cruz",
+          "apn": "119-01-116",
+          "legalDescription": "Lot 46, Blk 312 RR Villas #10",
+          "situsAddress": "1930 Circulo Huerta",
+          "note": "",
+          "package": false
+        },
+        {
+          "county": "Santa Cruz",
+          "apn": "119-01-139",
+          "legalDescription": "Lot 69, blk 312 RR villas #10",
+          "situsAddress": "412 Pelicano Ct",
+          "note": "",
+          "package": false
+        },
+        {
+          "county": "Santa Cruz",
+          "apn": "119-01-365",
+          "legalDescription": "Lot 20, Blk 333, RR Villas #10",
+          "situsAddress": "430 Circulo Uva",
+          "note": "",
+          "package": false
+        },
+        {
+          "county": "Santa Cruz",
+          "apn": "132-04-171",
+          "legalDescription": "Lot 6, RR Ranchette #18",
+          "situsAddress": "1744 Via Caguama",
+          "note": "",
+          "package": false
+        },
+        {
+          "county": "Santa Cruz",
+          "apn": "132-04-265",
+          "legalDescription": "Lot 20, Blk 536, RR Ranchettes #18",
+          "situsAddress": "326 Cuna Ct",
+          "note": "",
+          "package": false
+        },
+        {
+          "county": "Santa Cruz",
+          "apn": "132-04-300",
+          "legalDescription": "Lot 10, Blk 537 RR Ranchettes #18",
+          "situsAddress": "368 Circulo Hormiga",
+          "note": "",
+          "package": false
+        },
+        {
+          "county": "Santa Cruz",
+          "apn": "132-06-076",
+          "legalDescription": "Lot 8, blk 544 RR Ranchettes #18",
+          "situsAddress": "403 Brisa Ct",
+          "note": "",
+          "package": false
+        },
+        {
+          "county": "Santa Cruz",
+          "apn": "133-03-353",
+          "legalDescription": "Lot 71, Blk 506, RR Ranchettes #14",
+          "situsAddress": "293 Zola Ct",
+          "note": "",
+          "package": false
+        },
+        {
+          "county": "Santa Cruz",
+          "apn": "133-03-354",
+          "legalDescription": "Lot 72, Blk 506, RR Ranchettes #15",
+          "situsAddress": "290 Bagre Ct",
+          "note": "",
+          "package": false
+        },
+        {
+          "county": "Santa Cruz",
+          "apn": "133-03-355",
+          "legalDescription": "Lot 73, Blk 506, RR Ranchettes #16",
+          "situsAddress": "292 Bagre Ct",
+          "note": "",
+          "package": false
+        },
+        {
+          "county": "Santa Cruz",
+          "apn": "133-03-356",
+          "legalDescription": "Lot 74, Blk 506, RR Ranchettes #17",
+          "situsAddress": "294 Bagre Ct",
+          "note": "",
+          "package": false
+        },
+        {
+          "county": "Santa Cruz",
+          "apn": "133-03-450",
+          "legalDescription": "Lot 168, Blk 506 RR Ranchettes #17",
+          "situsAddress": "227 Caiman Ct",
+          "note": "",
+          "package": false
+        },
+        {
+          "county": "Yavapai",
+          "apn": "405-06-552",
+          "legalDescription": "",
+          "situsAddress": "4830 N Totem Pole Pass",
+          "note": "",
+          "package": false
+        },
+        {
+          "county": "Yavapai",
+          "apn": "405-06-554",
+          "legalDescription": "",
+          "situsAddress": "4810 N Totem Pole Pass",
+          "note": "",
+          "package": false
+        }
+      ]
+    }
+  },
+  {
+    "id": "task-1789343722480-fd524b",
+    "title": "Generate ad: 2.27 ac · Elko, Nevada · $5,500",
+    "description": "Generate a real-estate ad for this property using the **generate-ad** workflow.\n\n## Property facts\n- Location: Elko, Nevada\n- Acreage: 2.27\n- Asking price: $5,500\n- Zoning: Agricultural/Residential\n- Must include: Owner financing: $150/month 45 months\nAPN - 011108042\nDoc fee - $299\n- Target buyer hint: off-gridder\n\n## Platforms to generate variants for\n- landmodo\n- land_century\n- landflip\n- land_com\n- land_listings\n- landhub\n\nThe structured form data is also on this task's `metadata` field — that is authoritative if it disagrees with the rendered text above.",
+    "type": "Content",
+    "tags": [
+      "ad-builder"
+    ],
+    "status": "needs_review",
+    "priority": 1,
+    "model": "opus",
+    "acceptanceCriteria": [],
+    "slashCommand": "generate-ad",
+    "claudeNotes": "REVISION 2: eBay comp list restricted to 2025 and 2026 sales. ebay.md only; the six land-specialist variants were not touched.\n\nThe eBay listing now cites seven sales, all closed in 2025 or 2026, ranging $4,699 to $10,999. Filtered from the montello-nv area sheet table and cross-checked line by line against the sold_on dates in knowledge-base/ads. One 2025-dated corpus entry was excluded on purpose: 17-heather-dr at $75, which is a monthly payment rather than a sale price (the area sheet excludes that row for the same reason).\n\nNumbers that moved: same-size 2.27 acre comps drop from eight to four ($4,699, $4,799, $7,488, $7,800), averaging just under $6,200, or $2,730 an acre against our $2,422. The old $6,500 midpoint is gone from the eBay copy entirely; it was the median of the 2021-2025 set and is not supportable under the new window. Three blocks changed: QUICK NOTES VALUE, WHAT IS THIS LOT WORTH, and the CLOSE recap. Verified no pre-2025 year string remains anywhere in the eBay description.\n\nOne upside of the filter: with the older sales out of the way, the $10,999 sale is now visible as the standout comparison. That is a 2.06 acre lot, smaller than this parcel, that closed at nearly double this price. It is called out directly in the comp block.\n\nHeads-up on a deliberate inconsistency: the six land-specialist ads still cite the eight same-size sales spanning 2021 to 2025 and the $6,500 midpoint, because your instruction was scoped to eBay. Both sets are accurate. README.md now says this explicitly under the variants table so nobody reads it as a contradiction. If you want the 2025/2026 window on every platform, say so and I will redo the other six.\n\nAlso worth knowing: this window is an instruction that lives only in the task revision history. A fresh regeneration will not reproduce it. If it should be standing policy for eBay listings, it belongs in the template block H or the area sheet comp section.\n\nDREAMS re-audited across all seven platforms, all Pass on the first cycle, no revision pass needed. Description 11,790/40,000, headline unchanged at 73/80.",
+    "completionFile": "workers/workspace/outputs/task-1789343722480-fd524b/README.md",
+    "workspacePath": "workers/workspace/outputs/task-1789343722480-fd524b",
+    "parentTaskId": null,
+    "claudeSessionId": "37a86eeb-97cd-4e31-852e-f8f210ee556b",
+    "captainNotes": "for the ebay ad only include sales from 2025 and 2026",
+    "createdAt": "2026-09-13T23:55:22.479Z",
+    "updatedAt": "2026-09-14T01:17:53.044Z",
+    "startedAt": "2026-09-14T01:15:01+00:00",
+    "completedAt": null,
+    "estimatedMinutes": null,
+    "metadata": {
+      "kind": "ad-builder",
+      "location": "Elko, Nevada",
+      "acreage": 2.27,
+      "price_usd": 5500,
+      "access": null,
+      "utilities": [],
+      "utilities_absent": [],
+      "utilities_notes": null,
+      "terrain": null,
+      "zoning": "Agricultural/Residential",
+      "comparable_sales": null,
+      "must_include": "Owner financing: $150/month 45 months\nAPN - 011108042\nDoc fee - $299",
+      "buyer_hint": "off-gridder",
+      "platforms": [
+        "landmodo",
+        "land_century",
+        "landflip",
+        "land_com",
+        "land_listings",
+        "landhub"
+      ],
+      "photoCount": 7,
+      "primaryPhoto": "00_photo-1785723392-432.jpg"
+    }
+  },
+  {
+    "id": "task-1790275652160-rlxk9l",
+    "title": "Generate ad: 1 ac · Park County, Colorado · $35,000",
+    "description": "Generate a real-estate ad for this property using the **generate-ad** workflow.\n\n## Property facts\n- Location: Park County, Colorado\n- Acreage: 1\n- Asking price: $35,000\n- Access: dirt-seasonal\n- Terrain & features: Forested\n- Zoning: Vacant land\n- Comparable sales: Nearby 1 acre lot sold for $150,000\n- Must include: No financing on this one right now.\n\n## Platforms to generate variants for\n- landmodo\n- land_century\n- landflip\n- land_com\n- land_listings\n- landhub\n\nThe structured form data is also on this task's `metadata` field — that is authoritative if it disagrees with the rendered text above.",
+    "type": "Content",
+    "tags": [
+      "ad-builder"
+    ],
+    "status": "needs_review",
+    "priority": 1,
+    "model": "opus",
+    "acceptanceCriteria": [],
+    "slashCommand": "generate-ad",
+    "claudeNotes": "6 variants written (landmodo, land_century, landflip, land_com, land_listings, landhub); all headlines 97-100% of cap, descriptions 91.5-96% of content budget; DREAMS all Pass after 2 cycles. New nickname: Timber Park (registered as park-county-co-1ac-forested). Cash-only per must_include; the $150,000 comp is used as the value anchor (23%, $115,000 less). Review: (1) the corpus is all Elko NV owner-financed lots, so it gave little signal here; (2) 'warm-season' is my reading of dirt-seasonal access; (3) if the $150K comp had a house, utilities, or better access, the comp framing needs a caveat. Missing facts that would help are listed in the notes: APN, nearest town, road months, what the county allows, taxes.",
+    "completionFile": "workers/workspace/outputs/task-1790275652160-rlxk9l/README.md",
+    "workspacePath": "workers/workspace/outputs/task-1790275652160-rlxk9l",
+    "parentTaskId": null,
+    "claudeSessionId": "21c431c0-2c5c-48a7-995e-c14419c81723",
+    "captainNotes": null,
+    "createdAt": "2026-09-24T18:47:32.159Z",
+    "updatedAt": "2026-09-24T19:22:48.631Z",
+    "startedAt": "2026-09-24T18:47:35+00:00",
+    "completedAt": null,
+    "estimatedMinutes": null,
+    "metadata": {
+      "kind": "ad-builder",
+      "location": "Park County, Colorado",
+      "acreage": 1,
+      "price_usd": 35000,
+      "access": "dirt-seasonal",
+      "utilities": [],
+      "utilities_absent": [],
+      "utilities_notes": null,
+      "terrain": "Forested",
+      "zoning": "Vacant land",
+      "comparable_sales": "Nearby 1 acre lot sold for $150,000",
+      "must_include": "No financing on this one right now.",
+      "buyer_hint": null,
+      "platforms": [
+        "landmodo",
+        "land_century",
+        "landflip",
+        "land_com",
+        "land_listings",
+        "landhub"
+      ],
+      "photoCount": 14,
+      "primaryPhoto": "00_Abeyta1.jpg"
+    },
+    "postings": [
+      {
+        "platform": "land_com",
+        "status": "failed",
+        "attempts": 1,
+        "queuedAt": "2026-09-24T19:22:35.931Z",
+        "lastError": "agent: Could not find the title field on the listing form (tried: input[name=\"title\" i], input[id*=\"title\" i], input[placeholder*=\"title\" i]). Update the SELECTORS block in post-land_com.ts.",
+        "screenshotPath": "workers/workspace/outputs/task-1790275652160-rlxk9l/postings/land_com.png"
+      }
+    ]
   }
 ]

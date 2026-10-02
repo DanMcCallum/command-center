@@ -21,6 +21,7 @@ const PLATFORMS = [
   'LandSearch',
   'Landmodo',
   'Land.com',
+  'eBay',
   'Zillow',
   'Realtor.com',
   'Redfin',

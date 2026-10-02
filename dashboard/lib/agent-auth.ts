@@ -7,32 +7,8 @@
  * project-root .env.local and is never logged and never appears in a response.
  */
 import { createHash, timingSafeEqual } from 'node:crypto';
-import { existsSync, readFileSync } from 'node:fs';
-import path from 'node:path';
 import { NextResponse } from 'next/server';
-
-const PROJECT_ROOT = path.resolve(process.cwd(), '..');
-
-/**
- * Reads a var from process.env, falling back to the project-root .env.local
- * (Next.js only auto-loads dashboard/.env.local; the root file is the one
- * source of secrets). Returns null when absent.
- */
-function readProjectEnvVar(name: string): string | null {
-  const fromEnv = process.env[name];
-  if (fromEnv) return fromEnv;
-  const envPath = path.join(PROJECT_ROOT, '.env.local');
-  if (existsSync(envPath)) {
-    for (const line of readFileSync(envPath, 'utf-8').split('\n')) {
-      const m = line.match(new RegExp(`^(?:export\\s+)?${name}=(.*)$`));
-      if (m) {
-        const value = m[1].trim().replace(/^(["'])(.*)\1$/, '$2');
-        if (value) return value;
-      }
-    }
-  }
-  return null;
-}
+import { readProjectEnvVar } from './project-env';
 
 /**
  * Guards an agent-facing route. Returns null when the request carries the
