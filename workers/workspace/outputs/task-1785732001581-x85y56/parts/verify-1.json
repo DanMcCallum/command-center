@@ -1,0 +1,21 @@
+{
+  "verifier": 1,
+  "slice": "Pinal 403/404 series",
+  "parcelsChecked": 9,
+  "verdict": "clean",
+  "mismatches": [],
+  "notes": [
+    "All 9 source_fragment strings appear literally in the email exactly once each (byte-for-byte, verified by literal substring count, not by eye).",
+    "APN digit check: regex sweep of the email for /40[34]-dd-d+/ returns exactly 9 hits, in the same order and with the same characters as the 9 p_apn values in agent-1.json. No transposition, no extra parcel, no missing parcel.",
+    "Cortez trap checked explicitly and NOT swapped: email reads '404-02-059 4450 N Cortez' then '404-02-092 4445 N Cortez'; the file matches that pairing.",
+    "Palm Circle trap checked: four parcels, 404-18-038=3659, 404-18-061=3740, 404-18-062=3730, 404-18-066=3640. All four house numbers match the email. Note the house numbers do not run monotonically with the APN (061 is 3740 but 062 is 3730) -- this is what the seller wrote and the transcription mirrors it correctly; flagging only so an operator does not 'fix' it later.",
+    "N. vs N inconsistency is mirrored exactly: period present only on '4620 N. Toltec' and '3415 N. Bandelier'; absent on Rillito, both Cortez entries, and all four Palm Circle entries. Matches the email in both directions; nothing regularized.",
+    "Empty p_legal_description is correct for all 9. Segmenting the email on county+APN boundaries shows the Pinal 403/404 entries carry an address and nothing else -- no subdivision/lot/block language exists to drop. (By contrast the Cochise and Santa Cruz rows in the same email DO carry lot/block text, so the transcriber's empty-legal assertion is a real distinction, not an oversight.)",
+    "Empty p_comments is correct for all 9. The nearest free-text notes are 'about 10 acres' (belongs to the preceding Mohave 353-17-068) and 'these 5 to be sold in one sale' (belongs to the following Pinal 511-70 series). Neither falls inside the 403/404 span; confirmed by boundary segmentation.",
+    "package=false is correct for all 9. The only package annotation in the email is on the Pinal 511-70 series, which is outside this slice.",
+    "p_county='PINAL COUNTY' and p_state='AZ' on all 9 rows; email labels every one of them 'Pinal'.",
+    "Slice boundary confirmed: Yavapai 405-06-552 / 405-06-554 are 405-series and correctly excluded; no 403/404 parcel is listed under any county other than Pinal.",
+    "Slice region of the email contains no non-ASCII characters and no unusual whitespace, so there is no hidden-character risk behind the string comparisons.",
+    "OUT OF SLICE, for operator attention only: the seller writes 'these 5 to be sold in one sale' but the Pinal 511-70 series lists six APNs (004G, 010a, 017a, 017b, 017c, 018), and 004G carries no annotation of its own. Whoever owns that slice should resolve whether 004G is in or out of the package. Does not affect any row in agent-1.json."
+  ]
+}

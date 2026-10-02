@@ -8,6 +8,18 @@ the regional/access context noted below.
 **Revision 2:** each description now states that multiple comparable parcels are available
 in the area, with a different phrasing per platform.
 
+**Revision 3 (regenerate for recent updates):** every description now ends with the
+`(Property: <Nickname>)` call-attribution tag the current Ad Builder workflow requires
+(nickname system added since the original run). Copy was trimmed a few chars per platform
+to keep each description inside the 1500-char cap with the tag appended. Headlines and the
+operator's "multiple parcels available" content are unchanged.
+
+## Nickname
+**Desert Basecamp** (new — registered in `knowledge-base/property-nicknames.md` on 2026-07-11
+under slug `montello-nv-89830-0.12ac-rv-basecamp`). Grounded in the source copy's framing of
+the lot as an affordable desert basecamp near public land. Rejected candidates: "Desert
+Waypoint", "Open Range". This tag is phone-attribution metadata, not sales copy.
+
 ## Property
 A 0.12 acre recreational lot near Montello in Elko County, northeastern Nevada, marketed as
 a low-cost RV, camping, hunting, and overlanding basecamp near thousands of acres of BLM
@@ -34,14 +46,14 @@ far smaller and cheaper than any sold comp (all are 2+ acres, $3,790-$12,775):
 6. Multiple parcels available - buyers who want to compare locations, buy more than one, or grab a backup.
 
 ## Variants
-| Platform | Headline chars | Description chars |
+| Platform | Headline chars | Description chars (incl. nickname tag) |
 |---|---|---|
-| landmodo | 58/60 | 1497/1500 |
-| land_century | 92/100 | 1500/1500 |
-| landflip | 100/100 | 1496/1500 |
-| land_com | 96/100 | 1493/1500 |
-| land_listings | 99/100 | 1485/1500 |
-| landhub | 99/100 | 1500/1500 |
+| landmodo | 58/60 | 1495/1500 |
+| land_century | 92/100 | 1497/1500 |
+| landflip | 100/100 | 1491/1500 |
+| land_com | 96/100 | 1481/1500 |
+| land_listings | 99/100 | 1490/1500 |
+| landhub | 99/100 | 1489/1500 |
 
 ## Notes on grounding
 - Lead place is "near Montello, NV" (the town in the source copy) rather than the bare county; Montello 89830 is in Elko County, NV, consistent with the entire corpus.

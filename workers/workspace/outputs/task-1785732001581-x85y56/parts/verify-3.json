@@ -1,0 +1,20 @@
+{
+  "verifier": 3,
+  "slice": "Santa Cruz 119-01 + 132-xx",
+  "parcelsChecked": 7,
+  "verdict": "clean",
+  "roundTripAllPassed": true,
+  "mismatches": [],
+  "notes": [
+    "Round-trip: for all 7 rows, 'Santa Cruz ' + p_apn + ' ' + p_legal_description + ' ' + p_address reproduces source_fragment exactly, and each source_fragment was found as a literal substring of raw-email-only.txt. No dropped, duplicated, or reordered words.",
+    "Split point: every legal description ends at the subdivision unit token (#10 / #18) and every address begins with a street number (all 7 p_address values start with a digit). No word stranded on the wrong side.",
+    "Casing preserved verbatim, including the seller's inconsistencies: 119-01-139 keeps lowercase 'blk' AND lowercase 'villas'; 132-06-076 keeps lowercase 'blk' with capitalized 'Ranchettes'; the other five keep capitalized 'Blk'. Nothing was regularized.",
+    "Comma after block number checked individually: present on 119-01-365 ('Blk 333,') and 132-04-265 ('Blk 536,'); absent on 119-01-116 ('Blk 312'), 119-01-139 ('blk 312'), 132-04-300 ('Blk 537'), 132-06-076 ('blk 544'). All match the email.",
+    "Structurally different entry identified independently from the email: 132-04-171, 'Lot 6, RR Ranchette #18' - it has NO block number at all and uses the singular 'Ranchette' (every other row is plural 'Ranchettes'/'Villas'). The file transcribed it as-written and did not pad in a phantom block number or pluralize it. Correct.",
+    "APN digits verified character-for-character against the email; 7 APNs, all unique, no transpositions: 119-01-116, 119-01-139, 119-01-365, 132-04-171, 132-04-265, 132-04-300, 132-06-076.",
+    "p_comments empty on all 7 and package false on all 7 - confirmed correct; none of these entries carry the seller's 'these 5 to be sold in one sale' annotation (that text appears only on the Pinal 511-70-xxx run).",
+    "p_county = 'SANTA CRUZ COUNTY' and p_state = 'AZ' on all 7 rows.",
+    "Completeness: the email contains exactly 7 Santa Cruz parcels in the 119-01 and 132-xx ranges, all 7 present in the file. The only other Santa Cruz parcels in the email are the five 133-03 entries (133-03-353, -354, -355, -356, -450), which are out of this slice by design.",
+    "Non-error observations for the operator, no action needed on this slice: the seller's own email numbers the 133-03 block as Ranchettes #14/#15/#16/#17 on four consecutive lots of the same Blk 506, which looks like seller error, but that is another verifier's slice. Within this slice, 132-04-171's address (1744 Via Caguama) is the only 4-digit street number besides 119-01-116 (1930 Circulo Huerta); both match the email."
+  ]
+}

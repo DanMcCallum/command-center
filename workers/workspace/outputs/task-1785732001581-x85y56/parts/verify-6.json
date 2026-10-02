@@ -1,0 +1,25 @@
+{
+  "verifier": 6,
+  "slice": "Apache + Mohave + Yavapai",
+  "parcelsChecked": 4,
+  "verdict": "clean",
+  "shapeAsRead": {
+    "202-04-006": "acreage-remark",
+    "353-17-068": "acreage-remark",
+    "405-06-552": "street-address",
+    "405-06-554": "street-address"
+  },
+  "mismatches": [],
+  "notes": [
+    "Completeness confirmed by exhaustive county scan of the email: 'Apache' appears exactly 1x, 'Mohave' 1x, 'Yavapai' 2x. No parcel in these three counties is missing from the file.",
+    "APN digits verified character-for-character against the email: 202-04-006, 353-17-068, 405-06-552, 405-06-554. All four exact.",
+    "Shape routing correct on all four. 202-04-006 ('just shy of 40 acres') and 353-17-068 ('about 10 acres') are prose acreage remarks and are in p_comments with p_legal_description and p_address both empty. 405-06-552 and 405-06-554 are street addresses and are in p_address with p_comments and p_legal_description empty. No acreage-remark was misfiled as an address, and no address was misfiled as a comment or legal description.",
+    "No numeric acreage anywhere: the JSON contains no acreage, acres, lot-size, or square-footage field of any kind. The transcriber did not convert '40 acres' or '10 acres' into a numeric value. Hedging preserved verbatim -- 'just shy of' and 'about' are both present character-for-character in p_comments.",
+    "SAME-STREET HOUSE NUMBER CHECK (the flagged high-risk item): read off the email independently, in email order, the sequence is 'Yavapai 405-06-552 4830 N Totem Pole Pass Yavapai 405-06-554 4810 N Totem Pole Pass'. Therefore 405-06-552 = 4830 N Totem Pole Pass and 405-06-554 = 4810 N Totem Pole Pass. The file matches this exactly. NOT swapped.",
+    "Operator caution on the Yavapai pair: the house numbers run DESCENDING (4830 then 4810) while the APNs run ASCENDING (552 then 554). This looks like a transposition at a glance but it is exactly what the seller wrote. Any future reviewer or cleanup pass should not 'fix' this -- swapping them would introduce the error, not remove it.",
+    "p_county correct on every row and correctly formatted uppercase with the ' COUNTY' suffix: 202-04-006 = APACHE COUNTY, 353-17-068 = MOHAVE COUNTY, 405-06-552 and 405-06-554 = YAVAPAI COUNTY. No row carries a neighbouring county's name.",
+    "p_state = 'AZ' on all four rows. package = false on all four rows, which is correct -- the only 'these 5 to be sold in one sale' grouping in the email is the Pinal 511-70-* block, which is outside this slice.",
+    "All four source_fragment values verified to appear literally in the email, each exactly once (grep -F, count=1 for each).",
+    "Boundary check on the two edge fragments passed. The Apache fragment sits at the START of the parcel list, immediately after the seller's column header 'County APN address/legal address'; the fragment begins at 'Apache' and does not swallow the header words. The Yavapai 405-06-554 fragment sits at the very END of the parcel list, immediately before 'I'll entertain any offers that are signed and dated...'; the fragment terminates at 'Pass' and does not swallow any of the closing narrative about offers, EMD, or closing terms. Interior fragments likewise stop cleanly before the following county token ('Cochise', 'Pinal')."
+  ]
+}

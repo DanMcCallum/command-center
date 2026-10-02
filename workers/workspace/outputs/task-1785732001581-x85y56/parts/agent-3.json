@@ -1,0 +1,77 @@
+{
+  "agent": 3,
+  "slice": "Santa Cruz 119-01 + 132-xx",
+  "expectedCount": 7,
+  "parcels": [
+    {
+      "p_apn": "119-01-116",
+      "p_county": "SANTA CRUZ COUNTY",
+      "p_state": "AZ",
+      "p_legal_description": "Lot 46, Blk 312 RR Villas #10",
+      "p_address": "1930 Circulo Huerta",
+      "p_comments": "",
+      "package": false,
+      "source_fragment": "Santa Cruz 119-01-116 Lot 46, Blk 312 RR Villas #10 1930 Circulo Huerta"
+    },
+    {
+      "p_apn": "119-01-139",
+      "p_county": "SANTA CRUZ COUNTY",
+      "p_state": "AZ",
+      "p_legal_description": "Lot 69, blk 312 RR villas #10",
+      "p_address": "412 Pelicano Ct",
+      "p_comments": "",
+      "package": false,
+      "source_fragment": "Santa Cruz 119-01-139 Lot 69, blk 312 RR villas #10 412 Pelicano Ct"
+    },
+    {
+      "p_apn": "119-01-365",
+      "p_county": "SANTA CRUZ COUNTY",
+      "p_state": "AZ",
+      "p_legal_description": "Lot 20, Blk 333, RR Villas #10",
+      "p_address": "430 Circulo Uva",
+      "p_comments": "",
+      "package": false,
+      "source_fragment": "Santa Cruz 119-01-365 Lot 20, Blk 333, RR Villas #10 430 Circulo Uva"
+    },
+    {
+      "p_apn": "132-04-171",
+      "p_county": "SANTA CRUZ COUNTY",
+      "p_state": "AZ",
+      "p_legal_description": "Lot 6, RR Ranchette #18",
+      "p_address": "1744 Via Caguama",
+      "p_comments": "",
+      "package": false,
+      "source_fragment": "Santa Cruz 132-04-171 Lot 6, RR Ranchette #18 1744 Via Caguama"
+    },
+    {
+      "p_apn": "132-04-265",
+      "p_county": "SANTA CRUZ COUNTY",
+      "p_state": "AZ",
+      "p_legal_description": "Lot 20, Blk 536, RR Ranchettes #18",
+      "p_address": "326 Cuna Ct",
+      "p_comments": "",
+      "package": false,
+      "source_fragment": "Santa Cruz 132-04-265 Lot 20, Blk 536, RR Ranchettes #18 326 Cuna Ct"
+    },
+    {
+      "p_apn": "132-04-300",
+      "p_county": "SANTA CRUZ COUNTY",
+      "p_state": "AZ",
+      "p_legal_description": "Lot 10, Blk 537 RR Ranchettes #18",
+      "p_address": "368 Circulo Hormiga",
+      "p_comments": "",
+      "package": false,
+      "source_fragment": "Santa Cruz 132-04-300 Lot 10, Blk 537 RR Ranchettes #18 368 Circulo Hormiga"
+    },
+    {
+      "p_apn": "132-06-076",
+      "p_county": "SANTA CRUZ COUNTY",
+      "p_state": "AZ",
+      "p_legal_description": "Lot 8, blk 544 RR Ranchettes #18",
+      "p_address": "403 Brisa Ct",
+      "p_comments": "",
+      "package": false,
+      "source_fragment": "Santa Cruz 132-06-076 Lot 8, blk 544 RR Ranchettes #18 403 Brisa Ct"
+    }
+  ]
+}

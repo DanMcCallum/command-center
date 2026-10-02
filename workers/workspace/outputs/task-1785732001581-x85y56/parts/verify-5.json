@@ -1,0 +1,20 @@
+{
+  "verifier": 5,
+  "slice": "Cochise",
+  "parcelsChecked": 4,
+  "verdict": "clean",
+  "mismatches": [],
+  "notes": [
+    "All 4 APNs match character-for-character, including the two prefix-sharing pairs: 116-09-340 / 116-09-341 and 117-02-118 / 117-02-141.",
+    "Subdivision name preserved verbatim as the seller wrote it: 'Ariz sun sites' - lowercase 's' words, 'Ariz' not expanded to 'Arizona', no trailing period added. Correct.",
+    "Block word: the email uses the full word 'Block' for all four Cochise entries (the shortened 'Blk'/'blk' forms appear only in the Santa Cruz entries). The file correctly uses 'Block' - no cross-county carryover.",
+    "Lot/block pairs verified individually against the email: 340 -> Lot 4 Block 151; 341 -> Lot 5 Block 151; 118 -> Lot 10 Block 200; 141 -> Lot 1 Block 202. Note the easy-to-transpose pair Lot 10 (block 200) vs Lot 1 (block 202) is transcribed correctly.",
+    "Subdivision unit numbers verified individually: #1, #1, #2, #2.",
+    "Comma placement matches exactly: a single comma after the unit number ('#1,' / '#2,') and none between Lot and Block. No commas added or dropped.",
+    "p_address empty is correct - none of the four Cochise entries carries a street address in the email (unlike the Pinal and Santa Cruz entries, which do).",
+    "p_comments empty and package=false are correct - the 'these 5 to be sold in one sale' package language attaches only to the Pinal 511-70-* entries, not to any Cochise entry.",
+    "p_county = 'COCHISE COUNTY' and p_state = 'AZ' present and correct on all 4 rows.",
+    "Each source_fragment was located as an exact literal substring of the email, appearing exactly once. Boundary check passed: fragment 1 begins immediately after the Apache entry's '...40 acres ' and fragment 4 ends at 'Block 202', immediately before ' Mohave 353-17-068'. No fragment swallowed adjacent-county text and none was cut short; each fragment is exactly 'Cochise ' + APN + ' ' + legal description.",
+    "Completeness confirmed: the token 'Cochise' occurs exactly 4 times in the email body, so there is no fifth Cochise parcel missing from the file."
+  ]
+}

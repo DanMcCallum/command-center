@@ -1,0 +1,97 @@
+{
+  "agent": 1,
+  "slice": "Pinal 403/404 series",
+  "expectedCount": 9,
+  "parcels": [
+    {
+      "p_apn": "403-18-188",
+      "p_county": "PINAL COUNTY",
+      "p_state": "AZ",
+      "p_legal_description": "",
+      "p_address": "4620 N. Toltec",
+      "p_comments": "",
+      "package": false,
+      "source_fragment": "Pinal 403-18-188 4620 N. Toltec"
+    },
+    {
+      "p_apn": "404-02-056",
+      "p_county": "PINAL COUNTY",
+      "p_state": "AZ",
+      "p_legal_description": "",
+      "p_address": "4455 N Rillito",
+      "p_comments": "",
+      "package": false,
+      "source_fragment": "Pinal 404-02-056 4455 N Rillito"
+    },
+    {
+      "p_apn": "404-02-059",
+      "p_county": "PINAL COUNTY",
+      "p_state": "AZ",
+      "p_legal_description": "",
+      "p_address": "4450 N Cortez",
+      "p_comments": "",
+      "package": false,
+      "source_fragment": "Pinal 404-02-059 4450 N Cortez"
+    },
+    {
+      "p_apn": "404-02-092",
+      "p_county": "PINAL COUNTY",
+      "p_state": "AZ",
+      "p_legal_description": "",
+      "p_address": "4445 N Cortez",
+      "p_comments": "",
+      "package": false,
+      "source_fragment": "Pinal 404-02-092 4445 N Cortez"
+    },
+    {
+      "p_apn": "404-18-038",
+      "p_county": "PINAL COUNTY",
+      "p_state": "AZ",
+      "p_legal_description": "",
+      "p_address": "3659 N Palm Circle",
+      "p_comments": "",
+      "package": false,
+      "source_fragment": "Pinal 404-18-038 3659 N Palm Circle"
+    },
+    {
+      "p_apn": "404-18-061",
+      "p_county": "PINAL COUNTY",
+      "p_state": "AZ",
+      "p_legal_description": "",
+      "p_address": "3740 N Palm Circle",
+      "p_comments": "",
+      "package": false,
+      "source_fragment": "Pinal 404-18-061 3740 N Palm Circle"
+    },
+    {
+      "p_apn": "404-18-062",
+      "p_county": "PINAL COUNTY",
+      "p_state": "AZ",
+      "p_legal_description": "",
+      "p_address": "3730 N Palm Circle",
+      "p_comments": "",
+      "package": false,
+      "source_fragment": "Pinal 404-18-062 3730 N Palm Circle"
+    },
+    {
+      "p_apn": "404-18-066",
+      "p_county": "PINAL COUNTY",
+      "p_state": "AZ",
+      "p_legal_description": "",
+      "p_address": "3640 N Palm Circle",
+      "p_comments": "",
+      "package": false,
+      "source_fragment": "Pinal 404-18-066 3640 N Palm Circle"
+    },
+    {
+      "p_apn": "404-19-161",
+      "p_county": "PINAL COUNTY",
+      "p_state": "AZ",
+      "p_legal_description": "",
+      "p_address": "3415 N. Bandelier",
+      "p_comments": "",
+      "package": false,
+      "source_fragment": "Pinal 404-19-161 3415 N. Bandelier"
+    }
+  ]
+}

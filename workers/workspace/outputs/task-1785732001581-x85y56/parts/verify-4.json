@@ -1,0 +1,27 @@
+{
+  "verifier": 4,
+  "slice": "Santa Cruz 133-03",
+  "parcelsChecked": 5,
+  "verdict": "clean",
+  "subdivisionUnitsAsRead": {
+    "133-03-353": "#14",
+    "133-03-354": "#15",
+    "133-03-355": "#16",
+    "133-03-356": "#17",
+    "133-03-450": "#17"
+  },
+  "roundTripAllPassed": true,
+  "mismatches": [],
+  "notes": [
+    "Unit numbers were read off the email one at a time before comparing to the file: 353=#14, 354=#15, 355=#16, 356=#17, 450=#17. All five match agent-4.json. The transcriber's claim holds: the units are not uniform and #17 repeats (356 and 450).",
+    "DATA-QUALITY FLAG (email content, not a transcription error): all five parcels share 'Blk 506' yet the seller wrote four different subdivision units (#14, #15, #16, #17). A single block normally belongs to one recorded subdivision unit, so the seller's own source data looks internally inconsistent here. Every other Rio Rico Ranchettes entry in the email (132-04-171, 132-04-265, 132-04-300, 132-06-076) is '#18'. Worth an operator/title check against the county record, but the file faithfully reproduces what the email says.",
+    "Lot numbers verified character-for-character: 71, 72, 73, 74, 168. The odd-magnitude one (168 on 133-03-450) is exactly as written in the email.",
+    "Addresses verified individually. Three share Bagre Ct with house numbers 290 (354), 292 (355), 294 (356) - each checked separately, none carried over. 133-03-353 is 293 Zola Ct (different street despite sitting between the Bagre numbers) and 133-03-450 is 227 Caiman Ct.",
+    "Comma-after-block claim confirmed: 353/354/355/356 read 'Blk 506,' with a comma; 133-03-450 reads 'Blk 506 RR' with no comma. The file reproduces the missing comma rather than normalizing it.",
+    "Concatenation round-trip passed for all 5: p_legal_description + ' ' + p_address reproduces the email's trailing text exactly (byte-for-byte, incl. punctuation and spacing). Split point is correct on every row - legal ends at the '#NN' token, address begins at the street number.",
+    "APN digits verified character-for-character against the email, including the four consecutive values 353/354/355/356 and the non-adjacent 450.",
+    "p_comments is empty string on all 5; package is false on all 5; p_county = 'SANTA CRUZ COUNTY' and p_state = 'AZ' on all 5. Confirmed.",
+    "All 5 source_fragment values appear literally in the email as exact substrings.",
+    "Completeness: a regex sweep for '133-03-' over the whole email returns exactly five APNs - 353, 354, 355, 356, 450 - with no additional 133-03 parcel present. No omissions, no duplicates."
+  ]
+}

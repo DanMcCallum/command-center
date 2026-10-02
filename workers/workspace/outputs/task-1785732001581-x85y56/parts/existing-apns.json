@@ -1,0 +1,350 @@
+{
+  "walkCompleted": true,
+  "totalPropertyRecordsSeen": 8472,
+  "idRangeCovered": "1-8479",
+  "skippedIds": [
+    11,
+    2318,
+    7978
+  ],
+  "matches": [],
+  "nearMisses": [],
+  "notFound": [
+    "202-04-006",
+    "116-09-340",
+    "116-09-341",
+    "117-02-118",
+    "117-02-141",
+    "353-17-068",
+    "403-18-188",
+    "404-02-056",
+    "404-02-059",
+    "404-02-092",
+    "404-18-038",
+    "404-18-061",
+    "404-18-062",
+    "404-18-066",
+    "404-19-161",
+    "511-70-004G",
+    "511-70-010a",
+    "511-70-017a",
+    "511-70-017b",
+    "511-70-017c",
+    "511-70-018",
+    "119-01-116",
+    "119-01-139",
+    "119-01-365",
+    "132-04-171",
+    "132-04-265",
+    "132-04-300",
+    "132-06-076",
+    "133-03-353",
+    "133-03-354",
+    "133-03-355",
+    "133-03-356",
+    "133-03-450",
+    "405-06-552",
+    "405-06-554"
+  ],
+  "gaps": "Coverage: one full ASC-by-property_id walk of property_get.php (85 pages x range=100, sort=property_id&sortdir=ASC, ~1s pacing, no type/status filter - verified to return the same rows as type=0&status=0). 8472 records read, ids 1-8479. Seven ids in that range returned nothing: 12, 13, 1589, 7514 are genuinely deleted ('No Record Found', confirmed by direct id= get); 11, 2318, 7978 are corrupt records that return an empty HTTP-200 body for both windowed and direct id= reads (confirmed individually) - these 3 were bisected around and skipped, so their APNs are UNKNOWN and are the only true blind spot. No other windows failed; no rate limiting or auth errors. A delta re-check of the table head after the walk found 0 records appended since (max id still 8479), so the snapshot is current. CAVEAT for the operator (not counted as matches or near-misses): 1001 AZ records exist in the CRM (500 Mohave, 501 Pinal), but none of our 35 APNs matched even at edit distance 1 (any single character substituted, inserted, or deleted, comparing case- and separator-insensitively). Note a systematic format difference in the Pinal set: the CRM stores Pinal parcels with a 4-character final segment (e.g. 404-18-0330, 404-02-180B) while 30 of our 35 use a 3-character final segment (e.g. 404-18-038). The zero-padded readings of ours (404-18-0380 etc.) were explicitly covered by the edit-distance-1 check and are also absent. The five letter-suffixed APNs of ours (004G, 010a, 017a/b/c) are already in the CRM's 4-character convention and are likewise absent (the whole 511-70 book-map has 0 CRM rows). Same-book-map CRM parcels are listed under sameBookMapNeighbors for eyeballing; they are different parcels, not candidate duplicates. Eight of our book-maps (116-09, 117-02, 119-01, 132-04, 132-06, 133-03, 202-04, 353-17, 511-70) have no CRM presence at all.",
+  "sameBookMapNeighbors": {
+    "403-18-188": [
+      {
+        "idPropertyId": 7161,
+        "storedApn": "403-18-0410",
+        "county": "Pinal",
+        "status": "Mailed Letter 1"
+      },
+      {
+        "idPropertyId": 7165,
+        "storedApn": "403-18-0870",
+        "county": "Pinal",
+        "status": "Mailed Letter 1"
+      }
+    ],
+    "404-02-056": [
+      {
+        "idPropertyId": 7509,
+        "storedApn": "404-02-180B",
+        "county": "Pinal",
+        "status": "Mailed Letter 1"
+      },
+      {
+        "idPropertyId": 7365,
+        "storedApn": "404-02-1920",
+        "county": "Pinal",
+        "status": "Mailed Letter 1"
+      },
+      {
+        "idPropertyId": 7319,
+        "storedApn": "404-02-1960",
+        "county": "Pinal",
+        "status": "Mailed Letter 1"
+      },
+      {
+        "idPropertyId": 7178,
+        "storedApn": "404-02-2130",
+        "county": "Pinal",
+        "status": "Mailed Letter 1"
+      },
+      {
+        "idPropertyId": 7449,
+        "storedApn": "404-02-2280",
+        "county": "Pinal",
+        "status": "Mailed Letter 1"
+      }
+    ],
+    "404-02-059": [
+      {
+        "idPropertyId": 7509,
+        "storedApn": "404-02-180B",
+        "county": "Pinal",
+        "status": "Mailed Letter 1"
+      },
+      {
+        "idPropertyId": 7365,
+        "storedApn": "404-02-1920",
+        "county": "Pinal",
+        "status": "Mailed Letter 1"
+      },
+      {
+        "idPropertyId": 7319,
+        "storedApn": "404-02-1960",
+        "county": "Pinal",
+        "status": "Mailed Letter 1"
+      },
+      {
+        "idPropertyId": 7178,
+        "storedApn": "404-02-2130",
+        "county": "Pinal",
+        "status": "Mailed Letter 1"
+      },
+      {
+        "idPropertyId": 7449,
+        "storedApn": "404-02-2280",
+        "county": "Pinal",
+        "status": "Mailed Letter 1"
+      }
+    ],
+    "404-02-092": [
+      {
+        "idPropertyId": 7509,
+        "storedApn": "404-02-180B",
+        "county": "Pinal",
+        "status": "Mailed Letter 1"
+      },
+      {
+        "idPropertyId": 7365,
+        "storedApn": "404-02-1920",
+        "county": "Pinal",
+        "status": "Mailed Letter 1"
+      },
+      {
+        "idPropertyId": 7319,
+        "storedApn": "404-02-1960",
+        "county": "Pinal",
+        "status": "Mailed Letter 1"
+      },
+      {
+        "idPropertyId": 7178,
+        "storedApn": "404-02-2130",
+        "county": "Pinal",
+        "status": "Mailed Letter 1"
+      },
+      {
+        "idPropertyId": 7449,
+        "storedApn": "404-02-2280",
+        "county": "Pinal",
+        "status": "Mailed Letter 1"
+      }
+    ],
+    "404-18-038": [
+      {
+        "idPropertyId": 7078,
+        "storedApn": "404-18-0330",
+        "county": "Pinal",
+        "status": "Mailed Letter 1"
+      },
+      {
+        "idPropertyId": 7062,
+        "storedApn": "404-18-0540",
+        "county": "Pinal",
+        "status": "Mailed Letter 1"
+      },
+      {
+        "idPropertyId": 7116,
+        "storedApn": "404-18-1620",
+        "county": "Pinal",
+        "status": "SKIP TRACE"
+      },
+      {
+        "idPropertyId": 7390,
+        "storedApn": "404-18-3000",
+        "county": "Pinal",
+        "status": "Mailed Letter 1"
+      }
+    ],
+    "404-18-061": [
+      {
+        "idPropertyId": 7078,
+        "storedApn": "404-18-0330",
+        "county": "Pinal",
+        "status": "Mailed Letter 1"
+      },
+      {
+        "idPropertyId": 7062,
+        "storedApn": "404-18-0540",
+        "county": "Pinal",
+        "status": "Mailed Letter 1"
+      },
+      {
+        "idPropertyId": 7116,
+        "storedApn": "404-18-1620",
+        "county": "Pinal",
+        "status": "SKIP TRACE"
+      },
+      {
+        "idPropertyId": 7390,
+        "storedApn": "404-18-3000",
+        "county": "Pinal",
+        "status": "Mailed Letter 1"
+      }
+    ],
+    "404-18-062": [
+      {
+        "idPropertyId": 7078,
+        "storedApn": "404-18-0330",
+        "county": "Pinal",
+        "status": "Mailed Letter 1"
+      },
+      {
+        "idPropertyId": 7062,
+        "storedApn": "404-18-0540",
+        "county": "Pinal",
+        "status": "Mailed Letter 1"
+      },
+      {
+        "idPropertyId": 7116,
+        "storedApn": "404-18-1620",
+        "county": "Pinal",
+        "status": "SKIP TRACE"
+      },
+      {
+        "idPropertyId": 7390,
+        "storedApn": "404-18-3000",
+        "county": "Pinal",
+        "status": "Mailed Letter 1"
+      }
+    ],
+    "404-18-066": [
+      {
+        "idPropertyId": 7078,
+        "storedApn": "404-18-0330",
+        "county": "Pinal",
+        "status": "Mailed Letter 1"
+      },
+      {
+        "idPropertyId": 7062,
+        "storedApn": "404-18-0540",
+        "county": "Pinal",
+        "status": "Mailed Letter 1"
+      },
+      {
+        "idPropertyId": 7116,
+        "storedApn": "404-18-1620",
+        "county": "Pinal",
+        "status": "SKIP TRACE"
+      },
+      {
+        "idPropertyId": 7390,
+        "storedApn": "404-18-3000",
+        "county": "Pinal",
+        "status": "Mailed Letter 1"
+      }
+    ],
+    "404-19-161": [
+      {
+        "idPropertyId": 7500,
+        "storedApn": "404-19-1090",
+        "county": "Pinal",
+        "status": "Mailed Letter 1"
+      },
+      {
+        "idPropertyId": 7170,
+        "storedApn": "404-19-1660",
+        "county": "Pinal",
+        "status": "Mailed Letter 1"
+      },
+      {
+        "idPropertyId": 7489,
+        "storedApn": "404-19-1890",
+        "county": "Pinal",
+        "status": "Mailed Letter 1"
+      },
+      {
+        "idPropertyId": 7119,
+        "storedApn": "404-19-1910",
+        "county": "Pinal",
+        "status": "Mailed Letter 1"
+      },
+      {
+        "idPropertyId": 7471,
+        "storedApn": "404-19-1950",
+        "county": "Pinal",
+        "status": "Mailed Letter 1"
+      }
+    ],
+    "405-06-552": [
+      {
+        "idPropertyId": 7258,
+        "storedApn": "405-06-1570",
+        "county": "Pinal",
+        "status": "Mailed Letter 1"
+      },
+      {
+        "idPropertyId": 7243,
+        "storedApn": "405-06-3020",
+        "county": "Pinal",
+        "status": "Mailed Letter 1"
+      },
+      {
+        "idPropertyId": 7014,
+        "storedApn": "405-06-3170",
+        "county": "Pinal",
+        "status": "Mailed Letter 1"
+      },
+      {
+        "idPropertyId": 7257,
+        "storedApn": "405-06-3720",
+        "county": "Pinal",
+        "status": "Mailed Letter 1"
+      }
+    ],
+    "405-06-554": [
+      {
+        "idPropertyId": 7258,
+        "storedApn": "405-06-1570",
+        "county": "Pinal",
+        "status": "Mailed Letter 1"
+      },
+      {
+        "idPropertyId": 7243,
+        "storedApn": "405-06-3020",
+        "county": "Pinal",
+        "status": "Mailed Letter 1"
+      },
+      {
+        "idPropertyId": 7014,
+        "storedApn": "405-06-3170",
+        "county": "Pinal",
+        "status": "Mailed Letter 1"
+      },
+      {
+        "idPropertyId": 7257,
+        "storedApn": "405-06-3720",
+        "county": "Pinal",
+        "status": "Mailed Letter 1"
+      }
+    ]
+  }
+}

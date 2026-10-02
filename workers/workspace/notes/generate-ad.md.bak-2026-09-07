@@ -1,0 +1,285 @@
+---
+description: Generate a real-estate ad (per-platform headline + description) for one property
+disable-model-invocation: true
+---
+
+You are generating a real-estate ad for the property described in the task metadata.
+
+The project root is `/home/mazer/claude/command-center`. All paths below are relative to it unless absolute.
+
+## Inputs (read these FIRST, in this order)
+
+1. **Property facts** — `metadata` field of the task JSON. The task description also includes a rendered summary, but the JSON metadata is authoritative.
+2. **Corpus guidance** — `knowledge-base/README.md`. Read this first; it may contain caveats about which entries are gold-standard vs. backfilled-with-caveats. Honor any guidance there about how to treat specific subsets of the corpus.
+3. **Sold-ad corpus** — every file in `knowledge-base/ads/` (skip `EXAMPLE.md.template`). Read all of them; do not skim.
+4. **Headline corpus** — every file in `knowledge-base/headlines/` (skip the folder's `README.md`). These are standalone headline examples used for headline-craft pattern matching only. Read them before drafting headlines in step 3.
+5. **Voice samples** — every file in `voice/clean/`. Read all of them; internalize cadence, vocabulary, and sentence-length distribution. Do **not** quote any specific call. If `voice/clean/` is empty, note that in your notes and write in a neutral, plain-spoken real-estate voice.
+6. **Anti-slop rules** — `skills/anti-slop.md`. Apply strictly during self-critique (step 4 below).
+7. **Platform constraints** — `config/ad-platforms.json`. Use the `headline_max`, `description_max`, and `buyer_profile` for each platform listed in the task metadata's `platforms` array.
+8. **Property nickname registry** — `knowledge-base/property-nicknames.md`. Check this before step 2b below: if this property's slug already has an assigned nickname, reuse it (never regenerate); otherwise you'll pick a new one in step 2b.
+9. **DREAMS rubric** — `/home/mazer/claude/command-center/.claude/skills/dreams-ad-review/SKILL.md` (absolute path). You are running headless: read this file directly as a rubric document — never attempt to invoke it as a skill or slash command. Read it in full before starting step 6.
+
+## Method
+
+### Step 1 — Rank similar sold ads
+
+From the corpus, pick the **top 5** most similar to this property. Rank by:
+- location proximity (same state > same region > anywhere)
+- acreage tier (within ±50% of the new property's acreage)
+- price tier (within ±50%)
+- feature overlap (count of shared `features` tags)
+- recency + success (recent + low `days_to_sale` ranks higher)
+
+Write the ranking and your reasoning to the notes file. Cite filenames.
+
+### Step 2 — Distill selling angles
+
+Identify 3-5 distinct selling angles for THIS property by cross-referencing the new property's facts with what closed in the ranked corpus. Each angle should be one sentence stating the hook + the buyer segment it appeals to. Write these to the notes file.
+
+### Step 2b — Assign the property nickname
+
+Every listing carries a short call-attribution nickname, appended to every platform's description as a `(Property: Nickname)` tag (see step 3). This is metadata for phone attribution, not sales copy — it has no bearing on selling angles or headline craft.
+
+1. Check `knowledge-base/property-nicknames.md` for this property's slug. **If it already has a nickname, reuse it exactly and skip to step 3** — a listing's nickname never changes across regenerations/revisions, since a caller or a lead from an earlier outbound call may already know it.
+2. Otherwise, generate 3 candidate nicknames: two words, a descriptive adjective/terrain word + a location/terrain-flavored noun (e.g. "Whispering Pines", "Cedar Ridge", "Silver Hollow"), grounded in something true about the property from its metadata (terrain, a nearby named feature, regional flavor). Never invent a feature not in the metadata to justify a nickname — if nothing distinctive is available, fall back to a plain but still pronounceable combination (e.g. county/region flavor word + a generic terrain noun).
+3. Pick the first candidate that isn't already in the registry (case-insensitive match against every existing entry). If all 3 collide, generate 3 more.
+4. Append a new row to `knowledge-base/property-nicknames.md`'s table (`slug | nickname | today's date`) and record the chosen nickname plus the rejected candidates in `notes.md`.
+
+### Step 3 — Draft per-platform variants
+
+For each platform in the task metadata's `platforms` array, look up its `headline_max`, `description_max`, and `buyer_profile` in `config/ad-platforms.json`.
+
+**Write the headline FIRST, before the description.** Headlines are where listings live or die on Land.com, LandWatch, Zillow, etc. — buyers scan a wall of titles and click maybe one in twenty. The body never gets read if the title is generic.
+
+#### Headline craft — required ingredients
+
+A good headline is **3–5 clauses** packed with concrete anchors. Pattern-match the structure from `knowledge-base/headlines/sold-titles.md` (these are real headlines that sold real lots). Aim to include the following ingredients, in this order when applicable:
+
+**A. Lead — acreage + place** (always present, always first)
+   - `4.13 Acres in Elko County, NV` — not just "4.13 Acres" and not just "Elko County land".
+   - Use the state abbreviation. If the metadata state is missing or impossible (e.g. "Elko County, Utah" — Elko is in Nevada), use the county alone and flag in `notes.md`; never invent a state.
+
+**B. Standout uniqueness — the ONE thing that makes a buyer click THIS lot over the 50 others on the page.** This is the most important clause. It must be SPECIFIC and CONCRETE. **The standout is MANDATORY in every headline on every platform. It is never the clause you drop to fit a cap.** If a platform's `headline_max` is too tight to hold the lead, the standout, AND the offer, drop or abbreviate the OFFER and the value anchor first; keep the standout. A headline that states only price and financing terms (e.g. `4.13 Ac Elko Co, BLM. $350 Down + $150/mo`) has FAILED this requirement, because "BLM" or "off-grid" alone is generic and the financing terms say nothing about what makes the lot worth clicking. Financing terms are an offer, not a standout.
+   - Look at corpus standouts: `Lot Sits on Fairway`, `Only 400 Feet from Suwannee River`, `Frontage on US HWY 70 with Deeded Easement`, `Just Outside of BOOMING Asheville Area`, `Long Range Views`, `Directly on Creek with Slight Slope`, `Investor Special for Future Use`, `One of Largest Properties Around`.
+   - "Off-grid" alone is NOT a standout — it describes half the lots on Land.com. Generic terrain ("high desert", "raw land") is not a standout either.
+   - For BLM/state-land adjacency, quantify it: `Adjoining 50,000+ Acres of Federal Land` beats `Borders BLM`. `Permanent Public-Land Buffer` beats `Off-Grid`. When no acreage figure is in the metadata, use a vivid concrete framing of the access instead: `Walk Off Your Lot Onto Public Land`, `Walk Onto BLM From Your Lot`. Bare `Borders BLM` / `On BLM` does not satisfy B.
+   - For unusual zoning, name the use: `Allows Mobile Homes`, `Unrestricted Use`, `Camping & RV Allowed`.
+
+**C. Buyer-filter qualifier** (1 short clause): `Off the Grid`, `No HOA`, `Mobile Homes Permitted`, `Legal Access`, `Unrestricted`, `Owner Financing`, `Cash or Terms`. Pick one that aligns with the buyer hint in metadata.
+
+**D. Value anchor — REQUIRED if the metadata supplies a comp, assessed value, or per-acre differential.** Skipping this when the data supports it is a failure mode.
+   - From the comp data, derive the SHARPEST framing. Acceptable shapes:
+     - Whole-price comp: `Comp Sold for $15,500. Buy for $5,599.`
+     - Ratio / fraction: `Buy at 1/5 the Per-Acre Price of a Recent Nearby Sale`, `Priced at 21% of Recent Per-Acre Comp`
+     - Assessed value: `Assessed at $X. Buy for $Y.`
+     - Per-acre comparison: `$1,356 per Acre vs $6,485 per Acre Recent Comp` — **both numbers must carry the unit explicitly**, and the word "Comp" or "Sale" (or "Assessed") must appear so a scanner knows what the second number IS.
+   - If no comp/assessed value exists, skip this clause but log it in `notes.md` as a missing input that would have strengthened the ad.
+
+**Clarity rule for the value anchor (and every standout clause): pass the scan test.**
+   - A buyer reads the headline alone, with no description for context. If they can't tell what a number, abbreviation, or comparison means in under two seconds, the clause is too dense — rewrite it longer and clearer, even if it costs you the value-anchor slot entirely. An unclear standout is worse than no standout, because it's where the listing lives or dies.
+   - Banned shorthand in headlines:
+     - `$X vs $Y/Ac` with the unit on only one side. If both are per-acre, write `$X/Ac vs $Y/Ac` (or spell out `per Acre` on both).
+     - `$/Acre Comp`, `$/Ac Comp`, or any bare `$/Ac` token — say `per-Acre Comp` or `per Acre`.
+     - Naked numeric ratios without a unit anchor: `$1,356 vs $6,485` (of what? per acre? total?). The unit must appear.
+     - Acronyms a non-specialist would not parse on a scan: every platform in the current rotation (Landmodo, Land Century, Landflip, Land.com, Land-listings, Landhub) is a land-specialist marketplace, so `BLM`, `HOA`, `OS` read fine. If a non-land-savvy platform is ever added to `config/ad-platforms.json`, swap to `Public Land` or `Federal Land` there.
+   - Side-by-side test before finalizing: write all 8 headlines out, then read each one as if it were the only thing on the page. If any one of them leaves you guessing what a clause means, fix that one — do not assume the description will rescue it.
+
+**E. Offer** (always present, always last): `BUY FOR $X with $Y Down or $Z Cash`, `$X Cash or $Y Down + $Z/mo for N Months`, `$X. Owner Financing Available`. Match the financing structure in `must_include` exactly.
+
+#### Cross-platform variation — REQUIRED
+
+Each platform headline must use a **different standout angle (B)** when more than one is available from Step 2. A Landmodo buyer (low down payment + monthly, first lot) and a Land.com buyer (acreage + comps, serious recreational/investor) come for different reasons; identical headlines waste the per-platform generation.
+
+If your 8 headlines are 8 phrasings of the same sentence, you have failed this step. Concrete test: read your 8 headlines aloud. If a buyer who saw all 8 would learn nothing new from headlines 2–8, regenerate.
+
+#### Anti-examples (DO NOT write headlines like these)
+
+These are real outputs from a previous run on the Elko County lot. Every one is a fail:
+
+- `4.13 Acres Adjoins BLM Land in Elko County. $5,599 / $350 Down, $179mo`
+- `4.13 Acres Adjoining BLM in Elko County. Off-Grid Land. $5,599 or $179 a Month`
+- `4.13 Acres in Elko County Bordering Thousands of Acres of BLM Land. Off-Grid. $5,599 with $350 Down`
+
+Why they fail:
+1. **No value anchor** — the lot was priced at ~$1,356/acre against a $6,485/acre comp. That is the single sharpest selling point on the listing and it never appears in any title.
+2. **Standout is generic** — "Adjoins BLM" is technically true but every desert lot says that. None of these quantify the buffer ("Thousands" doesn't count — give a real number or a vivid framing like "Walk Off Your Lot Onto Public Land").
+3. **No platform variation** — eight headlines, one angle.
+4. **Too thin** — two clauses where the corpus uses four.
+
+A second failure mode from a later revision of the same lot — over-compressed value anchors:
+
+- `4.13 Ac Elko County, BLM Border. Off-Grid Build. $1,356 vs $6,485/Ac. $179mo`
+- `4.13 Ac Elko County. Hunt + ATV onto BLM from Your Lot. $1,356/Ac vs $6,485/Ac. $5,599 or $179mo`
+
+Why they fail: the value anchor was crammed into `$X vs $Y/Ac` shorthand. The first example drops the unit off `$1,356`, so a buyer reading cold can't tell whether the comparison is per acre or total. The second carries both units but never names what the second number IS — no `Comp`, no `Sale`, no `Assessed`. The fix is to spell it: `$1,356 per Acre vs $6,485 per Acre Recent Comp` or use a ratio framing (`Priced at 21% of Recent Per-Acre Comp`, `1/5 the Per-Acre Price of a Recent Nearby Sale`). Clarity beats brevity in the standout clause.
+
+#### Headline length rule
+
+Land between **90% and 100% of `headline_max`**. Under 90% is only acceptable when the headline genuinely cannot absorb another grounded anchor without becoming false. Never go over. If you find yourself under 90%, you skipped one of the ingredients above — go back and add it.
+
+**Tight caps (e.g. Landmodo at 60 chars).** When the cap cannot hold all of lead + standout + value anchor + offer, the drop order is: value anchor first, then trim the offer to its sharpest single number, then abbreviate the lead. **The standout (B) is the last thing standing — never drop it to make room for financing terms.** A tight cap is the reason to cut a comp from the title, not the reason to ship a generic title. Re-read ingredient B before finalizing any sub-70-char headline.
+
+#### Then write the description
+
+Every description ends with the nickname tag from step 2b, in exactly this form: a single leading space, then `(Property: <Nickname>)`. For example: `... BUY TODAY FOR $10,000. (Property: Whispering Pines)`. This tag is call-attribution metadata, not sales copy — it does not count toward selling angles, is not subject to the anti-slop pass (step 4b) or the voice check (step 5), and must never be reworded, trimmed, or dropped by any later step.
+
+Reserve its room in the budget **before** writing the sales-copy portion: compute `tag = " (Property: " + nickname + ")"` and `content_budget = description_max - len(tag)`. Write the sales-copy portion to land between **90% and 100% of `content_budget`** (not the platform's raw `description_max`) — fill it with grounded concrete detail drawn from the corpus and the property facts: terrain, access type, distance to towns, comparable nearby sales, what you can build/do, utility status, road type, elevation, county recorder notes, etc. Never with generic praise adjectives. Take the sales-copy portion through steps 4, 5, and 6 first; only append the tag as the literal last thing written to the output file, after every rewrite pass — including the final DREAMS cycle — is done. The combined total (`sales copy + tag`) must never exceed `description_max`.
+
+### Step 4 — Self-critique
+
+#### 4a. Headline-craft check (do this FIRST, before anti-slop)
+
+For each headline, answer in your notes:
+1. Does it include a **standout clause (B)** that is specific and concrete (not just "off-grid" or "BLM")?
+2. If the metadata had a comp or assessed value, does the headline include a **value anchor (D)**? If not, justify why or rewrite.
+3. Compared to the other platforms' headlines, does this one use a **distinct standout angle**? If three or more headlines share the same lead clause structure beyond the acreage+location, regenerate the duplicates.
+4. Is the headline within **90–100% of headline_max**? If under, what grounded anchor did you skip?
+5. **Scan test (clarity).** Read the headline cold, with no description visible. Can a buyer tell, in under two seconds, what every number, unit, and comparison refers to? Specifically:
+   - Every dollar figure in a comparison has a unit (`/Ac`, `per Acre`, total).
+   - No banned shorthand: `$X vs $Y/Ac` with mismatched units, `$/Acre Comp`, naked ratios.
+   - The word naming the *thing being compared to* (`Comp`, `Sale`, `Assessed`, `County Value`) appears next to the comp number, not implied.
+   - Any acronym present (`BLM`, `HOA`, `OS`) is one a buyer on THIS platform would recognize at a glance — every platform in the current rotation is land-specialist, so these read fine; if a mainstream platform is ever added, replace with plain English there.
+
+Rewrite any headline that fails these checks. Log the before/after in `notes.md`. The scan-test rewrite takes priority over the 90% length floor — if clarifying a clause pushes the headline under 90%, that's acceptable; ambiguity is the worse failure.
+
+#### 4b. Anti-slop check
+
+Read `skills/anti-slop.md`. For each variant (headline AND the description's sales-copy portion — never the nickname tag):
+- list every rule violation (the exact offending phrase + which rule)
+- rewrite the variant fixing every violation
+- if the rewrite drops below 90% of the cap (`headline_max` for headlines, `content_budget` from step 3 for descriptions), expand with one more grounded detail and re-check
+
+Do this pass **exactly once** — don't loop forever. Anti-slop never runs again after this step: the DREAMS review cycles in step 6 are a separate, later loop and do not re-trigger it. After this one pass the variant moves on to step 5 and then step 6 — it is not final until the DREAMS loop terminates. Append the nickname tag to the description only after the final DREAMS cycle (step 6) is done.
+
+### Step 5 — Voice check
+
+Compare each final variant against the voice samples. If a sentence sounds nothing like the samples (wrong cadence, formality mismatch, vocabulary the user wouldn't use), rewrite that sentence in voice. Do **not** quote the samples; pattern-match the style.
+
+### Step 6 — DREAMS audit
+
+Audit every platform variant against the six DREAMS categories from the rubric (input 9). If you haven't read the full `SKILL.md` yet, read it now, before grading anything.
+
+**What gets audited:** each platform's headline AND the description's **sales-copy portion**. The nickname tag is exempt from this pass exactly as it is from steps 4 and 5 — it is metadata, never graded, never reworded, never counted against any DREAMS category.
+
+**How to audit:** one pass per cycle covering ALL platforms (a single scorecard per cycle) — do not run per-variant sub-loops. For each platform, grade each of the six categories:
+
+- **D — Destination Vision**
+- **R — Reasons to Act**
+- **E — Eliminate Objections**
+- **A — Accessibility Signals**
+- **M — Motivational Triggers**
+- **S — Scannable Structure**
+
+Per platform, per category, record:
+- a verdict: `Pass | Weak | Missing` (no numeric scores)
+- for every non-Pass verdict, a 1–2 sentence coaching note: what specifically is weak or missing, and what direction a revision should take — per the rubric's coaching guidance (direction, not rewritten copy)
+
+**Log every cycle:** append each cycle's full audit to `notes.md` as it completes, in this shape:
+
+```markdown
+## DREAMS audit — cycle <N>
+
+### <platform_key>
+| Category | Verdict |
+|---|---|
+| D — Destination Vision | Pass |
+| R — Reasons to Act | Weak |
+| E — Eliminate Objections | Pass |
+| A — Accessibility Signals | Pass |
+| M — Motivational Triggers | Missing |
+| S — Scannable Structure | Pass |
+
+Coaching notes:
+- R: <what's weak and what direction to take, 1–2 sentences>
+- M: <what's missing and what direction to take, 1–2 sentences>
+```
+
+(one `### <platform_key>` block per platform, every cycle — including all-Pass platforms, whose block simply has no coaching notes)
+
+**Revision pass:** after logging a cycle's audit, rewrite **only** the variants that have at least one non-Pass category — all-Pass variants are left untouched. Address every coaching note for that variant. The rubric is a coach, not a ghostwriter: it gives direction, and you write the revised copy yourself, in the operator's voice, pattern-matched from `voice/clean/` exactly as in step 5 (never quoting samples).
+
+**Loop and termination:** run audit → revise → re-audit. Terminate when **every category is Pass on every platform**, or after **3 total audit cycles**, whichever comes first. (The audit that finds everything Pass counts as a cycle; a 3rd-cycle audit is the last one regardless of its verdicts — no 4th audit, no revision after it.)
+
+**If non-Pass verdicts remain after cycle 3:** keep the latest revision as the final copy. In `notes.md`, after the cycle-3 audit log, list every unresolved category (platform + category + final verdict) with 1–2 sentences on why it couldn't be resolved (e.g. the fix would require a fact not in the metadata, or the platform cap can't hold the missing element).
+
+**Precedence:** when a DREAMS coaching note conflicts with the anti-slop rules (step 4b), the voice check (step 5), or the headline-craft **style** rules (steps 3/4a), **DREAMS wins** — apply the DREAMS fix. But the following are absolute and are never overridden by a DREAMS fix:
+- platform character caps (`headline_max`, `description_max`) and the 90–100% length window (headline vs `headline_max`, sales copy vs `content_budget`)
+- never inventing property facts — a DREAMS revision may only use facts present in the task metadata; if the coaching calls for a fact you don't have, note it as unresolvable instead
+- all nickname-tag rules — the tag is never graded, reworded, moved, or dropped
+
+**Re-verify char budgets after every revision:** for each revised variant, re-check the headline against `headline_max` and the sales-copy portion against `content_budget` from step 3 (both within 90–100%; never over). The nickname tag is still appended exactly once, after the final cycle — never during the loop.
+
+## Output
+
+Write to the `OUTPUT_DIR` given in the task prompt:
+
+- **`README.md`** — overview with this structure:
+  ```markdown
+  # Ad for <slug>
+
+  ## Property
+  <one-paragraph summary from metadata>
+
+  ## Nickname
+  <chosen nickname> (new | reused from registry)
+
+  ## Top corpus matches
+  1. <filename> — <one line why>
+  ...
+
+  ## Selling angles
+  1. <angle> — <buyer segment>
+  ...
+
+  ## Variants
+  | Platform | Headline chars | Description chars | DREAMS |
+  |---|---|---|---|
+  | landmodo | 96/100 | 3812/4000 | Pass |
+  | land_com | 94/100 | 3790/4000 | 2 weak |
+  | ... |
+  ```
+  (`DREAMS` is the platform's final verdict summary after the step-6 loop: `Pass` when all six categories pass, otherwise a count like `2 weak` / `1 missing`.)
+
+- **One file per platform** named `<platform_key>.md` (e.g. `landmodo.md`) with:
+  ```markdown
+  # <Platform display name>
+
+  ## HEADLINE (X/Y chars)
+  <the headline>
+
+  ## DESCRIPTION (X/Y chars)
+  <the description>
+
+  ## Why this angle
+  <one sentence>
+
+  ## DREAMS
+  <one line: this platform's final verdict summary, e.g. "All six categories Pass (2 cycles)" or "Weak: R, M (see dreams-review.md)">
+  ```
+
+- **`dreams-review.md`** — the final DREAMS scorecard from step 6:
+  ```markdown
+  # DREAMS review
+
+  Cycles used: <N>/3
+
+  | Platform | D | R | E | A | M | S |
+  |---|---|---|---|---|---|---|
+  | landmodo | Pass | Pass | Pass | Pass | Pass | Pass |
+  | land_com | Pass | Weak | Pass | Pass | Missing | Pass |
+  | ... |
+
+  ## Unresolved weaknesses
+  - <platform> — <category>: <why it couldn't be resolved, from the step-6 log>
+  ```
+  (final verdicts only — the per-cycle history lives in `notes.md`; the Unresolved weaknesses list is empty — "None" — when everything passes)
+
+Also write a `notes.md` in the notes-file location containing your step-1 ranking, step-2 angles, step-2b nickname decision (chosen nickname, rejected candidates, or "reused existing"), step-4 violations log, and the per-cycle DREAMS audit logs from step 6 (one `## DREAMS audit — cycle <N>` block per cycle, plus the unresolved-categories list if the loop hit 3 cycles). The human reviews this when judging quality.
+
+## Hard constraints
+
+- Never invent property facts not in the task metadata. If a fact would strengthen the ad but isn't given, write the variant without it. Note in `notes.md` what facts would help future generations.
+- Never go over a platform's caps — the nickname tag counts against `description_max` just like the sales copy; it's carved out of the budget in step 3, not appended on top of it.
+- Never assign a second nickname to a property that already has one in `knowledge-base/property-nicknames.md`, and never reuse a nickname already assigned to a different property.
+- Never quote a voice sample verbatim — pattern-match style only.
+- Never use em dashes. Apply every rule in `skills/anti-slop.md`. (The nickname tag itself is exempt from anti-slop/voice rules — it's metadata, not prose.)

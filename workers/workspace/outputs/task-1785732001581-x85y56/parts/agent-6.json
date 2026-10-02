@@ -1,0 +1,47 @@
+{
+  "agent": 6,
+  "slice": "Apache + Mohave + Yavapai",
+  "expectedCount": 4,
+  "parcels": [
+    {
+      "p_apn": "202-04-006",
+      "p_county": "APACHE COUNTY",
+      "p_state": "AZ",
+      "p_legal_description": "",
+      "p_address": "",
+      "p_comments": "just shy of 40 acres",
+      "package": false,
+      "source_fragment": "Apache 202-04-006 just shy of 40 acres"
+    },
+    {
+      "p_apn": "353-17-068",
+      "p_county": "MOHAVE COUNTY",
+      "p_state": "AZ",
+      "p_legal_description": "",
+      "p_address": "",
+      "p_comments": "about 10 acres",
+      "package": false,
+      "source_fragment": "Mohave 353-17-068 about 10 acres"
+    },
+    {
+      "p_apn": "405-06-552",
+      "p_county": "YAVAPAI COUNTY",
+      "p_state": "AZ",
+      "p_legal_description": "",
+      "p_address": "4830 N Totem Pole Pass",
+      "p_comments": "",
+      "package": false,
+      "source_fragment": "Yavapai 405-06-552 4830 N Totem Pole Pass"
+    },
+    {
+      "p_apn": "405-06-554",
+      "p_county": "YAVAPAI COUNTY",
+      "p_state": "AZ",
+      "p_legal_description": "",
+      "p_address": "4810 N Totem Pole Pass",
+      "p_comments": "",
+      "package": false,
+      "source_fragment": "Yavapai 405-06-554 4810 N Totem Pole Pass"
+    }
+  ]
+}

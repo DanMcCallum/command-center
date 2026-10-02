@@ -1,0 +1,48 @@
+{
+  "$schema": "/home/mazer/claude/foreman/schema/foreman.schema.json",
+  "projectName": "land-comps",
+  "mode": "prd",
+  "provider": "claude",
+  "model": "sonnet",
+  "reasoningEffort": "high",
+  "models": {
+    "planner": "opus",
+    "implementer": "sonnet",
+    "verifier": "sonnet",
+    "postmortem": "sonnet"
+  },
+  "claude": {
+    "allowDangerouslySkipPermissions": true
+  },
+  "verifier": {
+    "enabled": true,
+    "reconAgents": 3
+  },
+  "specKeeper": {
+    "enabled": false
+  },
+  "gates": [
+    {
+      "id": "lint",
+      "command": "uv --directory land-comps run ruff check .",
+      "timeoutSec": 300
+    },
+    {
+      "id": "typecheck",
+      "command": "uv --directory land-comps run mypy --strict src",
+      "timeoutSec": 300
+    },
+    {
+      "id": "test",
+      "command": "uv --directory land-comps run pytest -q",
+      "timeoutSec": 600
+    }
+  ],
+  "git": {
+    "branch": "auto"
+  },
+  "maxStepMinutes": 30,
+  "escalation": {
+    "parkOnVerdict": true
+  }
+}

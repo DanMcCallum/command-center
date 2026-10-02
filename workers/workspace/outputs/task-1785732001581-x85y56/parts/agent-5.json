@@ -1,0 +1,47 @@
+{
+  "agent": 5,
+  "slice": "Cochise",
+  "expectedCount": 4,
+  "parcels": [
+    {
+      "p_apn": "116-09-340",
+      "p_county": "COCHISE COUNTY",
+      "p_state": "AZ",
+      "p_legal_description": "Ariz sun sites #1, Lot 4 Block 151",
+      "p_address": "",
+      "p_comments": "",
+      "package": false,
+      "source_fragment": "Cochise 116-09-340 Ariz sun sites #1, Lot 4 Block 151"
+    },
+    {
+      "p_apn": "116-09-341",
+      "p_county": "COCHISE COUNTY",
+      "p_state": "AZ",
+      "p_legal_description": "Ariz sun sites #1, Lot 5 Block 151",
+      "p_address": "",
+      "p_comments": "",
+      "package": false,
+      "source_fragment": "Cochise 116-09-341 Ariz sun sites #1, Lot 5 Block 151"
+    },
+    {
+      "p_apn": "117-02-118",
+      "p_county": "COCHISE COUNTY",
+      "p_state": "AZ",
+      "p_legal_description": "Ariz sun sites #2, Lot 10 Block 200",
+      "p_address": "",
+      "p_comments": "",
+      "package": false,
+      "source_fragment": "Cochise 117-02-118 Ariz sun sites #2, Lot 10 Block 200"
+    },
+    {
+      "p_apn": "117-02-141",
+      "p_county": "COCHISE COUNTY",
+      "p_state": "AZ",
+      "p_legal_description": "Ariz sun sites #2, Lot 1 Block 202",
+      "p_address": "",
+      "p_comments": "",
+      "package": false,
+      "source_fragment": "Cochise 117-02-141 Ariz sun sites #2, Lot 1 Block 202"
+    }
+  ]
+}

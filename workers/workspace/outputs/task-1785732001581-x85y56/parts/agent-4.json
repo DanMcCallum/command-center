@@ -1,0 +1,57 @@
+{
+  "agent": 4,
+  "slice": "Santa Cruz 133-03",
+  "expectedCount": 5,
+  "parcels": [
+    {
+      "p_apn": "133-03-353",
+      "p_county": "SANTA CRUZ COUNTY",
+      "p_state": "AZ",
+      "p_legal_description": "Lot 71, Blk 506, RR Ranchettes #14",
+      "p_address": "293 Zola Ct",
+      "p_comments": "",
+      "package": false,
+      "source_fragment": "Santa Cruz 133-03-353 Lot 71, Blk 506, RR Ranchettes #14 293 Zola Ct"
+    },
+    {
+      "p_apn": "133-03-354",
+      "p_county": "SANTA CRUZ COUNTY",
+      "p_state": "AZ",
+      "p_legal_description": "Lot 72, Blk 506, RR Ranchettes #15",
+      "p_address": "290 Bagre Ct",
+      "p_comments": "",
+      "package": false,
+      "source_fragment": "Santa Cruz 133-03-354 Lot 72, Blk 506, RR Ranchettes #15 290 Bagre Ct"
+    },
+    {
+      "p_apn": "133-03-355",
+      "p_county": "SANTA CRUZ COUNTY",
+      "p_state": "AZ",
+      "p_legal_description": "Lot 73, Blk 506, RR Ranchettes #16",
+      "p_address": "292 Bagre Ct",
+      "p_comments": "",
+      "package": false,
+      "source_fragment": "Santa Cruz 133-03-355 Lot 73, Blk 506, RR Ranchettes #16 292 Bagre Ct"
+    },
+    {
+      "p_apn": "133-03-356",
+      "p_county": "SANTA CRUZ COUNTY",
+      "p_state": "AZ",
+      "p_legal_description": "Lot 74, Blk 506, RR Ranchettes #17",
+      "p_address": "294 Bagre Ct",
+      "p_comments": "",
+      "package": false,
+      "source_fragment": "Santa Cruz 133-03-356 Lot 74, Blk 506, RR Ranchettes #17 294 Bagre Ct"
+    },
+    {
+      "p_apn": "133-03-450",
+      "p_county": "SANTA CRUZ COUNTY",
+      "p_state": "AZ",
+      "p_legal_description": "Lot 168, Blk 506 RR Ranchettes #17",
+      "p_address": "227 Caiman Ct",
+      "p_comments": "",
+      "package": false,
+      "source_fragment": "Santa Cruz 133-03-450 Lot 168, Blk 506 RR Ranchettes #17 227 Caiman Ct"
+    }
+  ]
+}

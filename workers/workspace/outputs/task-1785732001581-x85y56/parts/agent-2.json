@@ -1,0 +1,67 @@
+{
+  "agent": 2,
+  "slice": "Pinal 511-70 series",
+  "expectedCount": 6,
+  "parcels": [
+    {
+      "p_apn": "511-70-004G",
+      "p_county": "PINAL COUNTY",
+      "p_state": "AZ",
+      "p_legal_description": "",
+      "p_address": "",
+      "p_comments": "",
+      "package": false,
+      "source_fragment": "Pinal 511-70-004G"
+    },
+    {
+      "p_apn": "511-70-010a",
+      "p_county": "PINAL COUNTY",
+      "p_state": "AZ",
+      "p_legal_description": "",
+      "p_address": "",
+      "p_comments": "these 5 to be sold in one sale",
+      "package": true,
+      "source_fragment": "Pinal 511-70-010a these 5 to be sold in one sale"
+    },
+    {
+      "p_apn": "511-70-017a",
+      "p_county": "PINAL COUNTY",
+      "p_state": "AZ",
+      "p_legal_description": "",
+      "p_address": "",
+      "p_comments": "these 5 to be sold in one sale",
+      "package": true,
+      "source_fragment": "Pinal 511-70-017a these 5 to be sold in one sale"
+    },
+    {
+      "p_apn": "511-70-017b",
+      "p_county": "PINAL COUNTY",
+      "p_state": "AZ",
+      "p_legal_description": "",
+      "p_address": "",
+      "p_comments": "these 5 to be sold in one sale",
+      "package": true,
+      "source_fragment": "Pinal 511-70-017b these 5 to be sold in one sale"
+    },
+    {
+      "p_apn": "511-70-017c",
+      "p_county": "PINAL COUNTY",
+      "p_state": "AZ",
+      "p_legal_description": "",
+      "p_address": "",
+      "p_comments": "these 5 to be sold in one sale",
+      "package": true,
+      "source_fragment": "Pinal 511-70-017c these 5 to be sold in one sale"
+    },
+    {
+      "p_apn": "511-70-018",
+      "p_county": "PINAL COUNTY",
+      "p_state": "AZ",
+      "p_legal_description": "",
+      "p_address": "",
+      "p_comments": "these 5 to be sold in one sale",
+      "package": true,
+      "source_fragment": "Pinal 511-70-018 these 5 to be sold in one sale"
+    }
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "verifier": 2,
+  "slice": "Pinal 511-70 series",
+  "parcelsChecked": 6,
+  "verdict": "clean",
+  "packageFinding": {
+    "apnsWithAnnotation": [
+      "511-70-010a",
+      "511-70-017a",
+      "511-70-017b",
+      "511-70-017c",
+      "511-70-018"
+    ],
+    "apnsWithout": [
+      "511-70-004G"
+    ],
+    "agreesWithFile": true
+  },
+  "mismatches": [],
+  "notes": [
+    "Suffix casing verified character-for-character against the email: 004G is uppercase G; 010a, 017a, 017b, 017c are lowercase; 018 has no suffix. The file mirrors the email exactly, including the mixed casing. No regularization detected.",
+    "The phrase 'these 5 to be sold in one sale' occurs exactly 5 times in the whole email, each immediately following one of 511-70-010a, -017a, -017b, -017c, -018. The count of 5 annotated parcels matches the seller's own wording ('these 5').",
+    "511-70-004G is correctly excluded from the package: in the email it is immediately followed by 'Pinal 511-70-010a' with no annotation of its own. Its package=false and empty p_comments are correct.",
+    "All six source_fragment values occur literally (case-sensitive, exact-substring) in the email exactly once each.",
+    "Boundary check on the last parcel: the email reads '...Pinal 511-70-018 these 5 to be sold in one sale Santa Cruz 119-01-116 Lot 46...' with no delimiter. The file's fragment stops at 'one sale' and does not swallow the Santa Cruz entry. Correct cut.",
+    "The email supplies no address and no legal description for any 511-70 parcel (the address/legal column is blank for all six; the next non-blank entries are the Santa Cruz rows). Empty p_legal_description and p_address are correct for all six.",
+    "Completeness: exactly 6 occurrences of the string '511-70' exist in the email, all accounted for. No missing 511-70 parcel.",
+    "p_county='PINAL COUNTY' and p_state='AZ' on all six rows; the email labels each with the county token 'Pinal' and the listing is Arizona-wide, so both are consistent.",
+    "Operator note (not a transcription error): the seller wrote the package annotation as an inline repeated phrase rather than as a single grouping statement. The grouping is unambiguous here because the repetition count (5) equals the number of annotated parcels, but if this seller sends future lists it is worth confirming grouping explicitly."
+  ]
+}
