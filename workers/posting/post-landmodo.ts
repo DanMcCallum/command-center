@@ -23,7 +23,7 @@ import {
   loginExpiredError,
   requireListingFacts,
   saveProofScreenshot,
-  splitLocation,
+  resolveLocation,
 } from './post-common'
 
 const PLATFORM = 'landmodo'
@@ -57,7 +57,7 @@ export async function postToLandmodo(
 ): Promise<PostResult> {
   const config = opts.platform ?? loadPlatformConfig(PLATFORM)
   const facts = requireListingFacts(task)
-  const { county, state } = splitLocation(facts.location)
+  const { county, state } = await resolveLocation(facts.location)
   const photos = listPhotos(opts.outputDir)
   const page = opts.page
 

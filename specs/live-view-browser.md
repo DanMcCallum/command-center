@@ -168,6 +168,7 @@ canvas, so pasted text is relayed server-side and typed into the focused field.
 - [x] The text is held in memory only for the duration of the request — never logged (only its length), never written to disk; the "no credential vault / stored passwords" non-goal stands
 - [x] New `dashboard/app/api/posting-auth/type/route.ts` proxies to `/capture/type` with the same derived-token auth as US-006
 - [x] While a capture is active, `PostingAuthPanel` shows a paste box (masked input) under the iframe: paste + Enter/Send types it into the field the operator clicked in the live view; errors surface in-panel
+- [x] **Paste-attempt detection:** a Ctrl/Cmd+V typed inside the live view lands in the captive browser, where a context init script reports it (data-free binding) and `pasteAttemptAt` is exposed read-and-clear via `GET /capture/status` as `pasteAttempt` — the panel's status poll then pops a modal paste form (autofocused; paste again + Enter). A paste landing on the dashboard page itself (focus outside the iframe) opens the same modal pre-filled from the paste event
 - [x] Typecheck passes (both `cd workers/posting && npm run typecheck` and `cd dashboard && npx tsc --noEmit`)
 
 ## Non-Goals

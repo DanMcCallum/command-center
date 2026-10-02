@@ -1,5 +1,7 @@
 # PRD: Auto-Post Approved Ads to Marketplaces
 
+**Status:** Implemented (v1, 2026-07-10) — durable facts summarized in [specs.md](specs.md); read this file only when modifying the posting feature itself.
+
 ## Introduction
 
 Today the ad pipeline ends at approval: the worker generates per-platform ad copy in `workers/workspace/outputs/<taskId>/`, a human clicks **Approve** on the task card, and then manually copy-pastes each ad into the marketplace websites. This feature closes that gap: when an ad-builder task is approved, the system automatically posts the ad to the marketplaces selected in the Ad Builder form using Playwright browser automation with saved logins.

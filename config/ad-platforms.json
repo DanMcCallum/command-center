@@ -1,5 +1,5 @@
 {
-  "_doc": "Per-platform character caps for ad listings. Caps are conservative — verify against current platform docs when posting. Headline is the title/subject line shown in search results; description is the body. The generate-ad workflow targets 95-100% of the cap for each. Caps and buyer profiles for land_century, landflip, land_listings, and landhub are best-effort defaults — confirm against the actual sites before relying on them. Note: description_max includes the trailing '(Property: Nickname)' call-attribution tag generate-ad appends to every listing — see generate-ad.md step 3 and knowledge-base/property-nicknames.md. The tag's room is carved out of description_max, not added on top of it, so these caps do not need adjusting.",
+  "_doc": "Per-platform character caps for ad listings. Caps are conservative — verify against current platform docs when posting. Headline is the title/subject line shown in search results; description is the body. The generate-ad workflow targets 95-100% of the cap for each. Caps and buyer profiles for land_century, landflip, land_listings, and landhub are best-effort defaults — confirm against the actual sites before relying on them. Note: description_max includes the trailing '(Property: Nickname)' call-attribution tag generate-ad appends to every listing — see generate-ad.md step 3 and knowledge-base/property-nicknames.md. The tag's room is carved out of description_max, not added on top of it, so these caps do not need adjusting. Platforms with format: 'long-form' (ebay) opt out of the 90-100% length window: their description is built from the file named in 'template' (plus 'seller_terms' and a matching area sheet under 'areas_dir'), and description_max is a sanity ceiling only. See generate-ad.md 'Step 3L'.",
   "platforms": {
     "landmodo": {
       "display_name": "Landmodo",
@@ -36,6 +36,20 @@
       "headline_max": 100,
       "description_max": 1500,
       "buyer_profile": "Land-focused marketplace comparable to LandFlip. Audience: hunting, recreational, rural-living, and investor buyers. Land-savvy — acronyms like BLM, HOA, OS read fine. Wants concrete terrain, access, and value-anchor detail."
+    },
+    "ebay": {
+      "display_name": "eBay",
+      "headline_max": 80,
+      "description_max": 40000,
+      "format": "long-form",
+      "template": "knowledge-base/ebay/listing-template.md",
+      "seller_terms": "knowledge-base/ebay/seller-terms.md",
+      "areas_dir": "knowledge-base/ebay/areas",
+      "image_base_url": "https://img.ownaloha.land/api/files/workspace/outputs",
+      "image_max_width": 1000,
+      "image_render_width": 800,
+      "_html_doc": "GET /api/tasks/<id>/ebay-listing renders ebay.md into the HTML pasted into eBay's description editor. eBay does not host description images, so it resizes outputs/<id>/photos/* (and knowledge-base/ebay/areas/<slug>/* when the area sheet matches) into outputs/<id>/ebay-images/*.jpg at image_max_width and references them as <image_base_url>/<id>/ebay-images/<file>. image_base_url must serve that folder publicly over https (see specs/ebay-html-listing.md for the tunnel setup); image_render_width is the width= attribute on each <img>.",
+      "buyer_profile": "Mainstream general marketplace, Real Estate > Land category. Audience: bargain hunters, first-time land buyers, and out-of-state buyers who have never bought raw land and will read a long listing before they trust it. NOT land-savvy: write public land as 'Public Land' or 'Federal Land' in the title, and define BLM in the body before using the acronym. headline_max is eBay's hard 80-character title limit; the proven sellers in this category write titles in ALL CAPS with hyphen or slash separators, leading with acreage + state + the standout, then the terms (CASH - NO RESERVE, 0% FINANCING, $X DOWN). description_max is only a sanity ceiling: eBay has no practical description limit, and the winning format in this category is a long, exhaustive listing (typically 8,000 to 15,000 characters) built block-by-block from the template file above. The 90-100% content_budget window does NOT apply; completeness of the template's REQUIRED blocks is the length rule. The description must not contain markdown '#' headings (the output parser stops at the first one); block headers are plain ALL-CAPS lines."
     }
   }
 }

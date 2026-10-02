@@ -9,6 +9,7 @@ import {
   requireAuthState,
   requireListingFacts,
   requirePhotos,
+  resolveLocation,
   splitLocation,
 } from './post-common'
 
@@ -97,4 +98,41 @@ test('requireAuthState errors with poster-agent hint when session is missing', (
     () => requireAuthState('no-such-platform'),
     /No saved login for "no-such-platform".*poster agent/
   )
+})
+
+test('resolveLocation falls back to the split when the dashboard is unreachable', async () => {
+  // Point at a closed port so nothing touches the real dashboard. Port 3000
+  // is production (see AGENTS.md) and must never be called from a test.
+  const prevUrl = process.env.DASHBOARD_URL
+  const prevToken = process.env.AGENT_TOKEN
+  process.env.DASHBOARD_URL = 'http://127.0.0.1:9'
+  process.env.AGENT_TOKEN = 'test-token-not-a-secret'
+  try {
+    const resolved = await resolveLocation('Elko County, NV')
+    assert.strictEqual(resolved.county, 'Elko')
+    assert.strictEqual(resolved.state, 'NV')
+    assert.strictEqual(resolved.stateAbbr, 'NV')
+    assert.strictEqual(resolved.countyConfirmed, true)
+    assert.match(resolved.warnings[0], /resolver unavailable/)
+  } finally {
+    if (prevUrl === undefined) delete process.env.DASHBOARD_URL
+    else process.env.DASHBOARD_URL = prevUrl
+    if (prevToken === undefined) delete process.env.AGENT_TOKEN
+    else process.env.AGENT_TOKEN = prevToken
+  }
+})
+
+test('resolveLocation still rejects an unsplittable location on the fallback path', async () => {
+  const prevUrl = process.env.DASHBOARD_URL
+  const prevToken = process.env.AGENT_TOKEN
+  process.env.DASHBOARD_URL = 'http://127.0.0.1:9'
+  process.env.AGENT_TOKEN = 'test-token-not-a-secret'
+  try {
+    await assert.rejects(() => resolveLocation('Nevada'), /expected "<county>, <state>"/)
+  } finally {
+    if (prevUrl === undefined) delete process.env.DASHBOARD_URL
+    else process.env.DASHBOARD_URL = prevUrl
+    if (prevToken === undefined) delete process.env.AGENT_TOKEN
+    else process.env.AGENT_TOKEN = prevToken
+  }
 })

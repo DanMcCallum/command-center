@@ -254,8 +254,16 @@ if [[ $CLAUDE_EXIT -ne 0 ]]; then
     TAIL=$(echo "$CLAUDE_OUTPUT" | tail -c 1000)
     ERROR_NOTE="$ERROR_NOTE Last output: $TAIL"
   fi
-  api_patch "$TASK_ID" "$(jq -n --arg note "$ERROR_NOTE" \
-    '{status: "pending", claudeNotes: $note}')" >/dev/null
+  # A stale session id makes --resume fail instantly on every run; clear it so
+  # the next attempt starts a fresh session instead of looping forever.
+  if [[ "$CLAUDE_OUTPUT" == *"No conversation found with session ID"* ]]; then
+    log "Stale claudeSessionId detected; clearing it so the next run starts fresh."
+    api_patch "$TASK_ID" "$(jq -n --arg note "$ERROR_NOTE" \
+      '{status: "pending", claudeNotes: $note, claudeSessionId: null}')" >/dev/null
+  else
+    api_patch "$TASK_ID" "$(jq -n --arg note "$ERROR_NOTE" \
+      '{status: "pending", claudeNotes: $note}')" >/dev/null
+  fi
   update_worker_state "$TASK_ID"
   exit 0
 fi

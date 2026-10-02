@@ -61,6 +61,26 @@ residential IP and browser.
    entry with `"httpOnly": true`. If **no** entry has `httpOnly: true`, the
    export came from something running with page-script privileges — redo it
    with the extension.
+
+   **Export from BOTH subdomains — this is the lesson from the first OT-B attempt
+   (2026-07-12).** Land.com's login is carried by **two host-only session cookies,
+   one per subdomain** (each invisible in an export taken on the other):
+   - `MarketPlaces` on **`www.land.com`** — the session the automated poster's
+     configured URLs (`www.land.com/login`, `www.land.com/account/...`) need.
+   - `MarketingHub` on **`market.land.com`** — the session for the ad-posting
+     dashboard the operator uses by hand.
+
+   Both are long `CfDJ8…` token values (ASP.NET Core Data Protection — that prefix
+   *is* the signature of a real session cookie; don't be fooled by the name
+   "MarketingHub"). The first attempt exported only `market.land.com`, so it had
+   `MarketingHub` but not `MarketPlaces` and replayed logged-out on `www`. So:
+   **log in, then run Cookie-Editor's Export once on a `www.land.com` tab and once
+   on a `market.land.com` tab**, and drop both — the converter/merge combines them.
+   Sanity-check each: you should see a `CfDJ8…`-valued cookie (`MarketPlaces` or
+   `MarketingHub`), not just the shared `bm_*`/`ak_bmsc` Akamai cookies. If, even
+   logged in, neither `CfDJ8…` cookie appears, the auth token may live in
+   `localStorage` (which a cookie-only export can't see) — flag that, and US-007
+   switches to a DevTools/local-browser capture that includes `localStorage`.
 7. Tell Ralph/the next spike iteration that the export is in place. The
    converter is already built and waiting
    (`cd workers/posting && npx tsx research-convert-cookies.ts` — reads this

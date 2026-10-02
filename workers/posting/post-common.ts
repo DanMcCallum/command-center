@@ -179,6 +179,101 @@ export function splitLocation(location: string): ParsedLocation {
   return { county, state }
 }
 
+/**
+ * Reads a var from process.env, falling back to the project-root .env.local.
+ * Nothing auto-loads that file, and it is where DASHBOARD_URL and AGENT_TOKEN
+ * live on both the server and the operator's machine (see AGENTS.md).
+ */
+function readProjectEnvVar(name: string): string | undefined {
+  const fromEnv = process.env[name]
+  if (fromEnv) return fromEnv
+  const envPath = path.join(PROJECT_ROOT, '.env.local')
+  if (!fs.existsSync(envPath)) return undefined
+  for (const line of fs.readFileSync(envPath, 'utf-8').split('\n')) {
+    const m = line.match(new RegExp(`^(?:export\\s+)?${name}=(.*)$`))
+    if (m) {
+      const value = m[1].trim().replace(/^(["'])(.*)\1$/, '$2')
+      if (value) return value
+    }
+  }
+  return undefined
+}
+
+export interface ResolvedLocation extends ParsedLocation {
+  /** Postal abbreviation, for forms whose <select> options are codes. */
+  stateAbbr: string
+  /** False when the county is a carried-over guess rather than a known one. */
+  countyConfirmed: boolean
+  /** Operator-facing notes recorded on the posting record. */
+  warnings: string[]
+}
+
+/**
+ * Resolves the task's free-text location into the county and state a listing
+ * form needs, by asking the dashboard (POST /api/resolve-location), which
+ * owns the one implementation. Turbopack forbids the dashboard importing
+ * code from outside dashboard/, so the sharing goes this direction: the
+ * worker calls the route rather than both sides carrying a copy of the rule.
+ *
+ * Degrades to splitLocation() whenever the dashboard is unreachable,
+ * unauthenticated or erroring, so posting behaves exactly as it did before
+ * when anything about this path is unavailable. Throws only when the county
+ * genuinely cannot be determined, which the operator fixes on the task.
+ */
+export async function resolveLocation(location: string): Promise<ResolvedLocation> {
+  const dashboardUrl = readProjectEnvVar('DASHBOARD_URL') ?? 'http://localhost:3000'
+  const token = readProjectEnvVar('AGENT_TOKEN')
+
+  if (token) {
+    try {
+      const res = await fetch(`${dashboardUrl}/api/resolve-location`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ location }),
+        signal: AbortSignal.timeout(15_000),
+      })
+      if (res.ok) {
+        const body = (await res.json()) as {
+          county: string | null
+          state: string
+          stateAbbr: string
+          countyConfirmed: boolean
+          warnings: string[]
+        }
+        if (!body.county) {
+          throw new Error(
+            body.warnings[0] ??
+              `Could not determine the county for "${location}" — set the task's ` +
+                `location to "<county> County, <ST>" and Retry`
+          )
+        }
+        return {
+          county: body.county,
+          state: body.state,
+          stateAbbr: body.stateAbbr,
+          countyConfirmed: body.countyConfirmed,
+          warnings: body.warnings ?? [],
+        }
+      }
+    } catch (err) {
+      // A resolver outage must never block a post. Fall through to the split.
+      if (err instanceof Error && err.message.includes('determine the county')) throw err
+    }
+  }
+
+  const { county, state } = splitLocation(location)
+  return {
+    county,
+    state,
+    stateAbbr: state.length === 2 ? state.toUpperCase() : state,
+    countyConfirmed: /\s+county$/i.test(location.slice(0, location.lastIndexOf(',')).trim()),
+    warnings: ['location resolver unavailable; used the comma split as-is'],
+  }
+}
+
 /** Required task metadata for posting; throws a descriptive error if absent. */
 export function requireListingFacts(task: PosterTask): {
   priceUsd: number

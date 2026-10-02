@@ -15,6 +15,45 @@ One summary per shipped feature. Read this **and** [readme.md](readme.md) (the c
 
 ---
 
+## PATLive lead intake → Investment Dominator comments + status
+
+**PRD:** [patlive-intake.md](patlive-intake.md) · **Shipped:** 2026-09-30 · **Type:** cron poller (`# PATLIVE-INTAKE`, every 5 min), Python stdlib, no dashboard surface
+
+`workers/patlive-intake/intake.py` polls Fastmail (JMAP, `FASTMAIL_API_TOKEN` in root `.env.local`) for PATLive "New Lead Submission (Selling)" emails to `leads@ownaloha.land`, reads the "little number on the bottom right of the letter" (= ID **owner id**, the CRM's Letter Ref), lists every property under that owner via `property_get.php?oid=`, appends a transcript block to each property's Comments (`p_comments`) and posts `p_status=3` (Pending Preliminary Research) unless the property is already at that stage or later. No other field is sent. Processed mail gets the `patlive-id-synced` keyword; `state/state.json` (gitignored) is the ledger; the PATLive message uuid inside the comment is the third dedupe layer. Unmatched refs are recorded, not guessed.
+
+**Invariants / gotchas:**
+- **`property_post.php` with `p_id` MERGES** (probe 2026-09-30 on the `[API TEST]` property 5693: a post carrying only id, type, status, owner link, caller name, and comment changed nothing else). Writes stay gated on that verdict in `state/update-semantics.json`; re-run `probe_property_update.py` if the state dir is ever wiped. Blank fields are omitted from the payload, never sent as empty strings.
+- Every post is read back and diffed; any change outside status/comment/timestamps halts the run.
+- ID credentials are read from followupdominator's `.credentials/investment_dominator.env` (override with `ID_CREDENTIALS_FILE`).
+
+## eBay as an opt-in long-form ad platform
+
+**PRD:** [ebay-long-form.md](ebay-long-form.md) · **Shipped:** 2026-09-07 · **Type:** generation only (no posting)
+
+Adds `ebay` to the Ad Builder as an unchecked-by-default platform whose description has no character window. Instead of the 90-100% cap rule, `generate-ad` (new Step 3L, prompt lives at `~/.claude/commands/generate-ad.md`, backup `workers/workspace/notes/generate-ad.md.bak-2026-09-07`) builds the description block-by-block from `knowledge-base/ebay/listing-template.md`, whose structure was captured from a coach-recommended sold eBay land listing and two live siblings (structure only, no wording). Facts may come from exactly three places: task metadata, the `## Usable now` section of the matching area sheet under `knowledge-base/ebay/areas/` (first sheet: `montello-nv.md`, matched on town, ZIP, or county), and filled-in lines of `knowledge-base/ebay/seller-terms.md` (lines containing `TODO` are skipped and reported in the task's `notes.md`).
+
+**Config:** `config/ad-platforms.json` `ebay` entry: `headline_max: 80` (eBay's title limit), `description_max: 40000` (sanity ceiling only), `format: "long-form"`, plus `template`, `seller_terms`, `areas_dir` paths. `config/posting-platforms.json` `ebay` entry is `enabled: false`, so no Publish button and no `POSTERS` entry; posting is copy-paste. `SaveToKbModal` lists eBay as a sold-on platform.
+
+**Output:** `outputs/<taskId>/ebay.md` keeps `## HEADLINE (x/80 chars)` and `## DESCRIPTION (x/40000 chars)` so `parse-ad-output.ts` still reads it, and adds `## ITEM SPECIFICS` (eBay form fields) between `## Why this angle` and `## DREAMS`. The README variants table and `dreams-review.md` include the `ebay` row like any platform.
+
+**Invariants / gotchas:**
+- A long-form description must never contain a markdown `#` heading: the parser ends the DESCRIPTION section at the first one. Block headers are plain ALL-CAPS lines.
+- eBay is mainstream, so the headline says `Public Land` / `Federal Land` rather than `BLM`; the body defines BLM before using it. The land-specialist platforms are unchanged.
+- ALL CAPS is allowed in the eBay title and block headers only; body copy stays sentence case and still goes through anti-slop, voice, and DREAMS. Step 4b's "expand if under 90%" floor and step 6's length-window precedence are carved out for long-form; a DREAMS fix may not drop a REQUIRED block.
+- Reputation claims (feedback counts, years on eBay, lots sold, "I have walked this lot") appear only if seller-terms or `must_include` carries them.
+- The area sheet's `## Needs operator confirmation` section is the holding pen for unverified facts; nothing there reaches copy until the operator moves it up with a source.
+- eBay's live description frame is `https://itm.ebaydesc.com/itmdesc/<itemId>` (plain GET); sold items lose their body a few weeks after the sale, so capture reference listings while live.
+
+**Extending:** another long-form platform is a config entry with `format: "long-form"` and its own template/terms paths; another selling area is one file in `knowledge-base/ebay/areas/` with a `matches:` list. Automated eBay posting would be a `POSTERS` entry plus `enabled: true`, same as any platform, but note eBay's listing form is multi-step and its Real Estate category carries an insertion fee per listing.
+
+## eBay listing HTML (photos in the description, copy-paste from the dashboard)
+
+**PRD:** [ebay-html-listing.md](ebay-html-listing.md) · **Shipped:** 2026-09-07 (image host live the same day) · **Type:** dashboard render + manual post
+
+`ebay.md` stays plain text; the dashboard renders it into the reference listing's HTML on demand. `GET /api/tasks/<id>/ebay-listing` (route in `dashboard/app/api/tasks/[id]/ebay-listing/`) parses `ebay.md`, resizes `outputs/<id>/photos/*` and any `knowledge-base/ebay/areas/<slug>/*` (sheet matched on location, like Step 3L) into `outputs/<id>/ebay-images/*.jpg` with `sharp`, and returns the HTML with public image URLs plus a dashboard-local preview. `dashboard/lib/ebay-html.ts` is the pure renderer (inline styles only: pale green panel, navy banner, green underlined section headers, red emphasis stacks, bold body, `- ` lists, Q/A pairs; photo 1 under the banner, the rest spread over section headers, area photos under LOCATED IN, nothing after the close). `dashboard/lib/ebay-html.test.ts` runs the real sample through it (`npm test` in `dashboard/`). `TaskCard` shows **Listing HTML** beside `ebay.md`; `EbayListingModal` has Copy for title, item specifics, and description HTML (plain + `text/html` flavors), a hosting probe, and an iframe preview.
+
+**Why HTML at all:** eBay's description editor accepts pasted HTML in its `</>` view and keeps inline styles, but eBay hosts only the 24 gallery photos, so description images must live on an `https` host we control. **Config:** `config/ad-platforms.json` `ebay` has `image_base_url` (`https://img.ownaloha.land/api/files/workspace/outputs`), `image_max_width` 1000, `image_render_width` 800. **Image host (live 2026-09-07):** `img.ownaloha.land` is a second hostname on the existing `cloudflared` tunnel whose ingress rule matches only `.../task-*/ebay-images/*.jpg` and 404s everything else (config in `~/.cloudflared/config.yml`, backup `config.yml.bak-2026-09-07`); the DNS route and verification curls are in the PRD. Trade-off recorded there: listing photos then depend on the worker box staying up; an R2 bucket is the drop-in upgrade (change `image_base_url`, upload the folder).
+
 ## Land.com feed-API cleanup — repo-wide scrub, one decision note
 
 **PRD:** [land-com-feed-cleanup.md](land-com-feed-cleanup.md) · **Shipped:** 2026-07-12 · **Type:** documentation cleanup (no runtime code changed)
