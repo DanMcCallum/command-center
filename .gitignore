@@ -23,3 +23,11 @@ workers/logs/
 # Worker runtime state
 dashboard/data/worker-state.json
 dashboard/data/agent-status.json
+.foreman/
+
+# PATLive intake runtime state (processed-email ledger, probe verdict)
+workers/patlive-intake/state/
+
+# Python bytecode
+__pycache__/
+*.pyc
