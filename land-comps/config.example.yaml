@@ -55,12 +55,17 @@ county:
   # ("Park County, CO" and Realtor.com's "Park-County_CO"); the radius is applied afterwards.
   name: "Park County"
   state: "CO"
-  # PLACEHOLDER: confirm the real Park County APN/schedule-number length.
+  # Park County schedule numbers (ScheduleNu on the parcel layer) are up to 8 digits.
+  # Every source is zero-padded to this length before matching, so any value of 8 or
+  # more works; keep it stable once sales, parcels, and benchmark comps are loaded.
   apn_length: 10
   sales_file: "data/county/park/sales.csv"
   parcels_file: "data/county/park/parcels.csv"
   centroids_file: "data/county/park/centroids.csv"
-  # PLACEHOLDER: maps canonical field name -> source CSV column name.
+  # Maps canonical field name -> CSV column name. `comps ingest parcels` writes
+  # parcels.csv/centroids.csv with these names; the assessor's sales file must use
+  # the same names for apn, sale_date, sale_price, and deed_type (rename its header
+  # if it does not).
   column_mapping:
     apn: "SCHEDULE_NUMBER"
     sale_date: "SALE_DATE"
@@ -70,13 +75,23 @@ county:
     acreage: "ACRES"
     lat: "LAT"
     lon: "LON"
-  # PLACEHOLDER: confirm real Park County vacant-land use codes.
+  # Land-use values that mark a parcel as vacant. Vacant Land is the parcel layer's
+  # LAND_TY value (written to LAND_USE_CODE in parcels.csv); add the sales file's own
+  # codes here if it uses a different vocabulary.
   vacant_land_codes:
-    - "PLACEHOLDER_VACANT_LAND_CODE"
+    - "Vacant Land"
   # PLACEHOLDER: confirm real Park County excluded (non-arm's-length) deed types.
   excluded_deed_types:
     - "QC" # quitclaim
     - "TD" # tax deed
+
+parcels:
+  # Parcel spine for subject, address, and point lookups: "county" reads the local
+  # county_parcels table filled by `comps ingest parcels` (free, offline); "regrid"
+  # calls the Regrid API with REGRID_TOKEN.
+  lookup: county
+  arcgis_parcels_url: "https://maps.parkcountyco.gov/server/rest/services/ParcelsPublic/MapServer/0"
+  arcgis_zoning_url: "https://maps.parkcountyco.gov/server/rest/services/Zoning/MapServer/0"
 
 regrid:
   monthly_record_cap: 2000

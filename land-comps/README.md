@@ -5,9 +5,10 @@ Jev-ranked vacant-land comp finder. MVP scope: Park County, CO (FIPS 08093). See
 ## Setup
 
 ```
-cp .env.example .env   # fill in TYPESAFE_API_KEY, APIFY_TOKEN, REGRID_TOKEN
+cp .env.example .env   # fill in TYPESAFE_API_KEY, APIFY_TOKEN (REGRID_TOKEN only if parcels.lookup is regrid)
 cp config.example.yaml config.yaml   # fill in actor IDs and county-specific values
 uv sync
+uv run comps ingest parcels   # pull the county parcel + zoning layers into the local parcel spine (~20s)
 ```
 
 ## Gates
@@ -23,8 +24,9 @@ uv --directory land-comps run pytest -q
 ## Operator prerequisites
 
 - `config.yaml` (copy of `config.example.yaml`): county name/state and file paths, Apify actor IDs, scoring weights and gates.
-- `.env`: `TYPESAFE_API_KEY` (Jev), `REGRID_TOKEN` (subject lookup and geocoding, capped by the monthly record limit), `APIFY_TOKEN` (LandWatch and Realtor.com sources).
-- Park County sales and parcels CSVs (plus an optional centroids CSV), loaded once with `comps ingest county`.
+- `.env`: `TYPESAFE_API_KEY` (Jev), `APIFY_TOKEN` (LandWatch and Realtor.com sources), and `REGRID_TOKEN` only when `parcels.lookup` is `regrid`.
+- Parcel spine (`parcels.lookup`): `county` (default) resolves subjects, addresses, and points from `county_parcels`, filled by `comps ingest parcels` from the county's ArcGIS parcel and zoning layers (free, offline, one county). `regrid` uses the Regrid API instead (any county, capped by the monthly record limit).
+- Park County sales CSV from the assessor, loaded with `comps ingest county`. `ingest parcels` writes the parcels and centroids CSVs it needs into `data/county/park/`.
 - A CRM comps CSV for benchmarking (see PRD US-021 for columns), loaded with `comps bench import`.
 - The SQLite database defaults to `data/land_comps.sqlite`; bench reports default to `reports/` (both gitignored).
 
@@ -33,9 +35,10 @@ uv --directory land-comps run pytest -q
 ```
 uv --directory land-comps run comps --help
 uv --directory land-comps run comps version
-uv --directory land-comps run comps subject <APN|address>   # needs config.yaml and REGRID_TOKEN
+uv --directory land-comps run comps ingest parcels [--parcels-url URL] [--zoning-url URL] [--out DIR]   # county parcel spine
+uv --directory land-comps run comps subject <APN|account number|address>   # needs config.yaml and the parcel spine
 uv --directory land-comps run comps ingest county --sales <csv> --parcels <csv> [--centroids <csv>]
-uv --directory land-comps run comps ingest geocode-county [--limit N]   # needs REGRID_TOKEN
+uv --directory land-comps run comps ingest geocode-county [--limit N]   # free with the county spine; spends Regrid records otherwise
 uv --directory land-comps run comps find <APN|address> [--radius R] [--top N] [--include-rejects] [--out results.json|results.csv] [--resolve-apn]
 uv --directory land-comps run comps rescore <run_id> [--top N] [--include-rejects] [--out results.json|results.csv]
 uv --directory land-comps run comps bench import <crm_comps.csv>

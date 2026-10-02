@@ -31,9 +31,7 @@ OUT_OF_WINDOW_MISSING = {"0010000007", "0010000013"}
 
 @pytest.fixture
 def config_path(tmp_path: Path) -> Path:
-    text = EXAMPLE_CONFIG.read_text().replace(
-        '"PLACEHOLDER_VACANT_LAND_CODE"', '"1112"\n    - "1120"'
-    )
+    text = EXAMPLE_CONFIG.read_text().replace('"Vacant Land"', '"1112"\n    - "1120"')
     path = tmp_path / "config.yaml"
     path.write_text(text)
     return path
@@ -313,7 +311,7 @@ def test_cli_geocode_county_quota_exits_0_with_remaining(
             str(db),
         ],
     )
-    monkeypatch.setattr(cli, "regrid_client_factory", lambda s, c: FakeRegrid(fail_after=1))
+    monkeypatch.setattr(cli, "parcel_lookup_factory", lambda s, c: FakeRegrid(fail_after=1))
     monkeypatch.setattr(county, "date", _FrozenDate)
 
     result = runner.invoke(

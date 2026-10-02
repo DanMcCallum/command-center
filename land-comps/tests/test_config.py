@@ -34,6 +34,10 @@ def test_loads_example_config_with_documented_defaults() -> None:
 
     assert settings.regrid.monthly_record_cap == 2000
 
+    assert settings.parcels.lookup == "county"
+    assert settings.parcels.arcgis_parcels_url is not None
+    assert settings.parcels.arcgis_parcels_url.endswith("/ParcelsPublic/MapServer/0")
+
 
 def test_invalid_acreage_ratio_raises_validation_error(tmp_path: Path) -> None:
     text = EXAMPLE_CONFIG.read_text().replace("acreage_ratio_min: 0.33", "acreage_ratio_min: 5")

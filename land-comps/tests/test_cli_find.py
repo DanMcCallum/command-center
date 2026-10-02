@@ -495,7 +495,7 @@ def test_default_clients_require_a_typesafe_key(
 ) -> None:
     monkeypatch.delenv("TYPESAFE_API_KEY", raising=False)
     monkeypatch.chdir(tmp_path)  # no .env here
-    monkeypatch.setattr(cli, "regrid_client_factory", lambda s, c: FakeRegrid())
+    monkeypatch.setattr(cli, "parcel_lookup_factory", lambda s, c: FakeRegrid())
     harness = Harness(tmp_path, monkeypatch)
     monkeypatch.setattr(cli, "find_clients_factory", cli.default_find_clients)
 
@@ -513,7 +513,7 @@ def _forbid_clients(monkeypatch: pytest.MonkeyPatch) -> None:
         raise AssertionError("rescore built a network client")
 
     monkeypatch.setattr(cli, "find_clients_factory", factory)
-    monkeypatch.setattr(cli, "regrid_client_factory", factory)
+    monkeypatch.setattr(cli, "parcel_lookup_factory", factory)
     monkeypatch.setattr(cli, "build_sources", factory)
     monkeypatch.setattr(JevJudge, "from_settings", factory)
     monkeypatch.setattr(ApifyRunner, "from_settings", factory)

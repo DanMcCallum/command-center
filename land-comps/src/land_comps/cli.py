@@ -2,6 +2,7 @@ import sqlite3
 from pathlib import Path
 from typing import Annotated
 
+import httpx
 import typer
 from rich.console import Console
 from rich.markup import escape
@@ -9,6 +10,7 @@ from rich.table import Table
 
 from land_comps import __version__
 from land_comps.apify_runner import ApifyRunner
+from land_comps.arcgis import ArcGisError
 from land_comps.bench import BenchImportError, import_benchmark
 from land_comps.bench_review import ScoreReviewError, score_review
 from land_comps.bench_run import (
@@ -19,6 +21,7 @@ from land_comps.bench_run import (
 )
 from land_comps.config import Settings, load_settings
 from land_comps.county import IngestError, geocode_county, ingest_county
+from land_comps.county_parcels import CountyParcelLookup, ingest_parcels
 from land_comps.db import init_db
 from land_comps.gather import build_sources
 from land_comps.jev import JevError, JevJudge
@@ -31,7 +34,7 @@ from land_comps.pipeline import (
     resolve_subject,
     run_find,
 )
-from land_comps.regrid import ParcelLookup, RegridClient, RegridError
+from land_comps.regrid import ParcelLookup, ParcelLookupError, RegridClient, RegridError
 from land_comps.report import (
     ExportError,
     RankedComp,
@@ -62,25 +65,30 @@ DEFAULT_DB_PATH = Path("data/land_comps.sqlite")
 DEFAULT_REPORTS_DIR = Path("reports")
 
 
-def default_regrid_factory(settings: Settings, conn: sqlite3.Connection) -> ParcelLookup:
-    """Build the live Regrid client from the configured token and monthly cap."""
+def default_parcel_lookup_factory(settings: Settings, conn: sqlite3.Connection) -> ParcelLookup:
+    """The parcel spine `parcels.lookup` names: the county table, or the live Regrid client."""
+    if settings.parcels.lookup == "county":
+        return CountyParcelLookup(conn, settings.county)
     token = settings.secrets.regrid_token
     if not token:
         raise RegridError("REGRID_TOKEN is not set; add it to .env or the environment")
     return RegridClient(token, conn, settings.regrid.monthly_record_cap)
 
 
-# Commands obtain their Regrid client through this hook so tests can substitute a fake.
-regrid_client_factory = default_regrid_factory
+# Commands obtain their parcel lookup through this hook so tests can substitute a fake.
+parcel_lookup_factory = default_parcel_lookup_factory
+
+# `ingest parcels` reaches ArcGIS through this transport (None = real HTTP) so tests can fake it.
+arcgis_transport: httpx.BaseTransport | None = None
 
 
 def default_find_clients(settings: Settings, conn: sqlite3.Connection) -> FindClients:
-    """Live clients for `comps find`: Regrid, county + Apify sources, and the Jev judge.
+    """Live clients for `comps find`: parcel lookup, county + Apify sources, and the Jev judge.
 
     The Jev key is checked here, before any paid Regrid or Apify call is made.
     """
     judge = JevJudge.from_settings(settings, conn)
-    regrid = regrid_client_factory(settings, conn)
+    regrid = parcel_lookup_factory(settings, conn)
     try:
         runner: ApifyRunner | None = ApifyRunner.from_settings(settings, conn)
     except SourceError:
@@ -142,15 +150,15 @@ def subject(
     ),
     db: Annotated[Path, typer.Option(help="Path to the SQLite cache database.")] = DEFAULT_DB_PATH,
 ) -> None:
-    """Resolve a subject APN or address to its Regrid parcel and print its attributes."""
+    """Resolve a subject APN or address to its parcel and print its attributes."""
     settings = _load_settings_or_exit(config)
 
     db.parent.mkdir(parents=True, exist_ok=True)
     conn = init_db(db)
     try:
-        parcel = resolve_subject(regrid_client_factory(settings, conn), settings, target)
-    except RegridError as exc:
-        err_console.print(f"[red]Regrid error:[/red] {exc}")
+        parcel = resolve_subject(parcel_lookup_factory(settings, conn), settings, target)
+    except ParcelLookupError as exc:
+        err_console.print(f"[red]Parcel lookup error:[/red] {escape(str(exc))}")
         raise typer.Exit(code=1) from exc
     finally:
         conn.close()
@@ -181,7 +189,9 @@ def find(
     resolve_apn: Annotated[
         bool,
         typer.Option(
-            "--resolve-apn", help="Look up missing listing APNs via Regrid (uses Regrid records)."
+            "--resolve-apn",
+            help="Look up missing listing APNs by point (spends Regrid records when Regrid "
+            "is the configured lookup).",
         ),
     ] = False,
     config: Annotated[Path, typer.Option(help="Path to the YAML config file.")] = Path(
@@ -209,7 +219,7 @@ def find(
     except SubjectNotFoundError as exc:
         err_console.print(f"{escape(str(exc))}")
         raise typer.Exit(code=NO_MATCH_EXIT_CODE) from exc
-    except (FindError, RegridError, JevError) as exc:
+    except (FindError, ParcelLookupError, JevError) as exc:
         err_console.print(f"[red]Error:[/red] {escape(str(exc))}")
         raise typer.Exit(code=1) from exc
     finally:
@@ -331,7 +341,7 @@ def bench_run(
         result = run_benchmark(
             conn, settings, lambda target: run_find(target, settings, conn, clients), reports_dir
         )
-    except (BenchRunError, FindError, RegridError, JevError) as exc:
+    except (BenchRunError, FindError, ParcelLookupError, JevError) as exc:
         err_console.print(f"[red]Error:[/red] {escape(str(exc))}")
         raise typer.Exit(code=1) from exc
     finally:
@@ -445,6 +455,67 @@ def ingest_county_command(
     console.print(f"Vacant rows missing coordinates: {result.vacant_missing_coords}")
 
 
+@ingest_app.command("parcels")
+def ingest_parcels_command(
+    parcels_url: Annotated[
+        str | None,
+        typer.Option(help="ArcGIS parcel layer URL (default: parcels.arcgis_parcels_url)."),
+    ] = None,
+    zoning_url: Annotated[
+        str | None,
+        typer.Option(help="ArcGIS zoning layer URL (default: parcels.arcgis_zoning_url)."),
+    ] = None,
+    out: Annotated[
+        Path | None,
+        typer.Option(
+            help="Directory for parcels.csv/centroids.csv (default: county.parcels_file's)."
+        ),
+    ] = None,
+    config: Annotated[Path, typer.Option(help="Path to the YAML config file.")] = Path(
+        "config.yaml"
+    ),
+    db: Annotated[Path, typer.Option(help="Path to the SQLite database.")] = DEFAULT_DB_PATH,
+) -> None:
+    """Pull the county's parcel polygons (and zoning) from ArcGIS into the local parcel spine.
+
+    Replaces the county's rows in `county_parcels` and writes parcels.csv and
+    centroids.csv for `ingest county`. Re-run whenever the county updates its layer.
+    """
+    settings = _load_settings_or_exit(config)
+    layer = parcels_url or settings.parcels.arcgis_parcels_url
+    if not layer:
+        err_console.print(
+            "[red]Error:[/red] no parcel layer: pass --parcels-url or set "
+            "parcels.arcgis_parcels_url in config.yaml"
+        )
+        raise typer.Exit(code=1)
+    zoning = zoning_url or settings.parcels.arcgis_zoning_url
+    out_dir = out or Path(settings.county.parcels_file).parent
+
+    db.parent.mkdir(parents=True, exist_ok=True)
+    conn = init_db(db)
+    try:
+        result = ingest_parcels(
+            conn, settings.county, layer, out_dir, zoning_url=zoning, transport=arcgis_transport
+        )
+    except ArcGisError as exc:
+        err_console.print(f"[red]ArcGIS error:[/red] {escape(str(exc))}")
+        raise typer.Exit(code=1) from exc
+    finally:
+        conn.close()
+
+    console.print(
+        f"Fetched {result.features} features: loaded {result.parcels} parcels, "
+        f"skipped {result.skipped_no_apn} without a schedule number and "
+        f"{result.skipped_no_geometry} without geometry."
+    )
+    console.print(f"Parcels with a street address: {result.with_address}")
+    if zoning:
+        console.print(f"Parcels with a zone code: {result.with_zoning} ({result.zones} zones)")
+    console.print(f"Wrote {escape(str(result.parcels_csv))}")
+    console.print(f"Wrote {escape(str(result.centroids_csv))}")
+
+
 @ingest_app.command("geocode-county")
 def geocode_county_command(
     limit: Annotated[
@@ -455,23 +526,27 @@ def geocode_county_command(
     ),
     db: Annotated[Path, typer.Option(help="Path to the SQLite database.")] = DEFAULT_DB_PATH,
 ) -> None:
-    """Fill coordinates for recent vacant county sales via Regrid (stops cleanly at the cap)."""
+    """Fill coordinates for recent vacant county sales from the parcel lookup.
+
+    With `parcels.lookup: county` this reads the local parcel table for free;
+    with Regrid it spends records and stops cleanly at the monthly cap.
+    """
     settings = _load_settings_or_exit(config)
 
     db.parent.mkdir(parents=True, exist_ok=True)
     conn = init_db(db)
     try:
-        client = regrid_client_factory(settings, conn)
+        client = parcel_lookup_factory(settings, conn)
         result = geocode_county(conn, settings, client, limit=limit)
-    except RegridError as exc:
-        err_console.print(f"[red]Regrid error:[/red] {escape(str(exc))}")
+    except ParcelLookupError as exc:
+        err_console.print(f"[red]Parcel lookup error:[/red] {escape(str(exc))}")
         raise typer.Exit(code=1) from exc
     finally:
         conn.close()
 
     console.print(
         f"Looked up {result.attempted} sales: filled {result.filled}, "
-        f"no Regrid match {result.no_match}."
+        f"no parcel match {result.no_match}."
     )
     if result.quota_exceeded:
         console.print(

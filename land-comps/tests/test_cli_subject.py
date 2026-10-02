@@ -42,7 +42,7 @@ class FakeLookup:
 @pytest.fixture
 def fake(monkeypatch: pytest.MonkeyPatch) -> FakeLookup:
     lookup = FakeLookup()
-    monkeypatch.setattr(cli, "regrid_client_factory", lambda s, c: lookup)
+    monkeypatch.setattr(cli, "parcel_lookup_factory", lambda s, c: lookup)
     return lookup
 
 
@@ -86,7 +86,7 @@ def test_quota_exceeded_exits_1_with_message(
         def by_apn(self, apn: str, county_fips: str) -> Parcel | None:
             raise QuotaExceeded("cap reached (2000/2000)")
 
-    monkeypatch.setattr(cli, "regrid_client_factory", lambda s, c: Exhausted())
+    monkeypatch.setattr(cli, "parcel_lookup_factory", lambda s, c: Exhausted())
     result = _invoke(tmp_path, "34567890")
 
     assert result.exit_code == 1
@@ -113,7 +113,11 @@ def test_missing_config_exits_1(tmp_path: Path) -> None:
 def test_default_factory_requires_token(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("REGRID_TOKEN", raising=False)
     monkeypatch.chdir(tmp_path)  # no .env here
-    result = _invoke(tmp_path, "34567890")
+    config = tmp_path / "config.yaml"
+    config.write_text(EXAMPLE_CONFIG.read_text().replace("lookup: county", "lookup: regrid"))
+    result = runner.invoke(
+        cli.app, ["subject", "34567890", "--config", str(config), "--db", str(tmp_path / "x")]
+    )
 
     assert result.exit_code == 1
     assert "REGRID_TOKEN" in result.output

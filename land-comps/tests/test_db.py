@@ -5,6 +5,7 @@ from land_comps.db import init_db
 
 EXPECTED_TABLES = {
     "parcels",
+    "county_parcels",
     "county_sales",
     "candidates",
     "source_cache",

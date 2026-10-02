@@ -1,7 +1,7 @@
 """SQLite schema for local caching and run persistence.
 
 Everything the pipeline touches lives in one file-based SQLite database:
-resolved parcels, ingested county sales, normalized candidates, source/Jev
+resolved parcels, the county parcel spine, ingested county sales, normalized candidates, source/Jev
 response caches, and the ranked output of each `comps find` run, and imported CRM benchmark comps.
 """
 
@@ -20,6 +20,37 @@ CREATE TABLE IF NOT EXISTS parcels (
     land_use TEXT,
     zip TEXT
 );
+
+CREATE TABLE IF NOT EXISTS county_parcels (
+    apn TEXT PRIMARY KEY,
+    county_fips TEXT NOT NULL,
+    account TEXT,
+    address TEXT,
+    address_norm TEXT,
+    street_norm TEXT,
+    city TEXT,
+    zip TEXT,
+    land_type TEXT,
+    acreage REAL,
+    land_value REAL,
+    improvement_value REAL,
+    building_count INTEGER,
+    subdivision TEXT,
+    ownership TEXT,
+    zoning TEXT,
+    lat REAL NOT NULL,
+    lon REAL NOT NULL,
+    min_lat REAL NOT NULL,
+    min_lon REAL NOT NULL,
+    max_lat REAL NOT NULL,
+    max_lon REAL NOT NULL,
+    rings TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_county_parcels_bbox
+    ON county_parcels (min_lat, max_lat, min_lon, max_lon);
+CREATE INDEX IF NOT EXISTS idx_county_parcels_account ON county_parcels (account);
+CREATE INDEX IF NOT EXISTS idx_county_parcels_street ON county_parcels (street_norm);
 
 CREATE TABLE IF NOT EXISTS county_sales (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

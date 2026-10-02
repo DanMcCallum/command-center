@@ -134,6 +134,15 @@ class CountyConfig(BaseModel):
         return value
 
 
+class ParcelsConfig(BaseModel):
+    """Which parcel spine resolves subjects and points: Regrid's API or the county's own layer."""
+
+    lookup: Literal["regrid", "county"] = "regrid"
+    # ArcGIS REST layer URLs for `comps ingest parcels` (parcel polygons; zoning is optional).
+    arcgis_parcels_url: str | None = None
+    arcgis_zoning_url: str | None = None
+
+
 class RegridConfig(BaseModel):
     monthly_record_cap: int = Field(default=2000, gt=0)
 
@@ -153,6 +162,7 @@ class Settings(BaseModel):
     scoring: ScoringConfig = Field(default_factory=ScoringConfig)
     apify: ApifyConfig
     county: CountyConfig
+    parcels: ParcelsConfig = Field(default_factory=ParcelsConfig)
     regrid: RegridConfig = Field(default_factory=RegridConfig)
     secrets: Secrets = Field(default_factory=Secrets)
 

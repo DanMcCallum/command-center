@@ -20,7 +20,11 @@ from land_comps.normalize import normalize_address
 DEFAULT_BASE_URL = "https://app.regrid.com/api/v2"
 
 
-class RegridError(Exception):
+class ParcelLookupError(Exception):
+    """Base for errors from any `ParcelLookup` implementation (Regrid or the county table)."""
+
+
+class RegridError(ParcelLookupError):
     """A Regrid request failed or returned a response we cannot use."""
 
 
