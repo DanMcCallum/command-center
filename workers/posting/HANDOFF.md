@@ -1,4 +1,4 @@
-# Handoff: marketplace posting (Landmodo done, Land.com built but unverified)
+# Handoff: marketplace posting (Landmodo and Land.com done and verified)
 
 Written 2026-10-03 at the end of a long session. Read this before touching
 `workers/posting`. The repo's `AGENTS.md` has the durable rules; this file is
@@ -49,11 +49,16 @@ photos. Details are in `post-landmodo.ts` header, `AGENTS.md`, and
 `post-landmodo.test.ts`. Known limits: 10 photos per property, 10 MB per
 upload batch, property credits consumed per create (Dan saw 45 -> 44).
 
-## Land.com: BUILT, NOT YET RUN
+## Land.com: DONE and verified 2026-10-03
 
-`post-land_com.ts` (commit db5c83a) was written from recon dumps and has never
-executed against the site. Expect at least one fix cycle. What is known for
-certain, from dumps:
+Listing 29013311 went live through the agent (draft finished and published
+unattended; the draft itself came from a headed dry run). The public URL is
+https://www.land.com/property/1-acre-in-park-county-colorado/29013311/ .
+Fixes found on the way are all in `post-land_com.ts` and summarised in the
+Land.com bullet in `AGENTS.md`: Draft tab for matching, photos before text,
+75-char title cap, `_selected_` class for toggles, Save then reload-verify
+then Publish, URL pattern fallback. What is known for certain, from dumps
+and the live runs:
 
 - The listing tool is the **Marketing Hub at `https://market.land.com/`**, a
   React single-page app. `www.land.com/account/listings/new` is an account
@@ -104,7 +109,7 @@ fresh draft; upload photos (first 20, primary first) and wait for thumbnails;
 re-read the grid to confirm the row is active, open the row menu's "View on
 Land Network" (captured as a popup) for the public URL, screenshot it.
 
-### Unknowns the first real run will answer
+### Answered by the live run (kept for context)
 
 1. Whether `Publish Changes` on a draft shows a confirmation dialog, a tier
    picker, or validation beyond what the poster checks (it looks for
@@ -118,24 +123,32 @@ Land Network" (captured as a popup) for the public URL, screenshot it.
 4. Photo thumbnail detection uses the "Make Cover Photo" / "Cover Photo"
    button labels seen on the existing listing's Photos tab.
 
-### Open decisions Dan has not answered
+### Decisions made
 
-- **How to run the live test.** The Park County lot is already active by hand
-  as listing 28909620 (title "1 Forested Acre in Park County, CO. Nearby 1
+- **Live test.** Dan deleted the hand-made listing 28909620 (the site keeps it
+  as status Deleted) and the poster created the live one. Previously: listing 28909620 (title "1 Forested Acre in Park County, CO. Nearby 1
   Acre Sold $150K buy for $35k", 35,000, 1.0 ac). The poster's matcher will
   see it (price + acres + state) and skip creation. Options offered three
   times without an answer: take 28909620 Off Market or delete it first; let
   the poster publish a duplicate and delete it after; or stop at a dry run.
-- **Location description text** for this lot. Default would post "Park
-  County, CO". Suggested: set task metadata `location_description` to
-  "Redhill Forest Filing 3, Lot 366".
+- **Location description**: task metadata `location_description` =
+  "Redhill Forest Filing 3, Lot 366" (set via the API; confirmed live).
 - **Draft cleanup.** Recon left drafts 29006902 and 29006903 on the account
   (titles "New Listing", location 565 Middle Fork Vista). A pre-existing
   draft also exists. The matcher ignores them (no title/price match) but
   they clutter the hub. Dan has not confirmed whether the row menu offers
   Delete for drafts.
 
-### Suggested next steps
+### Leftovers
+
+- Empty drafts 29013003, 29013004, 29013020 on the hub (free; delete when
+  convenient). 29013311 is the live listing.
+- The poster does not top up photos on an ACTIVE listing by design; Dan added
+  photos 22 and 23 (Middle Fork river shots) to 29013311 by hand.
+- "View on Land Network" did not yield a URL to the poster; the pattern URL
+  fallback covers it. If a future listing's URL is wrong, check the slug.
+
+### Suggested next steps (historical, mostly done)
 
 1. Dan pulls, restarts the agent, and runs a dry run from the laptop with
    outputs present locally:
