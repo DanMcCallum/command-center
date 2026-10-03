@@ -353,7 +353,10 @@ async function ensureToggle(page: Page, name: string, kind: string, log: (m: str
   const index = kind === 'activity' && PROPERTY_TYPES.includes(name) ? 1 : 0
   if ((await all.count()) <= index) throw new Error(`No ${kind} button labelled "${name}" in the Land.com editor`)
   const btn = all.nth(index)
-  const before = (await btn.innerText().catch(() => '')).trim()
+  // The badge is in the button's content (textContent) but not always in
+  // its rendered innerText, so read the content.
+  const content = async () => ((await btn.evaluate((el) => el.textContent ?? '').catch(() => '')) as string).trim()
+  const before = await content()
   if (/\d$/.test(before)) {
     log(`land_com: ${kind} "${name}" already selected`)
     return
@@ -363,10 +366,10 @@ async function ensureToggle(page: Page, name: string, kind: string, log: (m: str
   let after = ''
   for (let i = 0; i < 8; i++) {
     await page.waitForTimeout(250)
-    after = (await btn.innerText().catch(() => '')).trim()
+    after = await content()
     if (/\d$/.test(after)) break
   }
-  log(`land_com: ${kind} "${name}" ${/\d$/.test(after) ? 'selected' : 'clicked (no badge shown)'}`)
+  log(`land_com: ${kind} "${name}" ${/\d$/.test(after) ? 'selected' : `clicked (content now "${after}")`}`)
 }
 
 async function uploadPhotos(page: Page, photos: string[], log: (m: string) => void): Promise<void> {
