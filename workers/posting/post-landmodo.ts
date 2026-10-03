@@ -55,7 +55,7 @@ export const LANDMODO_LIMITS = {
 
 /**
  * All Landmodo DOM knowledge lives here so a site redesign is a one-file fix.
- * Verified against the live member area (recon-landmodo-form.ts output).
+ * Verified against the live member area (recon-form.ts output).
  */
 export const LANDMODO_SELECTORS = {
   // Present on the sign-in page, used to detect an expired session.
