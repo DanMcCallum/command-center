@@ -15,7 +15,8 @@ test('parses headline and description from a real landmodo sample', () => {
   const ad = parseAdOutput(SAMPLE_DIR, 'landmodo')
   assert.equal(ad.headline, '0.12 Ac Near Montello, NV. BLM Hunting & Camping. $99 Down')
   assert.ok(ad.description.startsWith('Own a piece of wide-open Nevada for $99 down.'))
-  assert.ok(ad.description.endsWith('Reply now for parcel details and GPS location.'))
+  // DREAMS revisions may append a "(Property: <nickname>)" tag after the close.
+  assert.match(ad.description, /Reply now for parcel details and GPS location\.( \(Property: [^)]+\))?$/)
   assert.ok(!ad.description.includes('Why this angle'))
   assert.ok(!ad.description.includes('##'))
 })

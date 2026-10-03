@@ -5,7 +5,7 @@
       "display_name": "Landmodo",
       "enabled": true,
       "login_url": "https://www.landmodo.com/login",
-      "new_listing_url": "https://www.landmodo.com/listings/new",
+      "new_listing_url": "https://www.landmodo.com/account/properties/newgroup",
       "login_success": { "redirect_off": "/login" }
     },
     "land_century": {

@@ -96,7 +96,13 @@ async function main(): Promise<void> {
   try {
     const context = await browser.newContext({ storageState: authPath })
     const page = await context.newPage()
-    const result = await poster(task, adCopy, { dryRun, outputDir, page, platform })
+    const result = await poster(task, adCopy, {
+      dryRun,
+      outputDir,
+      page,
+      platform,
+      log: (m) => console.error(m),
+    })
     console.error(
       dryRun
         ? `Dry run complete — form filled, screenshot at ${result.screenshotPath}`

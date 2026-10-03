@@ -72,6 +72,8 @@ export interface PostContext {
   outputDir: string
   /** Loaded platform config; posters fall back to loadPlatformConfig(). */
   platform?: PlatformConfig
+  /** Progress/warning sink; the agent passes its logger, the CLI stderr. */
+  log?: (message: string) => void
 }
 
 export interface PostResult {

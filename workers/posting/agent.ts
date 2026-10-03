@@ -501,6 +501,7 @@ async function processJob(config: AgentConfig, job: PublishJob): Promise<void> {
         outputDir: taskDir,
         page: auth.page,
         platform,
+        log,
       })
     } catch (err) {
       const message = oneLineError(err)
