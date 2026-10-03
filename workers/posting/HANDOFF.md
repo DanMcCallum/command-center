@@ -1,0 +1,170 @@
+# Handoff: marketplace posting (Landmodo done, Land.com built but unverified)
+
+Written 2026-10-03 at the end of a long session. Read this before touching
+`workers/posting`. The repo's `AGENTS.md` has the durable rules; this file is
+the state of play and the open loops.
+
+## Where things run
+
+- **Poster agent runs on Dan's laptop**, not this server: Asahi Linux arm64,
+  Tailscale name `daniel-mbp` (100.70.149.9). Clone at
+  `~/claude-accessible/dev/command-center` on `main`. It polls this server's
+  dashboard at `http://100.83.155.65:3000` with `AGENT_TOKEN` from the repo-root
+  `.env.local` (copied by hand, never committed). Start: `cd workers/posting &&
+  npm run agent`. Updates reach it only by `git pull` plus a restart; tsx does
+  not hot-reload.
+- **Marketplace sessions live only on the laptop** (`workers/posting/auth/*.json`,
+  gitignored, chmod 600). Landmodo and Land.com (Marketing Hub) sessions were
+  both captured 2026-10-03.
+- **Round trips go through Dan.** You cannot reach the laptop. Pattern that
+  worked all session: push a change, Dan pulls and runs a command, pastes the
+  terminal output, and scps dump files back to this server's
+  `workers/posting/.agent-cache/recon/` (gitignored) with
+  `scp ... mazer@mazer:~/claude/command-center/workers/posting/.agent-cache/recon/`.
+  Ask for everything that does not depend on an earlier answer in one message.
+- The production dashboard on port 3000 serves an old build without
+  `/api/resolve-location`; the agent's "location resolver unavailable" warning
+  is expected and harmless (it falls back to splitting "County, State").
+
+## Recon tool: `recon-form.ts`
+
+`npx tsx recon-form.ts <platform> [url] [--headed] [--login] [steps...]` on the
+laptop. Dumps links, forms, controls outside forms, autocomplete suggestions,
+file inputs, a screenshot and the HTML. Steps run in order, each followed by a
+dump: `--click=<text>`, `--clicksel=<playwright selector>`,
+`--type=<css>::<text>`, `--fill=<css>::<text>` (empty clears), `--key=<Key>`,
+`--wait=<ms>`. It refuses to click labels that look like a final submit
+(Publish, Submit, Pay, Save, Post, Activate, Confirm) unless that exact label
+is passed with `--allow=<label>`. `--login` opens a visible window, waits for a
+visible password field to disappear, saves the session.
+
+Dumps from this session are on this server under
+`workers/posting/.agent-cache/recon/` (`market_land_com_*`,
+`www_land_com_*`, `_account_properties_*` for Landmodo).
+
+## Landmodo: DONE and verified
+
+Three unattended end-to-end runs. Live listing 411164 is public with 10
+photos. Details are in `post-landmodo.ts` header, `AGENTS.md`, and
+`post-landmodo.test.ts`. Known limits: 10 photos per property, 10 MB per
+upload batch, property credits consumed per create (Dan saw 45 -> 44).
+
+## Land.com: BUILT, NOT YET RUN
+
+`post-land_com.ts` (commit db5c83a) was written from recon dumps and has never
+executed against the site. Expect at least one fix cycle. What is known for
+certain, from dumps:
+
+- The listing tool is the **Marketing Hub at `https://market.land.com/`**, a
+  React single-page app. `www.land.com/account/listings/new` is an account
+  settings page with no form. The hub shows its sign-in form at the root URL,
+  so `config/posting-platforms.json` now points both `login_url` and
+  `new_listing_url` at the hub root and uses
+  `login_success.logged_in_selector = button:has-text("Add Listing")`.
+- **Listing Manager grid** is ag-grid: rows `.ag-row[row-id="<listingId>"]`,
+  innerText lines are `ID <id>` (title may run on without a separator),
+  title, `City, ST`, `$price`, acres, date, status (For Sale / Draft / Off
+  Market / Sold), tier. Tabs `Active (n)`, `Draft (n)`, `All Listings (n)`.
+  Row action menu: `[data-testid="tippy-toggle-button"]` opens Edit Listing,
+  Change Listing Status, Upgrade Listing, View on Land Network.
+- **Account cap**: 5 Active listings, free, drafts and sold do not count. The
+  poster reads `Active (n)` and refuses to create at the cap.
+- **Add Listing** opens a location step at the same URL. The search box has a
+  mode switch: click the `[role=button]` reading "Address", then "Lat/Long".
+  Type into `#latitude` / `#longitude`, press the unlabeled search button
+  right after `#longitude` (`xpath=//input[@id="longitude"]/following::button[1]`).
+  Detail fields then appear: `#address` (Location Description / Street
+  Address, REQUIRED, pre-filled by reverse geocode with a neighbour-style
+  house number such as "565 Middle Fork Vista"), city/state/county dropdowns
+  auto-filled, `#zip`, read-only lat/long, and `Confirm Location`. Confirm
+  creates a Draft and navigates to `/listing/edit/<id>`.
+- **Editor** (`/listing/edit/<id>`): `input[name=Price]` (masks to $35,000),
+  `input[name=Acres]`, `input[name="Is Owner Financing Available"]` (hidden
+  checkbox with aria-checked; click its label text), `input[name=Title]`,
+  `textarea[name=Description]` (plain, maxlength 99999), read-only
+  `data-testid=longform-address`, `#imageUploadText` (multiple, jpeg/png/gif/
+  heic/webp), property-type and activity toggle buttons by visible text
+  (pressed state not readable from the DOM; "Undeveloped" was the only one
+  selected on Dan's hand-made listing), amenity checkboxes `#Amenity_<n>`,
+  buttons `Save` and `Publish Changes` (`data-testid=progressButtonTestId`).
+- **Parcel coordinates** for the current task came from the Park County
+  parcel export (APN R0037546: 39.146135, -105.921237) and are now in the
+  task metadata as `latitude` / `longitude`, with `apn`. The pin lands inside
+  the lot. Dan explicitly wants coordinates, not an address, and wants the
+  reverse-geocoded street removed; the poster overwrites `#address` with
+  `metadata.address`, else `metadata.location_description`, else
+  "<County> County, <ST>".
+
+What the poster does, in order: read grid (All Listings); if a row matches
+by title or by price + acres + state and is active, record it and stop; if
+it is a Draft, open it and finish it; else check the cap and create a draft
+via the Lat/Long flow; fill the editor; toggle types/activities only on a
+fresh draft; upload photos (first 20, primary first) and wait for thumbnails;
+`--dry-run` stops here leaving a filled draft; otherwise Publish Changes,
+re-read the grid to confirm the row is active, open the row menu's "View on
+Land Network" (captured as a popup) for the public URL, screenshot it.
+
+### Unknowns the first real run will answer
+
+1. Whether `Publish Changes` on a draft shows a confirmation dialog, a tier
+   picker, or validation beyond what the poster checks (it looks for
+   `[role=alert]` and "required/invalid/must be" text, then verifies the
+   grid status).
+2. Whether "View on Land Network" opens a popup (handled) or navigates in
+   place (handled) or does nothing (falls back to reporting the hub edit URL).
+3. Whether `locator.fill` on `#latitude`/`#longitude` satisfies the React
+   inputs the way the recon's keystroke typing did. If the detail fields never
+   appear, switch to `pressSequentially`.
+4. Photo thumbnail detection uses the "Make Cover Photo" / "Cover Photo"
+   button labels seen on the existing listing's Photos tab.
+
+### Open decisions Dan has not answered
+
+- **How to run the live test.** The Park County lot is already active by hand
+  as listing 28909620 (title "1 Forested Acre in Park County, CO. Nearby 1
+  Acre Sold $150K buy for $35k", 35,000, 1.0 ac). The poster's matcher will
+  see it (price + acres + state) and skip creation. Options offered three
+  times without an answer: take 28909620 Off Market or delete it first; let
+  the poster publish a duplicate and delete it after; or stop at a dry run.
+- **Location description text** for this lot. Default would post "Park
+  County, CO". Suggested: set task metadata `location_description` to
+  "Redhill Forest Filing 3, Lot 366".
+- **Draft cleanup.** Recon left drafts 29006902 and 29006903 on the account
+  (titles "New Listing", location 565 Middle Fork Vista). A pre-existing
+  draft also exists. The matcher ignores them (no title/price match) but
+  they clutter the hub. Dan has not confirmed whether the row menu offers
+  Delete for drafts.
+
+### Suggested next steps
+
+1. Dan pulls, restarts the agent, and runs a dry run from the laptop with
+   outputs present locally:
+   `DASHBOARD_URL=http://100.83.155.65:3000 npm run post -- land_com task-1790275652160-rlxk9l --dry-run`
+   Because 28909620 is active, the dry run will match it and return early
+   without exercising the create path. To test creation, either take
+   28909620 Off Market first or temporarily set `metadata.land_com_active_cap`
+   high and change the task price so the matcher misses (then restore).
+2. Review the dry-run draft in the hub by hand, then Publish again from the
+   dashboard for the real run. Paste the agent log; fix whatever the unknowns
+   above turn up.
+3. After it works, add the Land.com bullet to `AGENTS.md` next to the
+   Landmodo one, and record anything new in the memory file
+   `poster-agent-laptop.md`.
+
+## Remaining platforms on this task
+
+land_century, landflip, land_listings, landhub have ad copy under
+`workers/workspace/outputs/task-1790275652160-rlxk9l/` but no poster. Each
+needs the same recon-first approach. Add the key to `POSTERS` in `post.ts`.
+
+## Things to never do
+
+- Never commit `.env.local`, `auth/*.json`, or anything under `.agent-cache/`.
+- Never let the recon or poster press a final submit during mapping; use
+  `--allow` deliberately and say so to Dan.
+- Never test against port 3000 or restart it (production).
+- All task writes through `/api/tasks`; PATCH replaces `metadata` wholesale,
+  so send the full object back with additions.
+- Do not frame or build anything as working around a site's access
+  controls. The agent exists so posting happens from Dan's own machine with
+  his own logins; keep it to that.
