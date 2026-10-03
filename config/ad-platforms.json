@@ -25,6 +25,12 @@
       "description_max": 2000,
       "buyer_profile": "Umbrella network for LandWatch and Lands of America. Same serious-buyer audience: out-of-state retirees, recreational and investor types. Wants acreage, access, utilities, zoning, comps."
     },
+    "parcelview": {
+      "display_name": "ParcelView",
+      "headline_max": 75,
+      "description_max": 2000,
+      "buyer_profile": "Same brief as Land.com: serious buyers (out-of-state retirees, recreational and investor types) who want acreage, access, utilities, zoning, comps. ParcelView listings start from the APN and show parcel data alongside the copy, so the description should read well next to a map and facts panel; do not restate the APN or acreage as filler."
+    },
     "land_listings": {
       "display_name": "Land-listings.com",
       "headline_max": 100,

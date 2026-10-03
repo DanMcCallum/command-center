@@ -16,42 +16,63 @@
       "enabled": false,
       "login_url": "https://www.landcentury.com/login",
       "new_listing_url": "https://www.landcentury.com/submit-listing",
-      "login_success": { "redirect_off": "/login" }
+      "login_success": {
+        "redirect_off": "/login"
+      }
     },
     "landflip": {
       "display_name": "Landflip.com",
       "enabled": false,
       "login_url": "https://www.landflip.com/login",
       "new_listing_url": "https://www.landflip.com/member/listings/new",
-      "login_success": { "redirect_off": "/login" }
+      "login_success": {
+        "redirect_off": "/login"
+      }
     },
     "land_com": {
       "display_name": "Land.com",
       "enabled": true,
       "login_url": "https://market.land.com/",
       "new_listing_url": "https://market.land.com/",
-      "login_success": { "logged_in_selector": "button:has-text(\"Add Listing\")" }
+      "login_success": {
+        "logged_in_selector": "button:has-text(\"Add Listing\")"
+      }
+    },
+    "parcelview": {
+      "display_name": "ParcelView",
+      "enabled": false,
+      "login_url": "https://parcelview.com/login/",
+      "new_listing_url": "https://parcelview.com/login/",
+      "login_success": {
+        "redirect_off": "/login"
+      }
     },
     "land_listings": {
       "display_name": "Land-listings.com",
       "enabled": false,
       "login_url": "https://www.land-listings.com/login",
       "new_listing_url": "https://www.land-listings.com/add-listing",
-      "login_success": { "redirect_off": "/login" }
+      "login_success": {
+        "redirect_off": "/login"
+      }
     },
     "landhub": {
       "display_name": "Landhub.com",
       "enabled": false,
       "login_url": "https://www.landhub.com/login",
       "new_listing_url": "https://www.landhub.com/sell-land",
-      "login_success": { "redirect_off": "/login" }
+      "login_success": {
+        "redirect_off": "/login"
+      }
     },
     "ebay": {
       "display_name": "eBay",
       "enabled": false,
       "login_url": "https://signin.ebay.com/",
       "new_listing_url": "https://www.ebay.com/sl/sell",
-      "login_success": { "redirect_off": "/signin" }
+      "login_success": {
+        "redirect_off": "/signin"
+      }
     }
   }
 }

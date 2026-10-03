@@ -13,6 +13,7 @@ const PLATFORMS: { key: string; label: string; defaultChecked?: boolean }[] = [
   { key: 'land_century', label: 'Land Century' },
   { key: 'landflip', label: 'Landflip.com' },
   { key: 'land_com', label: 'Land.com' },
+  { key: 'parcelview', label: 'ParcelView' },
   { key: 'land_listings', label: 'Land-listings.com' },
   { key: 'landhub', label: 'Landhub.com' },
   { key: 'ebay', label: 'eBay (long-form listing)', defaultChecked: false },
