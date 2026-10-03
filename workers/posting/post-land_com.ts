@@ -103,6 +103,7 @@ export const LAND_COM_SELECTORS = {
   description: 'textarea[name="Description"]',
   photoInput: 'input#imageUploadText',
   photoThumb: 'button[aria-label="Make Cover Photo"], button[aria-label="Cover Photo"]',
+  save: 'button:text-is("Save")',
   publish: 'button:has-text("Publish Changes")',
   validation: '[role="alert"], text=/required|invalid|must be/i',
 }
@@ -149,10 +150,8 @@ export async function postToLandCom(
 
   const activeCount = await readTabCount(page, 'Active')
   log(`land_com: hub open, ${activeCount ?? '?'} active listing(s), cap ${cap}`)
-  await page.locator(LAND_COM_SELECTORS.tab('All Listings')).first().click().catch(() => {})
-  await page.waitForTimeout(1500)
-  const rows = await readHubRows(page)
-  log(`land_com: ${rows.length} row(s) in All Listings: ${rows.map((r) => `${r.id} [${r.status || '?'}] ${r.title.slice(0, 40)}`).join('; ') || 'none'}`)
+  const rows = await readAllRows(page)
+  log(`land_com: ${rows.length} row(s) across All Listings + Draft: ${rows.map((r) => `${r.id} [${r.status || '?'}] ${r.title.slice(0, 40)}`).join('; ') || 'none'}`)
   const match = findMatch(rows, adCopy.headline, facts.priceUsd, facts.acreage, location.stateAbbr)
 
   if (match && isActive(match.status)) {
@@ -206,7 +205,8 @@ export async function postToLandCom(
   }
 
   if (opts.dryRun) {
-    log(`land_com: dry run, leaving draft ${listingId} filled and unpublished in the Marketing Hub`)
+    await clickIfEnabled(page, LAND_COM_SELECTORS.save, log)
+    log(`land_com: dry run, leaving draft ${listingId} filled, saved and unpublished in the Marketing Hub`)
     const screenshotPath = await saveProofScreenshot(page, opts.outputDir, PLATFORM)
     return { listingUrl: null, screenshotPath }
   }
@@ -223,9 +223,7 @@ export async function postToLandCom(
   }
   await page.goto(LAND_COM_SELECTORS.hubUrl, { waitUntil: 'domcontentloaded' })
   await waitForHub(page)
-  await page.locator(LAND_COM_SELECTORS.tab('All Listings')).first().click().catch(() => {})
-  await page.waitForTimeout(1500)
-  const after = (await readHubRows(page)).find((r) => r.id === listingId)
+  const after = (await readAllRows(page)).find((r) => r.id === listingId)
   if (!after) throw new Error(`Published listing ${listingId} but it is missing from the Listing Manager grid`)
   if (!isActive(after.status)) {
     throw new Error(
@@ -349,8 +347,12 @@ async function ensureToggle(page: Page, name: string, kind: string, log: (m: str
   }
   await btn.scrollIntoViewIfNeeded().catch(() => {})
   await btn.click()
-  await page.waitForTimeout(300)
-  const after = (await btn.innerText().catch(() => '')).trim()
+  let after = ''
+  for (let i = 0; i < 8; i++) {
+    await page.waitForTimeout(250)
+    after = (await btn.innerText().catch(() => '')).trim()
+    if (/\d$/.test(after)) break
+  }
   log(`land_com: ${kind} "${name}" ${/\d$/.test(after) ? 'selected' : 'clicked (no badge shown)'}`)
 }
 
@@ -431,6 +433,33 @@ async function readTabCount(page: Page, tab: string): Promise<number | null> {
   const text = await page.locator(LAND_COM_SELECTORS.tab(tab)).first().innerText().catch(() => '')
   const m = text.match(/\((\d+)\)/)
   return m ? Number(m[1]) : null
+}
+
+/** All Listings leaves drafts out, so read that tab and the Draft tab and merge. */
+async function readAllRows(page: Page): Promise<HubRow[]> {
+  const seen = new Map<string, HubRow>()
+  for (const tab of ['All Listings', 'Draft']) {
+    const btn = page.locator(LAND_COM_SELECTORS.tab(tab)).first()
+    if ((await btn.count()) === 0) continue
+    await btn.click().catch(() => {})
+    await page.waitForTimeout(1500)
+    for (const r of await readHubRows(page)) {
+      const prev = seen.get(r.id)
+      // The Draft tab is authoritative for status when both list a row.
+      if (!prev || tab === 'Draft') seen.set(r.id, { ...r, status: r.status || (tab === 'Draft' ? 'Draft' : prev?.status ?? '') })
+    }
+  }
+  return [...seen.values()]
+}
+
+async function clickIfEnabled(page: Page, selector: string, log: (m: string) => void): Promise<boolean> {
+  const btn = page.locator(selector).first()
+  if ((await btn.count()) === 0) return false
+  if (!(await btn.isEnabled().catch(() => false))) return false
+  await btn.click()
+  await page.waitForTimeout(2000)
+  log(`land_com: pressed ${selector.replace(/^button:(text-is|has-text)\("(.*)"\)$/, '$2')}`)
+  return true
 }
 
 /** Reads the Listing Manager grid rows currently rendered. */
