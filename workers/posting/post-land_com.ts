@@ -136,14 +136,23 @@ export async function postToLandCom(
   const cap = numberMeta(task, 'land_com_active_cap') ?? LAND_COM_LIMITS.activeCap
 
   // 1. Listing Manager: existing listing? draft to finish? room under the cap?
+  log(`land_com: opening the Marketing Hub`)
   await page.goto(config.new_listing_url || LAND_COM_SELECTORS.hubUrl, { waitUntil: 'domcontentloaded' })
   await waitForHub(page)
   if (await onLoginPage(page)) throw loginExpiredError(PLATFORM, page.url())
+  if ((await page.locator(LAND_COM_SELECTORS.loggedIn).count()) === 0) {
+    throw new Error(
+      `The Marketing Hub loaded at ${page.url()} (title "${await page.title()}") but shows neither the listings ` +
+        `page nor a login form. Update the SELECTORS block in ${SCRIPT}.`
+    )
+  }
 
   const activeCount = await readTabCount(page, 'Active')
+  log(`land_com: hub open, ${activeCount ?? '?'} active listing(s), cap ${cap}`)
   await page.locator(LAND_COM_SELECTORS.tab('All Listings')).first().click().catch(() => {})
   await page.waitForTimeout(1500)
   const rows = await readHubRows(page)
+  log(`land_com: ${rows.length} row(s) in All Listings: ${rows.map((r) => `${r.id} [${r.status || '?'}] ${r.title.slice(0, 40)}`).join('; ') || 'none'}`)
   const match = findMatch(rows, adCopy.headline, facts.priceUsd, facts.acreage, location.stateAbbr)
 
   if (match && isActive(match.status)) {
@@ -171,6 +180,7 @@ export async function postToLandCom(
   }
 
   // 3. Editor.
+  log(`land_com: filling the editor for ${listingId}`)
   await fillText(page, LAND_COM_SELECTORS.price, String(facts.priceUsd), 'price')
   await fillText(page, LAND_COM_SELECTORS.acres, String(facts.acreage), 'acres')
   if (ownerFinanced) await setOwnerFinancing(page, log)
@@ -194,6 +204,7 @@ export async function postToLandCom(
   if (already > 0) {
     log(`land_com: draft already shows ${already} photo(s); not uploading again`)
   } else if (photos.length > 0) {
+    log(`land_com: uploading ${photos.length} photo(s)`)
     await uploadPhotos(page, photos, log)
   }
 
@@ -204,6 +215,7 @@ export async function postToLandCom(
   }
 
   // Publish.
+  log('land_com: clicking Publish Changes')
   const publish = page.locator(LAND_COM_SELECTORS.publish).first()
   await publish.waitFor({ state: 'visible', timeout: 15_000 })
   await publish.click()
@@ -241,27 +253,36 @@ async function createDraftAtLocation(
       `Land.com needs the parcel's coordinates: add "latitude" and "longitude" to the task metadata and Publish again`
     )
   }
+  log('land_com: clicking Add Listing')
   await page.locator(LAND_COM_SELECTORS.addListing).first().click()
   await page.locator(LAND_COM_SELECTORS.latitude).first().waitFor({ state: 'visible', timeout: 30_000 })
 
   // Switch the search box from Address to Lat/Long.
+  log('land_com: switching the location search to Lat/Long')
   await page.locator(LAND_COM_SELECTORS.modeAddress).first().click()
   await page.locator(LAND_COM_SELECTORS.modeLatLong).first().waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator(LAND_COM_SELECTORS.modeLatLong).first().click()
   await page.waitForTimeout(500)
 
-  await page.locator(LAND_COM_SELECTORS.latitude).first().fill(String(coords.latitude))
-  await page.locator(LAND_COM_SELECTORS.longitude).first().fill(String(coords.longitude))
+  log(`land_com: entering coordinates ${coords.latitude}, ${coords.longitude}`)
+  const latBox = page.locator(LAND_COM_SELECTORS.latitude).first()
+  const lonBox = page.locator(LAND_COM_SELECTORS.longitude).first()
+  await latBox.click()
+  await latBox.pressSequentially(String(coords.latitude), { delay: 30 })
+  await lonBox.click()
+  await lonBox.pressSequentially(String(coords.longitude), { delay: 30 })
   await page.locator(LAND_COM_SELECTORS.latLongSearch).first().click()
 
   const street = page.locator(LAND_COM_SELECTORS.streetAddress).first()
   await street.waitFor({ state: 'visible', timeout: 30_000 })
+  log('land_com: location details appeared')
   await page.waitForTimeout(1000)
   const guessed = await street.inputValue().catch(() => '')
   if (guessed) log(`land_com: replacing the reverse-geocoded street "${guessed}" with "${description}"`)
   await street.fill(description)
   await street.press('Tab')
 
+  log('land_com: confirming location')
   const confirm = page.locator(LAND_COM_SELECTORS.confirmLocation).first()
   await confirm.click()
   try {
