@@ -585,14 +585,14 @@
     "model": "opus",
     "acceptanceCriteria": [],
     "slashCommand": "generate-ad",
-    "claudeNotes": "6 variants written (landmodo, land_century, landflip, land_com, land_listings, landhub); all headlines 97-100% of cap, descriptions 91.5-96% of content budget; DREAMS all Pass after 2 cycles. New nickname: Timber Park (registered as park-county-co-1ac-forested). Cash-only per must_include; the $150,000 comp is used as the value anchor (23%, $115,000 less). Review: (1) the corpus is all Elko NV owner-financed lots, so it gave little signal here; (2) 'warm-season' is my reading of dirt-seasonal access; (3) if the $150K comp had a house, utilities, or better access, the comp framing needs a caveat. Missing facts that would help are listed in the notes: APN, nearest town, road months, what the county allows, taxes.",
+    "claudeNotes": "REVISED 2026-10-02 (round 2) per coach. Financing in all 6 variants: $10,500 down (30%) + $249 doc fee, then $1,095/mo x 24, $750/mo x 36, or $595/mo x 48 (down and terms per coach; monthly amounts proposed). Top 3 things people do here named in every variant: fly fish the South Platte (private HOA water), ski Breckenridge over Hoosier Pass, South Park City museum. Photos now 22: eight licensed area images (CC0/public domain/one CC BY) added to photos/ as 14-21 with photos/CREDITS.md. Also: step-by-step LandGlide keyed to APN R0037546, nearby cities with road miles, utilities and HOA facts (CORE Electric, HOA community water with substantial tap fee, septic, dues ~$1,250/yr, camping May 1 to Oct 31). Parcel is Lot 366, Redhill Forest Filing 3, Fairplay CO 80440, zoned R, ~9,580 ft. Land.com cap raised to 2000 in config; land_com description 1923/2000. Open decisions in README.md: monthly amounts, access wording (metadata says dirt-seasonal, HOA says plowed year-round), HOA dues figure, whether the $150K comp was vacant. Area sheet: knowledge-base/ebay/areas/fairplay-redhill-forest-co.md.",
     "completionFile": "workers/workspace/outputs/task-1790275652160-rlxk9l/README.md",
     "workspacePath": "workers/workspace/outputs/task-1790275652160-rlxk9l",
     "parentTaskId": null,
     "claudeSessionId": "21c431c0-2c5c-48a7-995e-c14419c81723",
     "captainNotes": null,
     "createdAt": "2026-09-24T18:47:32.159Z",
-    "updatedAt": "2026-09-24T19:22:48.631Z",
+    "updatedAt": "2026-10-03T22:38:11.508Z",
     "startedAt": "2026-09-24T18:47:35+00:00",
     "completedAt": null,
     "estimatedMinutes": null,
@@ -604,11 +604,11 @@
       "access": "dirt-seasonal",
       "utilities": [],
       "utilities_absent": [],
-      "utilities_notes": null,
+      "utilities_notes": "CORE Electric along Redhill Rd; HOA community water system (no private wells, tap fee substantial, HOA site says $17,500+); septic via Park County. Redhill Forest Filing 3, Lot 366, APN R0037546.",
       "terrain": "Forested",
       "zoning": "Vacant land",
       "comparable_sales": "Nearby 1 acre lot sold for $150,000",
-      "must_include": "No financing on this one right now.",
+      "must_include": "Owner financing: 30% down ($10,500) plus $249 doc fee, then $1,095/mo for 24 months, $750/mo for 36, or $595/mo for 48 (monthly amounts proposed 2026-10-02, confirm). No credit check, no prepayment penalty, 10% off balance if paid within 12 months. Was: 'No financing on this one right now' (changed per coach review).",
       "buyer_hint": null,
       "platforms": [
         "landmodo",
@@ -618,8 +618,13 @@
         "land_listings",
         "landhub"
       ],
-      "photoCount": 14,
-      "primaryPhoto": "00_Abeyta1.jpg"
+      "photoCount": 22,
+      "primaryPhoto": "00_Abeyta1.jpg",
+      "apn": "R0037546",
+      "latitude": 39.146135,
+      "longitude": -105.921237,
+      "location_description": "Redhill Forest Filing 3, Lot 366",
+      "land_com_headline": "1 Wooded Acre, Redhill Forest, Fairplay CO. Power at Road. $35K or 30% Down"
     },
     "postings": [
       {
@@ -629,6 +634,15 @@
         "queuedAt": "2026-09-24T19:22:35.931Z",
         "lastError": "agent: Could not find the title field on the listing form (tried: input[name=\"title\" i], input[id*=\"title\" i], input[placeholder*=\"title\" i]). Update the SELECTORS block in post-land_com.ts.",
         "screenshotPath": "workers/workspace/outputs/task-1790275652160-rlxk9l/postings/land_com.png"
+      },
+      {
+        "platform": "landmodo",
+        "status": "posted",
+        "attempts": 7,
+        "queuedAt": "2026-10-03T00:38:14.522Z",
+        "listingUrl": "https://www.landmodo.com/properties/411164/park-county-colorado/1-ac-fairplay-co-wooded-ridge-power-at-road-10-500-down",
+        "screenshotPath": "workers/workspace/outputs/task-1790275652160-rlxk9l/postings/landmodo.png",
+        "postedAt": "2026-10-03T00:39:23.705Z"
       }
     ]
   }

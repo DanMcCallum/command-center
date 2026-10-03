@@ -1,7 +1,7 @@
 # Land.com
 
-## HEADLINE (97/100 chars)
-1 Wooded Acre in Redhill Forest, Fairplay CO. Power at Road, Community Water. $35,000 or 30% Down
+## HEADLINE (75/75 chars)
+1 Wooded Acre, Redhill Forest, Fairplay CO. Power at Road. $35K or 30% Down
 
 ## DESCRIPTION (1923/2000 chars)
 A wooded acre at about 9,600 feet on the Redhill Forest ridge, across South Park from the Mosquito Range. You park under your own pines, and Fairplay is 20 minutes away.
