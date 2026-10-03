@@ -101,7 +101,6 @@ export const LAND_COM_SELECTORS = {
   ownerFinancingLabel: 'text=Is Owner Financing Available',
   title: 'input[name="Title"]',
   description: 'textarea[name="Description"]',
-  toggle: (name: string) => `button:text-is("${name}")`,
   photoInput: 'input#imageUploadText',
   photoThumb: 'button[aria-label="Make Cover Photo"], button[aria-label="Cover Photo"]',
   publish: 'button:has-text("Publish Changes")',
@@ -188,14 +187,11 @@ export async function postToLandCom(
   await fillText(page, LAND_COM_SELECTORS.title, adCopy.headline, 'title')
   await fillText(page, LAND_COM_SELECTORS.description, adCopy.description, 'description')
 
-  // Toggle buttons give no readable pressed state, so only set them on a
-  // draft we just created (known blank). A reused draft keeps what it has.
-  if (freshDraft) {
-    for (const t of propertyTypesFromTask(task)) await clickToggle(page, t, 'property type')
-    for (const a of activitiesFromTask(task)) await clickToggle(page, a, 'activity')
-  } else {
-    log('land_com: reusing a draft, leaving its property type / activity toggles as they are')
-  }
+  // A selected toggle shows a count badge after its label ("Undeveloped1"),
+  // which is the only readable selected state, so clicks are idempotent.
+  for (const t of propertyTypesFromTask(task)) await ensureToggle(page, t, 'property type', log)
+  for (const a of activitiesFromTask(task)) await ensureToggle(page, a, 'activity', log)
+  void freshDraft
 
   const photos = choosePhotos(listPhotos(opts.outputDir), stringMeta(task, 'primaryPhoto')).slice(
     0,
@@ -335,12 +331,27 @@ async function setOwnerFinancing(page: Page, log: (m: string) => void): Promise<
   if (!(await checked())) log('land_com: could not tick "Is Owner Financing Available"; continuing without it')
 }
 
-async function clickToggle(page: Page, name: string, kind: string): Promise<void> {
-  const btn = page.locator(LAND_COM_SELECTORS.toggle(name)).first()
-  if ((await btn.count()) === 0) throw new Error(`No ${kind} button labelled "${name}" in the Land.com editor`)
+/**
+ * Selects a property-type or activity toggle by its accessible name. The
+ * label text lives in a child element, so match the button's name, not its
+ * own text. "Hunting" exists in both groups; activities take the second.
+ */
+async function ensureToggle(page: Page, name: string, kind: string, log: (m: string) => void): Promise<void> {
+  const pattern = new RegExp(`^${name.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&')}\s*\d*$`)
+  const all = page.getByRole('button', { name: pattern })
+  const index = kind === 'activity' && PROPERTY_TYPES.includes(name) ? 1 : 0
+  if ((await all.count()) <= index) throw new Error(`No ${kind} button labelled "${name}" in the Land.com editor`)
+  const btn = all.nth(index)
+  const before = (await btn.innerText().catch(() => '')).trim()
+  if (/\d$/.test(before)) {
+    log(`land_com: ${kind} "${name}" already selected`)
+    return
+  }
   await btn.scrollIntoViewIfNeeded().catch(() => {})
   await btn.click()
-  await page.waitForTimeout(200)
+  await page.waitForTimeout(300)
+  const after = (await btn.innerText().catch(() => '')).trim()
+  log(`land_com: ${kind} "${name}" ${/\d$/.test(after) ? 'selected' : 'clicked (no badge shown)'}`)
 }
 
 async function uploadPhotos(page: Page, photos: string[], log: (m: string) => void): Promise<void> {
