@@ -82,6 +82,7 @@ export const LAND_COM_SELECTORS = {
 
   // --- location step ---
   addListing: 'button:has-text("Add Listing")',
+  placesSearch: '#places-autocomplete',
   modeAddress: '[role="button"]:has-text("Address")',
   modeLatLong: '[role="button"]:has-text("Lat/Long")',
   latitude: '#latitude',
@@ -255,14 +256,18 @@ async function createDraftAtLocation(
   }
   log('land_com: clicking Add Listing')
   await page.locator(LAND_COM_SELECTORS.addListing).first().click()
-  await page.locator(LAND_COM_SELECTORS.latitude).first().waitFor({ state: 'visible', timeout: 30_000 })
+  // The location step opens in Address mode: the address search box is
+  // visible and the coordinate boxes exist but are hidden until the mode
+  // switch. Wait for the visible one.
+  await page.locator(LAND_COM_SELECTORS.placesSearch).first().waitFor({ state: 'visible', timeout: 30_000 })
 
   // Switch the search box from Address to Lat/Long.
   log('land_com: switching the location search to Lat/Long')
   await page.locator(LAND_COM_SELECTORS.modeAddress).first().click()
   await page.locator(LAND_COM_SELECTORS.modeLatLong).first().waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator(LAND_COM_SELECTORS.modeLatLong).first().click()
-  await page.waitForTimeout(500)
+  await page.locator(LAND_COM_SELECTORS.latitude).first().waitFor({ state: 'visible', timeout: 15_000 })
+  await page.waitForTimeout(300)
 
   log(`land_com: entering coordinates ${coords.latitude}, ${coords.longitude}`)
   const latBox = page.locator(LAND_COM_SELECTORS.latitude).first()
@@ -448,7 +453,7 @@ async function visibleTexts(page: Page, selector: string): Promise<string[]> {
 
 // --- pure helpers (unit-tested) ------------------------------------------------
 
-const STATUS_RE = /^(For Sale|Draft|Off Market|Sold|Pending|Active|Under Contract)$/i
+const STATUS_RE = /^(For Sale|Draft|Off[ -]?Market|Sold|Pending|Active|Under Contract|Inactive|Expired|Deleted|Removed|Withdrawn)$/i
 
 /** Parses an ag-grid row's innerText (one cell per line) into a HubRow. */
 export function parseHubRowText(id: string, text: string): HubRow {
@@ -496,7 +501,7 @@ export function findMatch(
   acreage: number,
   stateAbbr: string
 ): (HubRow & { matchedOn: string }) | null {
-  const live = rows.filter((r) => !/sold|off market/i.test(r.status))
+  const live = rows.filter((r) => !/sold|off[ -]?market|inactive|expired|deleted|removed|withdrawn/i.test(r.status))
   const byTitle = live.find((r) => r.title && sameTitle(r.title, headline))
   if (byTitle) return { ...byTitle, matchedOn: 'title' }
   const byFacts = live.find(
