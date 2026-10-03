@@ -98,8 +98,9 @@ export const LANDMODO_SELECTORS = {
   photosUrl: (hash: string) => `${ORIGIN}/account/properties/addphotos/${hash}`,
   photoFileInput: 'input#_file[type="file"]',
   photoSubmit: '#_submit',
-  // The page loads both SweetAlert 1 and SweetAlert2; accept either.
-  alertBox: '.swal2-popup, .sweet-alert.visible',
+  // The page loads SweetAlert2 v6 (dialog class swal2-modal; swal2-popup
+  // only arrived in v7) and SweetAlert 1 styles; accept any of them.
+  alertBox: '.swal2-modal, .swal2-popup, .sweet-alert.visible',
   alertTitle: '.swal2-title, .sweet-alert.visible h2',
   alertText: '.swal2-content, .sweet-alert.visible p',
   alertConfirm: 'button.swal2-confirm, .sweet-alert.visible button.confirm',
@@ -469,8 +470,9 @@ async function uploadPhotos(
     )
     await submit.click()
 
-    const alert = page.locator(LANDMODO_SELECTORS.alertBox).first()
-    await alert.waitFor({ state: 'visible', timeout: 120_000 })
+    // Wait on the title rather than the dialog shell: the title selector is
+    // the same across SweetAlert versions, the shell class is not.
+    await page.locator(LANDMODO_SELECTORS.alertTitle).first().waitFor({ state: 'visible', timeout: 120_000 })
     const title = (await firstText(page.locator(LANDMODO_SELECTORS.alertTitle))).trim()
     const text = (await firstText(page.locator(LANDMODO_SELECTORS.alertText))).trim()
     if (!/success/i.test(title)) {
@@ -478,7 +480,9 @@ async function uploadPhotos(
     }
     sent += batch.length
     log(`landmodo: uploaded ${batch.length} photo(s) (${text || title})`)
+    // Continue triggers the site's own page reload; don't race it.
     await page.locator(LANDMODO_SELECTORS.alertConfirm).first().click().catch(() => {})
+    await page.waitForLoadState('domcontentloaded').catch(() => {})
     await page.waitForTimeout(1500)
   }
   return sent
