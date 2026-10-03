@@ -190,12 +190,15 @@ export async function postToLandCom(
     0,
     LAND_COM_LIMITS.maxPhotos
   )
+  // A draft finished across two runs may already hold the first N photos
+  // (same filename order on both machines), so send only the remainder.
   const already = await page.locator(LAND_COM_SELECTORS.photoThumb).count()
-  if (already > 0) {
-    log(`land_com: draft already shows ${already} photo(s); not uploading again`)
-  } else if (photos.length > 0) {
-    log(`land_com: uploading ${photos.length} photo(s)`)
-    await uploadPhotos(page, photos, log)
+  const remaining = photos.slice(already)
+  if (already >= photos.length) {
+    log(`land_com: draft already shows ${already} photo(s); nothing to upload`)
+  } else if (remaining.length > 0) {
+    log(`land_com: uploading ${remaining.length} photo(s)${already ? ` (${already} already on the draft)` : ''}`)
+    await uploadPhotos(page, remaining, log, already)
     await page.waitForTimeout(3000)
   }
 
@@ -360,34 +363,34 @@ async function setOwnerFinancing(page: Page, log: (m: string) => void): Promise<
  * own text. "Hunting" exists in both groups; activities take the second.
  */
 async function ensureToggle(page: Page, name: string, kind: string, log: (m: string) => void): Promise<void> {
-  const pattern = new RegExp(`^${name.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&')}\s*\d*$`)
-  // Match on the button's visible content (label plus optional count
-  // badge), not its accessible name: an aria-labelled overlay button with no
-  // text also answers to the name and reports nothing useful.
-  const all = page.locator('button').filter({ hasText: pattern })
+  // Markup: <button class="_button_… [_selected_…]"><span class="_label_…">Name</span>
+  // <div class="_selected-display-container_…">[<div class="_number-display_…">1</div>]</div></button>
+  const label = page.locator('span', { hasText: new RegExp(`^\\s*${name.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&')}\\s*$`) })
+  const all = page.locator('button', { has: label })
   const index = kind === 'activity' && PROPERTY_TYPES.includes(name) ? 1 : 0
   if ((await all.count()) <= index) throw new Error(`No ${kind} button labelled "${name}" in the Land.com editor`)
   const btn = all.nth(index)
-  // The badge is in the button's content (textContent) but not always in
-  // its rendered innerText, so read the content.
-  const content = async () => ((await btn.evaluate((el) => el.textContent ?? '').catch(() => '')) as string).trim()
-  const before = await content()
-  if (/\d$/.test(before)) {
+  const selected = async () => {
+    const cls = (await btn.getAttribute('class').catch(() => '')) ?? ''
+    if (/_selected_/.test(cls)) return true
+    return (await btn.locator('[class*="number-display"]').count().catch(() => 0)) > 0
+  }
+  if (await selected()) {
     log(`land_com: ${kind} "${name}" already selected`)
     return
   }
   await btn.scrollIntoViewIfNeeded().catch(() => {})
   await btn.click()
-  let after = ''
-  for (let i = 0; i < 8; i++) {
+  let on = false
+  for (let i = 0; i < 8 && !on; i++) {
     await page.waitForTimeout(250)
-    after = await content()
-    if (/\d$/.test(after)) break
+    on = await selected()
   }
-  log(`land_com: ${kind} "${name}" ${/\d$/.test(after) ? 'selected' : `clicked (content now "${after}")`}`)
+  log(`land_com: ${kind} "${name}" ${on ? 'selected' : 'clicked but not showing as selected'}`)
+  if (!on) throw new Error(`Could not select ${kind} "${name}" in the Land.com editor (no selected state after clicking)`)
 }
 
-async function uploadPhotos(page: Page, photos: string[], log: (m: string) => void): Promise<void> {
+async function uploadPhotos(page: Page, photos: string[], log: (m: string) => void, already = 0): Promise<void> {
   const input = page.locator(LAND_COM_SELECTORS.photoInput).first()
   if ((await input.count()) === 0) {
     throw new Error(
@@ -396,15 +399,15 @@ async function uploadPhotos(page: Page, photos: string[], log: (m: string) => vo
     )
   }
   await input.setInputFiles(photos)
-  const want = photos.length
+  const want = already + photos.length
   const deadline = Date.now() + 240_000
-  let seen = 0
+  let seen = already
   while (Date.now() < deadline) {
     seen = await page.locator(LAND_COM_SELECTORS.photoThumb).count()
     if (seen >= want) break
     await page.waitForTimeout(2000)
   }
-  if (seen === 0) throw new Error(`No photo thumbnails appeared after uploading ${want} file(s)`)
+  if (seen <= already) throw new Error(`No new photo thumbnails appeared after uploading ${photos.length} file(s)`)
   log(`land_com: ${seen} of ${want} photo(s) showing in the editor`)
   if (seen < want) log(`land_com: NOTE ${want - seen} photo(s) did not show within 4 minutes; check the Photos tab`)
 }
