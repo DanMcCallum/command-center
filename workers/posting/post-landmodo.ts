@@ -470,11 +470,7 @@ async function uploadPhotos(
     )
     await submit.click()
 
-    // Wait on the title rather than the dialog shell: the title selector is
-    // the same across SweetAlert versions, the shell class is not.
-    await page.locator(LANDMODO_SELECTORS.alertTitle).first().waitFor({ state: 'visible', timeout: 120_000 })
-    const title = (await firstText(page.locator(LANDMODO_SELECTORS.alertTitle))).trim()
-    const text = (await firstText(page.locator(LANDMODO_SELECTORS.alertText))).trim()
+    const { title, text } = await waitForUploadVerdict(page)
     if (!/success/i.test(title)) {
       throw new Error(`Landmodo rejected the photo upload: ${[title, text].filter(Boolean).join('. ')}`)
     }
@@ -486,6 +482,33 @@ async function uploadPhotos(
     await page.waitForTimeout(1500)
   }
   return sent
+}
+
+/** An interim dialog the uploader shows while it validates files client-side. */
+const UPLOAD_IN_PROGRESS = /uploading|please wait|validat/i
+
+/**
+ * Waits for the uploader's final dialog. The site first shows an
+ * "Uploading... please wait" dialog, then replaces it with Success or an
+ * error; only the latter two are verdicts.
+ */
+async function waitForUploadVerdict(page: Page, timeoutMs = 180_000): Promise<{ title: string; text: string }> {
+  const deadline = Date.now() + timeoutMs
+  let last = { title: '', text: '' }
+  while (Date.now() < deadline) {
+    const title = (await firstText(page.locator(LANDMODO_SELECTORS.alertTitle))).trim()
+    const text = (await firstText(page.locator(LANDMODO_SELECTORS.alertText))).trim()
+    if (title || text) {
+      last = { title, text }
+      const inProgress = UPLOAD_IN_PROGRESS.test(title) || (!/success/i.test(title) && UPLOAD_IN_PROGRESS.test(text))
+      if (!inProgress) return last
+    }
+    await page.waitForTimeout(500)
+  }
+  throw new Error(
+    `Landmodo's photo upload did not finish within ${Math.round(timeoutMs / 1000)}s` +
+      (last.title || last.text ? ` (last dialog: ${[last.title, last.text].filter(Boolean).join('. ')})` : '')
+  )
 }
 
 async function firstText(loc: Locator): Promise<string> {
