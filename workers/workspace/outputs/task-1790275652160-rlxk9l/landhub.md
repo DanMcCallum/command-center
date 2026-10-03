@@ -1,34 +1,34 @@
 # Landhub.com
 
-## HEADLINE (100/100 chars)
-1 Acre in Park County, CO. Warm-Season Getaway Under Your Own Trees. 1 Acre Comp Sold $150K. $35,000
+## HEADLINE (98/100 chars)
+1 Acre, Fairplay CO. Private Fly Fishing on South Platte for Owners. 1 Ac Comp Sold $150K. $35,000
 
-## DESCRIPTION (1375/1500 chars)
-Your own patch of Colorado woods. You drive up when the road opens, set up under your own trees, and spend the warm months on land nobody can ask you to leave.
+## DESCRIPTION (1483/1500 chars)
+Your own patch of Colorado pines at 9,600 feet, with private fly fishing on 5.5 miles of the South Platte that comes with owning a lot in Redhill Forest.
 
 The basics:
 
-- 1 acre in Park County, Colorado
-- About 43,560 square feet
-- Forested
-- Zoned vacant land
-- Seasonal dirt road access
-- $35,000 cash
+- 1 acre, Lot 366, Redhill Forest Filing 3, Park County, CO
+- Forested, zoned Residential
+- Dirt road, graded in summer and plowed in winter by the HOA
+- $35,000 cash, or $10,500 down
 
-The trees give you shade, a wind break, and cover from the road, so your spot feels tucked away as soon as you pull in. Bare lots can take decades to get what this one already has.
+Payment options, no credit check: $10,500 down (30%) plus a $249 document fee, then $1,095 a month for 24 months, $750 for 36, or $595 for 48. No prepayment penalty, and 10% off the balance if you pay it off within 12 months.
 
-The road is dirt and seasonal. That makes this a warm-season place: plan trips for the drier months and check conditions before heading up in winter. The upside is that it stays quiet, with fewer people coming and going.
+Top 3 things people do here: fly fish the South Platte (your private water, plus Antero, Spinney, and Eleven Mile), ski Breckenridge over Hoosier Pass, and tour the 1880s buildings at South Park City. Camp on your lot May 1 to October 31.
 
-On value, a nearby 1 acre lot sold for $150,000. You'd be paying $35,000 for the same acreage, about 23% of that sale and $115,000 less.
+Nearby: Fairplay 11 miles, Alma 16, Breckenridge 33, Denver 93.
 
-No financing on this one right now, cash only. One payment and it's recorded in your name, with no lender involved.
+Utilities: CORE Electric along Redhill Road, HOA community water (no private wells, substantial tap fee), septic through Park County. HOA dues about $1,250 a year per recent listings.
 
-Call Park County before you buy and ask what's allowed on vacant land, so you know your plans fit. I'll send you the photos, a map pin, and the parcel details, and you're welcome to drive out and walk it first.
+Find the corners with LandGlide: 1. Install the LandGlide app (free trial). 2. Tap search and enter R0037546. 3. Tap the outlined parcel to see the lot lines. 4. Turn on location, and the blue dot shows where you stand against the lines as you walk it.
 
-There's one parcel at this price. Once it's sold, the next wooded acre nearby could be listed a lot closer to that $150,000 sale. Message me and I'll get you the details. (Property: Timber Park)
+A nearby 1 acre lot sold for $150,000. This one is $35,000, about 23% of that sale.
+
+One lot at this price. Message me for the map pin. (Property: Timber Park)
 
 ## Why this angle
-Recreational angle: a warm-season getaway under your own trees, with the seasonal road framed as the reason it stays quiet.
+Recreational angle for Landhub: the private fishing easement and the surrounding passes, peaks, and reservoirs lead.
 
 ## DREAMS
-All six categories Pass (2 cycles)
+All six categories Pass (revision cycle 1)

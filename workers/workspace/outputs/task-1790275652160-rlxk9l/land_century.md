@@ -1,33 +1,32 @@
 # Land Century
 
-## HEADLINE (98/100 chars)
-1 Acre in Park County, CO. $115,000 Less Than a Nearby 1 Acre Sale. Forested. BUY FOR $35,000 Cash
+## HEADLINE (99/100 chars)
+1 Acre in Park County, CO. $115,000 Less Than a Nearby 1 Acre Sale. Wooded. $35,000 or $10,500 Down
 
-## DESCRIPTION (1442/1500 chars)
-Your own acre of Colorado forest, bought for cash and owned outright, with no loan and no monthly payment hanging over it. That's what $35,000 gets you here.
+## DESCRIPTION (1498/1500 chars)
+Your own wooded acre on the Redhill Forest ridge at 9,600 feet, 20 minutes from Fairplay, for under a quarter of a nearby acre's sale.
 
 The deal in numbers:
 
-- 1 acre in Park County, Colorado (about 43,560 sq ft)
-- Forested
-- Zoned vacant land
-- Dirt road access, seasonal
-- $35,000 cash
+- 1 acre, Lot 366, Redhill Forest Filing 3, Park County, CO
+- Forested, zoned Residential
+- Dirt road, graded in summer and plowed in winter by the HOA
+- $35,000 cash, or $10,500 down
 
-A nearby 1 acre lot sold for $150,000. This one is $115,000 less for the same size, which works out to about 23% of that sale. For a deal hunter, that gap is the reason to look at this lot first.
+A nearby 1 acre lot sold for $150,000. This one is $115,000 less for the same acre.
 
-No financing on this one right now. It's a cash sale, and that keeps closing simple: one payment and the deed is in your name.
+Payment options, no credit check: $10,500 down (30%) plus a $249 document fee, then $1,095 a month for 24 months, $750 for 36, or $595 for 48. No prepayment penalty, and 10% off the balance if you pay it off within 12 months.
 
-The road in is dirt and seasonal. Plan your visits for the warmer months and check conditions before you drive up in winter. That also means fewer people coming and going, which a lot of buyers want in a getaway.
+Utilities: CORE Electric along Redhill Road, HOA community water (no private wells, substantial tap fee), septic through Park County. HOA dues about $1,250 a year per recent listings.
 
-The trees give you shade in summer and cover between you and whatever's around you, so your spot feels private from the first day you pull in.
+Nearby: Fairplay 11 miles, Breckenridge 33, Denver 93. Top 3 things people do here: fly fish the South Platte (owners get private water on 5.5 miles), ski Breckenridge over Hoosier Pass, and tour the 1880s buildings at South Park City. Camping runs May 1 to October 31.
 
-Call Park County before you buy and ask what's allowed on vacant land there, so your plans fit. I'll send the photos, a map pin, and the parcel details so you can verify it yourself, and you're welcome to walk the lot first.
+Find the corners with LandGlide: 1. Install the LandGlide app (free trial). 2. Tap search and enter R0037546. 3. Tap the outlined parcel to see the lot lines. 4. Turn on location, and the blue dot shows where you stand against the lines as you walk it.
 
-There's one parcel at this price. Once it sells, the next 1 acre lot nearby could be listed a lot closer to that $150,000 sale than to this one. Message me and I'll get you everything I have on it. (Property: Timber Park)
+One lot at this price, and the next acre nearby is priced off that $150,000 sale. Message me for the map pin. (Property: Timber Park)
 
 ## Why this angle
-Deal-hunter angle: the $115,000 dollar gap under a same-size nearby sale, led by the cash price as the platform profile asks.
+Deal-hunter angle for Land Century: the dollar gap to the comp leads, financing terms follow right behind it.
 
 ## DREAMS
-All six categories Pass (2 cycles)
+All six categories Pass (revision cycle 1)

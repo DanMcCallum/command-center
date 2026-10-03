@@ -1,6 +1,6 @@
 # DREAMS review
 
-Cycles used: 2/3
+Cycles used: 1/3 (revision 2026-10-02; the original run used 2/3)
 
 | Platform | D | R | E | A | M | S |
 |---|---|---|---|---|---|---|
@@ -12,4 +12,4 @@ Cycles used: 2/3
 | landhub | Pass | Pass | Pass | Pass | Pass | Pass |
 
 ## Unresolved weaknesses
-None
+None. E (Eliminate Objections) and A (Accessibility Signals) moved from thin to Pass on every platform once financing, utilities, HOA costs, and the LandGlide steps were added.
