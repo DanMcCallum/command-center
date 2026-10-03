@@ -11,6 +11,8 @@
  *             operator to sign in, then save the session to auth/<platform>.json
  *   Steps, applied in the order given, each followed by a dump of the screen:
  *   --click=<text>            click the button/link with this visible text
+ *   --clicksel=<selector>     click the first element matching a Playwright
+ *                             selector (css, or xpath=... for unlabeled buttons)
  *   --type=<css>::<text>      type text into the element matching the selector
  *   --key=<Key>               press a key (ArrowDown, Enter, Tab, ...)
  *   --wait=<ms>               pause (dumps nothing)
@@ -31,8 +33,8 @@ import { chromium } from 'playwright'
 import { AUTH_DIR, loadPlatformConfig } from './post-common'
 
 const args = process.argv.slice(2)
-type Step = { kind: 'click' | 'type' | 'key' | 'wait'; value: string }
-const STEP_RE = /^--(click|type|key|wait)=(.*)$/s
+type Step = { kind: 'click' | 'clicksel' | 'type' | 'key' | 'wait'; value: string }
+const STEP_RE = /^--(click|clicksel|type|key|wait)=(.*)$/s
 const allowed = new Set(
   args.filter((a) => a.startsWith('--allow=')).map((a) => a.slice('--allow='.length).trim().toLowerCase())
 )
@@ -258,6 +260,13 @@ async function main(): Promise<void> {
         const target = (await byRole.count()) > 0 ? byRole : page.getByText(st.value, { exact: false }).first()
         if ((await target.count()) === 0) {
           console.log(`  nothing on screen with text "${st.value}"; stopping here`)
+          break
+        }
+        await target.click()
+      } else if (st.kind === 'clicksel') {
+        const target = page.locator(st.value).first()
+        if ((await target.count()) === 0) {
+          console.log(`  no element matches "${st.value}"; stopping here`)
           break
         }
         await target.click()
