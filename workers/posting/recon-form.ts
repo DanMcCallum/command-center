@@ -61,13 +61,18 @@ async function main(): Promise<void> {
     await page.goto(url, { waitUntil: 'domcontentloaded' })
     await settle(page)
 
-    if (wantLogin && new URL(page.url()).pathname.includes(LOGIN_PATH)) {
-      console.log(`On the login page. Sign in in the browser window (10 minutes)...`)
+    // A login screen is either the configured login path or any page showing
+    // a password field (single-page apps sign in at their root URL).
+    const onLoginScreen = async (): Promise<boolean> =>
+      new URL(page.url()).pathname.includes(LOGIN_PATH) ||
+      (await page.locator('input[type="password"]:visible').count().catch(() => 0)) > 0
+    if (wantLogin && (await onLoginScreen())) {
+      console.log(`On a login screen. Sign in in the browser window (10 minutes)...`)
       const deadline = Date.now() + 10 * 60_000
-      while (Date.now() < deadline && new URL(page.url()).pathname.includes(LOGIN_PATH)) {
+      while (Date.now() < deadline && (await onLoginScreen())) {
         await page.waitForTimeout(1000)
       }
-      if (new URL(page.url()).pathname.includes(LOGIN_PATH)) throw new Error('login timed out')
+      if (await onLoginScreen()) throw new Error('login timed out')
       await page.waitForTimeout(2000)
       await context.storageState({ path: authPath })
       fs.chmodSync(authPath, 0o600)
