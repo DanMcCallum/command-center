@@ -9,10 +9,13 @@
  *   --headed  show the browser window
  *   --login   if the page lands on a login screen, wait (headed) for the
  *             operator to sign in, then save the session to auth/<platform>.json
- *   --click=<text>  after the first dump, click the button/link with this
- *             visible text and dump the resulting screen; repeatable, applied
- *             in order (walks a single-page wizard). Never clicks anything
- *             that reads like a final submit (Publish, Submit, Pay, Save).
+ *   Steps, applied in the order given, each followed by a dump of the screen:
+ *   --click=<text>            click the button/link with this visible text
+ *   --type=<css>::<text>      type text into the element matching the selector
+ *   --key=<Key>               press a key (ArrowDown, Enter, Tab, ...)
+ *   --wait=<ms>               pause (dumps nothing)
+ *   Walks a single-page wizard. Never clicks anything that reads like a
+ *   final submit (Publish, Submit, Pay, Save, Post, Activate, Confirm).
  *
  * Prints the final URL, every link that looks like it leads to listings, and
  * every form field (tag, type, name, id, placeholder, label, options, hidden
@@ -26,12 +29,17 @@ import { chromium } from 'playwright'
 import { AUTH_DIR, loadPlatformConfig } from './post-common'
 
 const args = process.argv.slice(2)
-const flags = new Set(args.filter((a) => a.startsWith('--') && !a.startsWith('--click=')))
-const clicks = args.filter((a) => a.startsWith('--click=')).map((a) => a.slice('--click='.length))
+type Step = { kind: 'click' | 'type' | 'key' | 'wait'; value: string }
+const STEP_RE = /^--(click|type|key|wait)=(.*)$/s
+const steps: Step[] = args
+  .map((a) => a.match(STEP_RE))
+  .filter((m): m is RegExpMatchArray => m !== null)
+  .map((m) => ({ kind: m[1] as Step['kind'], value: m[2] }))
+const flags = new Set(args.filter((a) => a.startsWith('--') && !STEP_RE.test(a)))
 const FINAL_SUBMIT = /^(publish|submit|pay|save|post|activate|confirm)\b/i
-for (const c of clicks) {
-  if (FINAL_SUBMIT.test(c.trim())) {
-    console.error(`refusing to click "${c}": recon never presses a final submit`)
+for (const st of steps) {
+  if (st.kind === 'click' && FINAL_SUBMIT.test(st.value.trim())) {
+    console.error(`refusing to click "${st.value}": recon never presses a final submit`)
     process.exit(1)
   }
 }
@@ -159,6 +167,16 @@ async function dump(page: import('playwright').Page, step: number): Promise<void
     }
   }
 
+  const suggestions = await page
+    .$$eval('.pac-item, [role="option"], [role="listbox"] li', (els) =>
+      els.map((e) => (e.textContent ?? '').trim().replace(/\s+/g, ' ').slice(0, 80))
+    )
+    .catch(() => [] as string[])
+  if (suggestions.length > 0) {
+    console.log('\nSUGGESTIONS / OPTIONS ON SCREEN:')
+    for (const t of suggestions.slice(0, 15)) console.log(`  ${t}`)
+  }
+
   // Upload widgets and rich-text editors often live outside any <form>.
   const loose = await page.$$eval('input[type="file"], [contenteditable="true"], iframe', (els) =>
     els.map((el) => ({
@@ -220,20 +238,39 @@ async function main(): Promise<void> {
     console.log(`TITLE: ${await page.title()}`)
 
     await dump(page, 0)
-    for (let i = 0; i < clicks.length; i++) {
-      const text = clicks[i]
-      console.log(`\n===== click "${text}" =====`)
-      const byRole = page.getByRole('button', { name: text }).first()
-      const target = (await byRole.count()) > 0 ? byRole : page.getByText(text, { exact: false }).first()
-      if ((await target.count()) === 0) {
-        console.log(`  nothing on screen with text "${text}"; stopping here`)
-        break
+    let stepNo = 0
+    for (const st of steps) {
+      if (st.kind === 'wait') {
+        await page.waitForTimeout(Number(st.value) || 1000)
+        continue
       }
-      await target.click()
+      stepNo++
+      console.log(`\n===== ${st.kind} "${st.value}" =====`)
+      if (st.kind === 'click') {
+        const byRole = page.getByRole('button', { name: st.value }).first()
+        const target = (await byRole.count()) > 0 ? byRole : page.getByText(st.value, { exact: false }).first()
+        if ((await target.count()) === 0) {
+          console.log(`  nothing on screen with text "${st.value}"; stopping here`)
+          break
+        }
+        await target.click()
+      } else if (st.kind === 'type') {
+        const sep = st.value.indexOf('::')
+        if (sep === -1) throw new Error(`--type needs <css>::<text>, got "${st.value}"`)
+        const target = page.locator(st.value.slice(0, sep)).first()
+        if ((await target.count()) === 0) {
+          console.log(`  no element matches "${st.value.slice(0, sep)}"; stopping here`)
+          break
+        }
+        await target.click()
+        await target.pressSequentially(st.value.slice(sep + 2), { delay: 40 })
+      } else if (st.kind === 'key') {
+        await page.keyboard.press(st.value)
+      }
       await settle(page)
       console.log(`URL:   ${page.url()}`)
       console.log(`TITLE: ${await page.title()}`)
-      await dump(page, i + 1)
+      await dump(page, stepNo)
     }
   } finally {
     await browser.close()
