@@ -179,20 +179,9 @@ export async function postToLandCom(
     log(`land_com: created draft ${listingId}`)
   }
 
-  // 3. Editor.
+  // 3. Editor. Photos first: when an upload finishes the editor reloads
+  // itself from the server and drops any unsaved text, so text goes last.
   log(`land_com: filling the editor for ${listingId}`)
-  await fillText(page, LAND_COM_SELECTORS.price, String(facts.priceUsd), 'price')
-  await fillText(page, LAND_COM_SELECTORS.acres, String(facts.acreage), 'acres')
-  if (ownerFinanced) await setOwnerFinancing(page, log)
-  await fillText(page, LAND_COM_SELECTORS.title, adCopy.headline, 'title')
-  await fillText(page, LAND_COM_SELECTORS.description, adCopy.description, 'description')
-
-  // A selected toggle shows a count badge after its label ("Undeveloped1"),
-  // which is the only readable selected state, so clicks are idempotent.
-  for (const t of propertyTypesFromTask(task)) await ensureToggle(page, t, 'property type', log)
-  for (const a of activitiesFromTask(task)) await ensureToggle(page, a, 'activity', log)
-  void freshDraft
-
   const photos = choosePhotos(listPhotos(opts.outputDir), stringMeta(task, 'primaryPhoto')).slice(
     0,
     LAND_COM_LIMITS.maxPhotos
@@ -203,6 +192,24 @@ export async function postToLandCom(
   } else if (photos.length > 0) {
     log(`land_com: uploading ${photos.length} photo(s)`)
     await uploadPhotos(page, photos, log)
+    await page.waitForTimeout(3000)
+  }
+
+  // A selected toggle shows a count badge after its label ("Undeveloped1"),
+  // which is the only readable selected state, so clicks are idempotent.
+  for (const t of propertyTypesFromTask(task)) await ensureToggle(page, t, 'property type', log)
+  for (const a of activitiesFromTask(task)) await ensureToggle(page, a, 'activity', log)
+  void freshDraft
+
+  await fillText(page, LAND_COM_SELECTORS.price, String(facts.priceUsd), 'price')
+  await fillText(page, LAND_COM_SELECTORS.acres, String(facts.acreage), 'acres')
+  if (ownerFinanced) await setOwnerFinancing(page, log)
+  await fillText(page, LAND_COM_SELECTORS.title, adCopy.headline, 'title')
+  await fillText(page, LAND_COM_SELECTORS.description, adCopy.description, 'description')
+  // Make sure nothing reset the text before we save.
+  const titleNow = await page.locator(LAND_COM_SELECTORS.title).first().inputValue().catch(() => '')
+  if (!sameTitle(titleNow, adCopy.headline)) {
+    throw new Error(`The title field reads "${titleNow}" right after filling it; the editor is resetting fields. Update ${SCRIPT}.`)
   }
 
   if (opts.dryRun) {
@@ -350,7 +357,10 @@ async function setOwnerFinancing(page: Page, log: (m: string) => void): Promise<
  */
 async function ensureToggle(page: Page, name: string, kind: string, log: (m: string) => void): Promise<void> {
   const pattern = new RegExp(`^${name.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&')}\s*\d*$`)
-  const all = page.getByRole('button', { name: pattern })
+  // Match on the button's visible content (label plus optional count
+  // badge), not its accessible name: an aria-labelled overlay button with no
+  // text also answers to the name and reports nothing useful.
+  const all = page.locator('button').filter({ hasText: pattern })
   const index = kind === 'activity' && PROPERTY_TYPES.includes(name) ? 1 : 0
   if ((await all.count()) <= index) throw new Error(`No ${kind} button labelled "${name}" in the Land.com editor`)
   const btn = all.nth(index)
