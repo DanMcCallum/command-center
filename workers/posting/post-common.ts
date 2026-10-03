@@ -28,6 +28,12 @@ export interface LoginSuccessSignal {
   cookie?: string
   /** Logged in when the page URL no longer contains this path. */
   redirect_off?: string
+  /**
+   * Logged in when this element is on the page the probe loads
+   * (new_listing_url), e.g. the create form itself. A positive signal for
+   * sites that keep a logged-in user parked on the login URL.
+   */
+  logged_in_selector?: string
 }
 
 export interface PlatformConfig {

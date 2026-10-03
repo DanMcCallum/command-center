@@ -25,6 +25,8 @@ export interface SessionSnapshot {
   url: string
   /** document.title — enables the Akamai Access Denied hard-failure check. */
   title?: string
+  /** Whether login_success.logged_in_selector matched on the page, when configured. */
+  hasLoggedInMarker?: boolean
 }
 
 export type LoginDetection = 'logged_in' | 'not_logged_in' | 'blocked'
@@ -65,6 +67,11 @@ export function detectLogin(
   if (snapshot.title !== undefined && ACCESS_DENIED_TITLE.test(snapshot.title.trim())) {
     return 'blocked'
   }
+  // A configured DOM marker (the create form itself) is a positive signal on
+  // par with a cookie: it needs no login-page sighting to be trusted.
+  if (signal?.logged_in_selector !== undefined && snapshot.hasLoggedInMarker === true) {
+    return 'logged_in'
+  }
   if (signal?.redirect_off !== undefined) {
     const pathname = pathnameOf(snapshot.url)
     if (pathname !== null && pathname.includes(signal.redirect_off)) {
@@ -82,11 +89,16 @@ export function detectLogin(
  */
 export function isLoggedIn(
   signal: LoginSuccessSignal | undefined,
-  { cookies, url }: SessionSnapshot
+  { cookies, url, hasLoggedInMarker }: SessionSnapshot
 ): boolean {
-  if (!signal || (signal.cookie === undefined && signal.redirect_off === undefined)) {
+  if (
+    !signal ||
+    (signal.cookie === undefined && signal.redirect_off === undefined && signal.logged_in_selector === undefined)
+  ) {
     return false
   }
+  if (signal.logged_in_selector !== undefined && hasLoggedInMarker === true) return true
+  if (signal.cookie === undefined && signal.redirect_off === undefined) return false
   if (signal.cookie !== undefined && !cookies.some((c) => c.name === signal.cookie)) {
     return false
   }

@@ -6,7 +6,10 @@
       "enabled": true,
       "login_url": "https://www.landmodo.com/login",
       "new_listing_url": "https://www.landmodo.com/account/properties/newgroup",
-      "login_success": { "redirect_off": "/login" }
+      "login_success": {
+        "redirect_off": "/login",
+        "logged_in_selector": "form[action*=\"/account/properties/newgroup\"]"
+      }
     },
     "land_century": {
       "display_name": "Land Century",

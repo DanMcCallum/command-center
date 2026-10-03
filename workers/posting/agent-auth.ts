@@ -29,7 +29,7 @@ import type { Browser, BrowserContext, Page } from 'playwright'
 import { detectLogin } from './capture/detect'
 import type { RedirectTracker, SessionSnapshot } from './capture/detect'
 import { AUTH_DIR } from './post-common'
-import type { PlatformConfig } from './post-common'
+import type { LoginSuccessSignal, PlatformConfig } from './post-common'
 
 // Humans are slow — the PRD floor for the login wait is 10 minutes.
 const DEFAULT_LOGIN_TIMEOUT_MS = 15 * 60 * 1000
@@ -73,9 +73,17 @@ function sleep(ms: number): Promise<void> {
  * evaluation cycle rather than judging a titleless snapshot, because the
  * Akamai blocked check needs the title to fail closed.
  */
-async function trySnapshot(context: BrowserContext, page: Page): Promise<SessionSnapshot | null> {
+async function trySnapshot(
+  context: BrowserContext,
+  page: Page,
+  signal?: LoginSuccessSignal
+): Promise<SessionSnapshot | null> {
   try {
-    return { cookies: await context.cookies(), url: page.url(), title: await page.title() }
+    const snap: SessionSnapshot = { cookies: await context.cookies(), url: page.url(), title: await page.title() }
+    if (signal?.logged_in_selector !== undefined) {
+      snap.hasLoggedInMarker = (await page.locator(signal.logged_in_selector).count()) > 0
+    }
+    return snap
   } catch (err) {
     if (page.isClosed()) throw err
     return null
@@ -163,7 +171,7 @@ async function runAuthFlow(
     waitUntil: 'domcontentloaded',
     timeout: NAVIGATION_TIMEOUT_MS,
   })
-  const probeSnap = await trySnapshot(context, page)
+  const probeSnap = await trySnapshot(context, page, signal)
   const probeVerdict = probeSnap === null ? 'not_logged_in' : detectLogin(signal, probeSnap, tracker)
   if (probeVerdict === 'blocked') return blocked
   if (probeVerdict === 'logged_in') {
@@ -176,7 +184,7 @@ async function runAuthFlow(
   await opts.onAwaitingAuth?.()
   await page.goto(platform.login_url, { waitUntil: 'domcontentloaded', timeout: NAVIGATION_TIMEOUT_MS })
 
-  const landing = await trySnapshot(context, page)
+  const landing = await trySnapshot(context, page, signal)
   if (landing !== null) {
     const landingVerdict = detectLogin(signal, landing, tracker)
     if (landingVerdict === 'blocked') return blocked
@@ -204,7 +212,7 @@ async function runAuthFlow(
     }
     await sleep(pollIntervalMs)
     if (page.isClosed()) return { outcome: 'cancelled', message: 'login cancelled' }
-    const snap = await trySnapshot(context, page)
+    const snap = await trySnapshot(context, page, signal)
     if (snap === null) continue
     const verdict = detectLogin(signal, snap, tracker)
     if (verdict === 'blocked') return blocked

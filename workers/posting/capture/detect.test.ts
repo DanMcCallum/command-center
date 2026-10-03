@@ -190,3 +190,25 @@ test('detectLogin: missing or empty signal fails closed', () => {
   assert.strictEqual(detectLogin(undefined, { ...DASHBOARD, title: 'Dashboard' }, tracker), 'not_logged_in')
   assert.strictEqual(detectLogin({}, { ...DASHBOARD, title: 'Dashboard' }, tracker), 'not_logged_in')
 })
+
+test('marker signal: the configured element on the page means logged in without a login-page sighting', () => {
+  const signal = { redirect_off: '/login', logged_in_selector: 'form[action*="/account/properties/newgroup"]' }
+  const onForm = { cookies: [], url: 'https://www.landmodo.com/account/properties/newgroup', hasLoggedInMarker: true }
+  assert.strictEqual(detectLogin(signal, onForm, { sawLoginPage: false }), 'logged_in')
+  assert.strictEqual(isLoggedIn(signal, onForm), true)
+})
+
+test('marker signal: element absent falls back to the redirect rule (still fails closed)', () => {
+  const signal = { redirect_off: '/login', logged_in_selector: 'form[action*="/account/properties/newgroup"]' }
+  const bounced = { cookies: [], url: 'https://www.landmodo.com/login?login_direct_url=/account', hasLoggedInMarker: false }
+  assert.strictEqual(detectLogin(signal, bounced, { sawLoginPage: false }), 'not_logged_in')
+  const parked = { cookies: [], url: 'https://www.landmodo.com/login', hasLoggedInMarker: false }
+  assert.strictEqual(detectLogin(signal, parked, { sawLoginPage: true }), 'not_logged_in')
+  assert.strictEqual(isLoggedIn({ logged_in_selector: 'form' }, parked), false)
+})
+
+test('marker signal: Access Denied still wins over a marker', () => {
+  const signal = { logged_in_selector: 'form' }
+  const denied = { cookies: [], url: 'https://x/account', title: 'Access Denied', hasLoggedInMarker: true }
+  assert.strictEqual(detectLogin(signal, denied, { sawLoginPage: false }), 'blocked')
+})

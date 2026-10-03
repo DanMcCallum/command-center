@@ -14,6 +14,7 @@ const CONFIG_PATH = path.resolve(
 export interface LoginSuccessSignal {
   cookie?: string;
   redirect_off?: string;
+  logged_in_selector?: string;
 }
 
 export interface PostingPlatformConfig {
