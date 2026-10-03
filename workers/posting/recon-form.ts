@@ -14,6 +14,7 @@
  *   --clicksel=<selector>     click the first element matching a Playwright
  *                             selector (css, or xpath=... for unlabeled buttons)
  *   --type=<css>::<text>      type text into the element matching the selector
+ *   --fill=<css>::<text>      replace the element's value (empty text clears it)
  *   --key=<Key>               press a key (ArrowDown, Enter, Tab, ...)
  *   --wait=<ms>               pause (dumps nothing)
  *   --allow=<text>            permit one otherwise-refused click label
@@ -33,8 +34,8 @@ import { chromium } from 'playwright'
 import { AUTH_DIR, loadPlatformConfig } from './post-common'
 
 const args = process.argv.slice(2)
-type Step = { kind: 'click' | 'clicksel' | 'type' | 'key' | 'wait'; value: string }
-const STEP_RE = /^--(click|clicksel|type|key|wait)=(.*)$/s
+type Step = { kind: 'click' | 'clicksel' | 'type' | 'fill' | 'key' | 'wait'; value: string }
+const STEP_RE = /^--(click|clicksel|type|fill|key|wait)=(.*)$/s
 const allowed = new Set(
   args.filter((a) => a.startsWith('--allow=')).map((a) => a.slice('--allow='.length).trim().toLowerCase())
 )
@@ -280,6 +281,16 @@ async function main(): Promise<void> {
         }
         await target.click()
         await target.pressSequentially(st.value.slice(sep + 2), { delay: 40 })
+      } else if (st.kind === 'fill') {
+        const sep = st.value.indexOf('::')
+        if (sep === -1) throw new Error(`--fill needs <css>::<text>, got "${st.value}"`)
+        const target = page.locator(st.value.slice(0, sep)).first()
+        if ((await target.count()) === 0) {
+          console.log(`  no element matches "${st.value.slice(0, sep)}"; stopping here`)
+          break
+        }
+        await target.fill(st.value.slice(sep + 2))
+        await target.press('Tab')
       } else if (st.kind === 'key') {
         await page.keyboard.press(st.value)
       }
