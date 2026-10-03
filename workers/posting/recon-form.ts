@@ -14,8 +14,10 @@
  *   --type=<css>::<text>      type text into the element matching the selector
  *   --key=<Key>               press a key (ArrowDown, Enter, Tab, ...)
  *   --wait=<ms>               pause (dumps nothing)
+ *   --allow=<text>            permit one otherwise-refused click label
  *   Walks a single-page wizard. Never clicks anything that reads like a
- *   final submit (Publish, Submit, Pay, Save, Post, Activate, Confirm).
+ *   final submit (Publish, Submit, Pay, Save, Post, Activate, Confirm)
+ *   unless that exact label is passed with --allow.
  *
  * Prints the final URL, every link that looks like it leads to listings, and
  * every form field (tag, type, name, id, placeholder, label, options, hidden
@@ -31,14 +33,17 @@ import { AUTH_DIR, loadPlatformConfig } from './post-common'
 const args = process.argv.slice(2)
 type Step = { kind: 'click' | 'type' | 'key' | 'wait'; value: string }
 const STEP_RE = /^--(click|type|key|wait)=(.*)$/s
+const allowed = new Set(
+  args.filter((a) => a.startsWith('--allow=')).map((a) => a.slice('--allow='.length).trim().toLowerCase())
+)
 const steps: Step[] = args
   .map((a) => a.match(STEP_RE))
   .filter((m): m is RegExpMatchArray => m !== null)
   .map((m) => ({ kind: m[1] as Step['kind'], value: m[2] }))
-const flags = new Set(args.filter((a) => a.startsWith('--') && !STEP_RE.test(a)))
+const flags = new Set(args.filter((a) => a.startsWith('--') && !STEP_RE.test(a) && !a.startsWith('--allow=')))
 const FINAL_SUBMIT = /^(publish|submit|pay|save|post|activate|confirm)\b/i
 for (const st of steps) {
-  if (st.kind === 'click' && FINAL_SUBMIT.test(st.value.trim())) {
+  if (st.kind === 'click' && FINAL_SUBMIT.test(st.value.trim()) && !allowed.has(st.value.trim().toLowerCase())) {
     console.error(`refusing to click "${st.value}": recon never presses a final submit`)
     process.exit(1)
   }
