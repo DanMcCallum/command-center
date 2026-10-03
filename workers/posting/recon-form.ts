@@ -36,6 +36,18 @@ const headed = flags.has('--headed') || wantLogin
 const OUT_DIR = path.resolve(__dirname, '.agent-cache/recon')
 const LOGIN_PATH = platform.login_success?.redirect_off ?? '/login'
 
+/** Let a client-rendered page finish: network quiet, then a real control on screen. */
+async function settle(page: import('playwright').Page): Promise<void> {
+  await page.waitForLoadState('networkidle', { timeout: 20_000 }).catch(() => {})
+  await page
+    .waitForSelector('input:not([type="hidden"]), textarea, select, [contenteditable="true"], [role="combobox"]', {
+      state: 'attached',
+      timeout: 20_000,
+    })
+    .catch(() => {})
+  await page.waitForTimeout(2000)
+}
+
 async function main(): Promise<void> {
   const authPath = path.join(AUTH_DIR, `${platformKey}.json`)
   const haveSession = fs.existsSync(authPath)
@@ -47,7 +59,7 @@ async function main(): Promise<void> {
     const context = await browser.newContext(haveSession ? { storageState: authPath } : {})
     const page = await context.newPage()
     await page.goto(url, { waitUntil: 'domcontentloaded' })
-    await page.waitForTimeout(1500)
+    await settle(page)
 
     if (wantLogin && new URL(page.url()).pathname.includes(LOGIN_PATH)) {
       console.log(`On the login page. Sign in in the browser window (10 minutes)...`)
@@ -61,7 +73,7 @@ async function main(): Promise<void> {
       fs.chmodSync(authPath, 0o600)
       console.log(`Session saved to ${authPath}`)
       await page.goto(url, { waitUntil: 'domcontentloaded' })
-      await page.waitForTimeout(1500)
+      await settle(page)
     }
     console.log(`URL:   ${page.url()}`)
     console.log(`TITLE: ${await page.title()}`)
@@ -115,6 +127,52 @@ async function main(): Promise<void> {
       for (const x of f.fields) {
         const extra = x.options ? ` options=[${x.options.join(' | ')}]` : x.text ? ` text="${x.text}"` : ''
         console.log(`    ${x.tag}[type=${x.type}] name="${x.name}" id="${x.id}" ph="${x.placeholder}" label="${x.label}"${extra}${x.type === 'hidden' ? ` value="${x.value}"` : ''}`)
+      }
+    }
+
+    // Single-page apps build their forms without a <form> element at all.
+    const orphans = await page.$$eval('input, select, textarea, button, [role="combobox"], [role="button"]', (els) =>
+      els
+        .filter((el) => !el.closest('form'))
+        .map((el) => {
+          const e = el as HTMLInputElement
+          let label = e.getAttribute('aria-label') ?? ''
+          if (!label && e.id) label = document.querySelector(`label[for="${e.id}"]`)?.textContent ?? ''
+          if (!label) label = e.closest('label')?.textContent ?? ''
+          if (!label) {
+            const labelled = e.getAttribute('aria-labelledby')
+            if (labelled) label = document.getElementById(labelled)?.textContent ?? ''
+          }
+          if (!label) label = e.closest('div')?.querySelector('label, legend, h2, h3, h4')?.textContent ?? ''
+          const options =
+            el.tagName === 'SELECT'
+              ? Array.from((el as HTMLSelectElement).options).slice(0, 12).map((o) => `${o.value}=${o.text.trim()}`)
+              : undefined
+          return {
+            tag: el.tagName.toLowerCase(),
+            type: e.type ?? el.getAttribute('role') ?? '',
+            name: e.name ?? '',
+            id: e.id,
+            placeholder: e.placeholder ?? '',
+            label: label.trim().replace(/\s+/g, ' ').slice(0, 50),
+            text: el.tagName === 'BUTTON' || el.getAttribute('role') === 'button' ? (el.textContent ?? '').trim().slice(0, 40) : '',
+            testid: el.getAttribute('data-testid') ?? el.getAttribute('data-test') ?? '',
+            options,
+          }
+        })
+    )
+    if (orphans.length > 0) {
+      console.log('\nCONTROLS OUTSIDE ANY FORM:')
+      for (const x of orphans) {
+        if (x.type === 'hidden') continue
+        const extra = [
+          x.testid && `testid="${x.testid}"`,
+          x.text && `text="${x.text}"`,
+          x.options && `options=[${x.options.join(' | ')}]`,
+        ]
+          .filter(Boolean)
+          .join(' ')
+        console.log(`  ${x.tag}[type=${x.type}] name="${x.name}" id="${x.id}" ph="${x.placeholder}" label="${x.label}" ${extra}`)
       }
     }
 
