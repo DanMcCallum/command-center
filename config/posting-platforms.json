@@ -28,9 +28,9 @@
     "land_com": {
       "display_name": "Land.com",
       "enabled": true,
-      "login_url": "https://www.land.com/login",
-      "new_listing_url": "https://www.land.com/account/listings/new",
-      "login_success": { "redirect_off": "/login" }
+      "login_url": "https://market.land.com/",
+      "new_listing_url": "https://market.land.com/",
+      "login_success": { "logged_in_selector": "button:has-text(\"Add Listing\")" }
     },
     "land_listings": {
       "display_name": "Land-listings.com",

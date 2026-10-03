@@ -1,23 +1,40 @@
 /**
- * Posts one approved ad to Land.com.
+ * Posts one approved ad to Land.com through its Marketing Hub
+ * (market.land.com), mapped against the live app on 2026-10-03.
  *
  * Usage: npm run post -- land_com <taskId> [--dry-run]
  *
  * Drives an already-authenticated page handed in by the caller (the local
  * poster agent's headed browser, or post.ts's headless one built from the
- * saved auth/<platform>.json session) — the caller owns the browser lifecycle.
- * Fills the new-listing form from the parsed ad copy plus task metadata,
- * uploads photos from <outputDir>/photos/ when present, saves a full-page
- * proof screenshot, and returns the live listing URL after submit.
+ * saved auth/<platform>.json session). The caller owns the browser lifecycle.
+ *
+ * The hub is a single-page React app:
+ *
+ *   1. Listing Manager (hub root). An ag-grid of the member's listings with
+ *      Active / Draft / Off Market / Sold tabs. Read first, for three reasons:
+ *      the account allows a fixed number of Active listings (5), a listing
+ *      for the same lot may already exist by hand, and a half-finished draft
+ *      from an earlier run should be finished rather than duplicated.
+ *   2. Add Listing -> location step. Switched to Lat/Long mode and fed the
+ *      task's coordinates; the app fills city/state/county/zip from the
+ *      point and also guesses a street address by reverse geocoding, which
+ *      is usually a neighbour's house number on vacant land. The poster
+ *      overwrites it with a location description (the field is required).
+ *      Confirm Location creates a Draft and opens the editor.
+ *   3. Editor at /listing/edit/<id>. Plain inputs with stable names: Price,
+ *      Acres, owner-financing checkbox, Title, Description textarea, a
+ *      multi-file photo input, property-type toggle buttons, Publish Changes.
+ *
+ * Nothing is paid: listings are free on this account, the cap is on Active
+ * count only, and drafts do not count.
  */
-import type { Page } from 'playwright'
+import type { Locator, Page } from 'playwright'
 import {
   AdCopy,
   PostContext,
   PostOptions,
   PosterTask,
   PostResult,
-  fillField,
   listPhotos,
   loadPlatformConfig,
   loginExpiredError,
@@ -25,31 +42,81 @@ import {
   saveProofScreenshot,
   resolveLocation,
 } from './post-common'
+import { choosePhotos, financingFromTask, sameTitle } from './post-landmodo'
 
 const PLATFORM = 'land_com'
 const SCRIPT = 'post-land_com.ts'
+const HUB = 'https://market.land.com'
+
+export const LAND_COM_LIMITS = {
+  /** Active listings allowed on the account (metadata.land_com_active_cap overrides). */
+  activeCap: 5,
+  /** Photos sent per listing (the app shows no hard cap; it nudges toward 16). */
+  maxPhotos: 20,
+}
+
+export const PROPERTY_TYPES = [
+  'Farm', 'Ranch', 'Recreational', 'Residential', 'Timber', 'Undeveloped', 'Commercial',
+  'Hunting', 'Horse', 'Lakefront', 'Beachfront', 'Riverfront',
+]
+export const ACTIVITIES = [
+  'Aviation', 'Beach', 'Boating', 'Camping', 'Canoeing/Kayaking', 'Conservation', 'Fishing',
+  'Horseback Riding', 'Hunting', 'Off-roading', 'RVing', 'Golfing', 'Aquatic Sporting', 'Skiing',
+]
 
 /**
  * All Land.com DOM knowledge lives here so a site redesign is a one-file fix.
- * UNVERIFIED best-effort candidates (Land.com is a modern .NET/React app, so
- * these lean on name/id/placeholder guesses rather than Rails conventions) —
- * capture the real selectors against the live listing form on the first
- * operator-supervised run and prune this block down.
- * Comma-separated entries are CSS alternatives; the first match is used.
+ * Verified against the live Marketing Hub (recon-form.ts dumps).
  */
 export const LAND_COM_SELECTORS = {
-  // Present on the sign-in page — used to detect an expired session.
-  loginForm: 'input[type="password"][name*="assword"], form[action*="login" i]',
-  title: 'input[name="title" i], input[id*="title" i], input[placeholder*="title" i]',
-  description:
-    'textarea[name="description" i], textarea[id*="description" i], textarea[placeholder*="description" i]',
-  price: 'input[name="price" i], input[id*="price" i], input[placeholder*="price" i]',
-  acreage:
-    'input[name="acres" i], input[name="acreage" i], input[id*="acre" i], input[placeholder*="acre" i]',
-  state: 'select[name="state" i], select[id*="state" i]',
-  county: 'select[name="county" i], input[name="county" i], input[id*="county" i]',
-  photos: 'input[type="file"]',
-  submit: 'form button[type="submit"], form input[type="submit"]',
+  hubUrl: `${HUB}/`,
+  // The hub shows its sign-in form at the root URL.
+  loginForm: 'form#login, input#login-password',
+  loggedIn: 'button:has-text("Add Listing")',
+
+  // --- Listing Manager grid ---
+  tab: (name: string) => `button:has-text("${name}")`,
+  row: '.ag-row[row-id]',
+  rowEditMenu: '[data-testid="tippy-toggle-button"]',
+  viewOnNetwork: 'button:has-text("View on Land Network")',
+
+  // --- location step ---
+  addListing: 'button:has-text("Add Listing")',
+  modeAddress: '[role="button"]:has-text("Address")',
+  modeLatLong: '[role="button"]:has-text("Lat/Long")',
+  latitude: '#latitude',
+  longitude: '#longitude',
+  latLongSearch: 'xpath=//input[@id="longitude"]/following::button[1]',
+  streetAddress: '#address',
+  zip: '#zip',
+  confirmLocation: 'button:has-text("Confirm Location")',
+  fieldError: 'text=/This field is required/i',
+
+  // --- editor ---
+  editUrl: (id: string) => `${HUB}/listing/edit/${id}`,
+  price: 'input[name="Price"]',
+  acres: 'input[name="Acres"]',
+  ownerFinancing: 'input[name="Is Owner Financing Available"]',
+  ownerFinancingLabel: 'text=Is Owner Financing Available',
+  title: 'input[name="Title"]',
+  description: 'textarea[name="Description"]',
+  toggle: (name: string) => `button:text-is("${name}")`,
+  photoInput: 'input#imageUploadText',
+  photoThumb: 'button[aria-label="Make Cover Photo"], button[aria-label="Cover Photo"]',
+  publish: 'button:has-text("Publish Changes")',
+  validation: '[role="alert"], text=/required|invalid|must be/i',
+}
+
+const EDIT_URL_RE = /\/listing\/edit\/(\d+)/
+
+export interface HubRow {
+  id: string
+  title: string
+  city: string | null
+  stateAbbr: string | null
+  priceUsd: number | null
+  acres: number | null
+  status: string
 }
 
 export async function postToLandCom(
@@ -58,56 +125,420 @@ export async function postToLandCom(
   opts: PostOptions & PostContext
 ): Promise<PostResult> {
   const config = opts.platform ?? loadPlatformConfig(PLATFORM)
+  const log = opts.log ?? (() => {})
   const facts = requireListingFacts(task)
-  const { county, state } = await resolveLocation(facts.location)
-  const photos = listPhotos(opts.outputDir)
+  const location = await resolveLocation(facts.location)
+  for (const w of location.warnings) log(`land_com: location: ${w}`)
+  const coords = coordinatesFromTask(task)
+  const financing = financingFromTask(task, adCopy)
+  const ownerFinanced = financing.downPaymentUsd !== null || financing.monthlyPaymentUsd !== null
   const page = opts.page
+  const cap = numberMeta(task, 'land_com_active_cap') ?? LAND_COM_LIMITS.activeCap
 
-  await page.goto(config.new_listing_url, { waitUntil: 'domcontentloaded' })
-  if (await onLoginPage(page)) {
-    throw loginExpiredError(PLATFORM, page.url())
+  // 1. Listing Manager: existing listing? draft to finish? room under the cap?
+  await page.goto(config.new_listing_url || LAND_COM_SELECTORS.hubUrl, { waitUntil: 'domcontentloaded' })
+  await waitForHub(page)
+  if (await onLoginPage(page)) throw loginExpiredError(PLATFORM, page.url())
+
+  const activeCount = await readTabCount(page, 'Active')
+  await page.locator(LAND_COM_SELECTORS.tab('All Listings')).first().click().catch(() => {})
+  await page.waitForTimeout(1500)
+  const rows = await readHubRows(page)
+  const match = findMatch(rows, adCopy.headline, facts.priceUsd, facts.acreage, location.stateAbbr)
+
+  if (match && isActive(match.status)) {
+    log(`land_com: listing ${match.id} "${match.title}" is already active for this lot (matched on ${match.matchedOn}); recording it, not creating another`)
+    return finish(page, match.id, opts.outputDir, log)
   }
 
-  await fillField(page, LAND_COM_SELECTORS.title, adCopy.headline, 'title', SCRIPT)
-  await fillField(page, LAND_COM_SELECTORS.description, adCopy.description, 'description', SCRIPT)
-  await fillField(page, LAND_COM_SELECTORS.price, String(facts.priceUsd), 'price', SCRIPT)
-  await fillField(page, LAND_COM_SELECTORS.acreage, String(facts.acreage), 'acreage', SCRIPT)
-  await fillField(page, LAND_COM_SELECTORS.state, state, 'state', SCRIPT)
-  await fillField(page, LAND_COM_SELECTORS.county, county, 'county', SCRIPT)
+  let listingId: string
+  let freshDraft = false
+  if (match && /draft/i.test(match.status)) {
+    log(`land_com: finishing existing draft ${match.id} "${match.title}" (matched on ${match.matchedOn})`)
+    listingId = match.id
+    await page.goto(LAND_COM_SELECTORS.editUrl(listingId), { waitUntil: 'domcontentloaded' })
+    await page.locator(LAND_COM_SELECTORS.title).first().waitFor({ state: 'visible', timeout: 30_000 })
+  } else {
+    if (activeCount !== null && activeCount >= cap) {
+      throw new Error(
+        `Land.com account already has ${activeCount} active listings (cap ${cap}). ` +
+          `Take one Off Market in the Marketing Hub, then Publish again`
+      )
+    }
+    listingId = await createDraftAtLocation(page, coords, locationDescription(task, location), log)
+    freshDraft = true
+    log(`land_com: created draft ${listingId}`)
+  }
 
-  const photoInput = page.locator(LAND_COM_SELECTORS.photos).first()
-  if (photos.length > 0 && (await photoInput.count()) > 0) {
-    await photoInput.setInputFiles(photos)
+  // 3. Editor.
+  await fillText(page, LAND_COM_SELECTORS.price, String(facts.priceUsd), 'price')
+  await fillText(page, LAND_COM_SELECTORS.acres, String(facts.acreage), 'acres')
+  if (ownerFinanced) await setOwnerFinancing(page, log)
+  await fillText(page, LAND_COM_SELECTORS.title, adCopy.headline, 'title')
+  await fillText(page, LAND_COM_SELECTORS.description, adCopy.description, 'description')
+
+  // Toggle buttons give no readable pressed state, so only set them on a
+  // draft we just created (known blank). A reused draft keeps what it has.
+  if (freshDraft) {
+    for (const t of propertyTypesFromTask(task)) await clickToggle(page, t, 'property type')
+    for (const a of activitiesFromTask(task)) await clickToggle(page, a, 'activity')
+  } else {
+    log('land_com: reusing a draft, leaving its property type / activity toggles as they are')
+  }
+
+  const photos = choosePhotos(listPhotos(opts.outputDir), stringMeta(task, 'primaryPhoto')).slice(
+    0,
+    LAND_COM_LIMITS.maxPhotos
+  )
+  const already = await page.locator(LAND_COM_SELECTORS.photoThumb).count()
+  if (already > 0) {
+    log(`land_com: draft already shows ${already} photo(s); not uploading again`)
+  } else if (photos.length > 0) {
+    await uploadPhotos(page, photos, log)
   }
 
   if (opts.dryRun) {
+    log(`land_com: dry run, leaving draft ${listingId} filled and unpublished in the Marketing Hub`)
     const screenshotPath = await saveProofScreenshot(page, opts.outputDir, PLATFORM)
     return { listingUrl: null, screenshotPath }
   }
 
-  const submit = page.locator(LAND_COM_SELECTORS.submit).first()
-  if ((await submit.count()) === 0) {
+  // Publish.
+  const publish = page.locator(LAND_COM_SELECTORS.publish).first()
+  await publish.waitFor({ state: 'visible', timeout: 15_000 })
+  await publish.click()
+  await page.waitForTimeout(3000)
+  const errors = await visibleTexts(page, LAND_COM_SELECTORS.validation)
+  if (errors.length > 0 && !/published|success/i.test(errors.join(' '))) {
+    throw new Error(`Land.com did not accept the listing: ${errors.slice(0, 5).join(' | ')}`)
+  }
+  await page.goto(LAND_COM_SELECTORS.hubUrl, { waitUntil: 'domcontentloaded' })
+  await waitForHub(page)
+  await page.locator(LAND_COM_SELECTORS.tab('All Listings')).first().click().catch(() => {})
+  await page.waitForTimeout(1500)
+  const after = (await readHubRows(page)).find((r) => r.id === listingId)
+  if (!after) throw new Error(`Published listing ${listingId} but it is missing from the Listing Manager grid`)
+  if (!isActive(after.status)) {
     throw new Error(
-      `Could not find the submit button (tried: ${LAND_COM_SELECTORS.submit}). ` +
+      `Listing ${listingId} is still "${after.status}" after Publish Changes. Open ${LAND_COM_SELECTORS.editUrl(listingId)} ` +
+        `in the Marketing Hub to see what it still wants, then Publish again`
+    )
+  }
+  log(`land_com: listing ${listingId} is ${after.status}`)
+  return finish(page, listingId, opts.outputDir, log)
+}
+
+// --- steps ---------------------------------------------------------------------
+
+async function createDraftAtLocation(
+  page: Page,
+  coords: { latitude: number; longitude: number } | null,
+  description: string,
+  log: (m: string) => void
+): Promise<string> {
+  if (!coords) {
+    throw new Error(
+      `Land.com needs the parcel's coordinates: add "latitude" and "longitude" to the task metadata and Publish again`
+    )
+  }
+  await page.locator(LAND_COM_SELECTORS.addListing).first().click()
+  await page.locator(LAND_COM_SELECTORS.latitude).first().waitFor({ state: 'visible', timeout: 30_000 })
+
+  // Switch the search box from Address to Lat/Long.
+  await page.locator(LAND_COM_SELECTORS.modeAddress).first().click()
+  await page.locator(LAND_COM_SELECTORS.modeLatLong).first().waitFor({ state: 'visible', timeout: 10_000 })
+  await page.locator(LAND_COM_SELECTORS.modeLatLong).first().click()
+  await page.waitForTimeout(500)
+
+  await page.locator(LAND_COM_SELECTORS.latitude).first().fill(String(coords.latitude))
+  await page.locator(LAND_COM_SELECTORS.longitude).first().fill(String(coords.longitude))
+  await page.locator(LAND_COM_SELECTORS.latLongSearch).first().click()
+
+  const street = page.locator(LAND_COM_SELECTORS.streetAddress).first()
+  await street.waitFor({ state: 'visible', timeout: 30_000 })
+  await page.waitForTimeout(1000)
+  const guessed = await street.inputValue().catch(() => '')
+  if (guessed) log(`land_com: replacing the reverse-geocoded street "${guessed}" with "${description}"`)
+  await street.fill(description)
+  await street.press('Tab')
+
+  const confirm = page.locator(LAND_COM_SELECTORS.confirmLocation).first()
+  await confirm.click()
+  try {
+    await page.waitForURL((u) => EDIT_URL_RE.test(u.toString()), { timeout: 45_000 })
+  } catch {
+    const errs = await visibleTexts(page, LAND_COM_SELECTORS.fieldError)
+    throw new Error(
+      `Confirm Location did not open the editor` + (errs.length ? `: ${errs.join(' | ')}` : ' (no error shown)')
+    )
+  }
+  const id = page.url().match(EDIT_URL_RE)?.[1]
+  if (!id) throw new Error(`Unexpected editor URL ${page.url()}`)
+  await page.locator(LAND_COM_SELECTORS.title).first().waitFor({ state: 'visible', timeout: 30_000 })
+  return id
+}
+
+async function fillText(page: Page, selector: string, value: string, fieldName: string): Promise<void> {
+  const loc = page.locator(selector).first()
+  if ((await loc.count()) === 0) {
+    throw new Error(
+      `Could not find the ${fieldName} field in the Land.com editor (tried: ${selector}). ` +
         `Update the SELECTORS block in ${SCRIPT}.`
     )
   }
-  const formUrl = page.url()
-  await submit.click()
-  // A successful create navigates away from the form; staying put means
-  // validation errors (or a silent rejection) — surface that as a failure.
-  await page.waitForURL((url) => url.toString() !== formUrl, { timeout: 30_000 })
-  await page.waitForLoadState('domcontentloaded')
-  if (await onLoginPage(page)) {
-    throw loginExpiredError(PLATFORM, page.url())
-  }
+  await loc.scrollIntoViewIfNeeded().catch(() => {})
+  await loc.fill(value)
+  await loc.press('Tab')
+  const got = (await loc.inputValue().catch(() => '')).replace(/[$,\s]/g, '')
+  if (!got) throw new Error(`The ${fieldName} field stayed empty after filling it`)
+}
 
-  const listingUrl = page.url()
-  const screenshotPath = await saveProofScreenshot(page, opts.outputDir, PLATFORM)
+async function setOwnerFinancing(page: Page, log: (m: string) => void): Promise<void> {
+  const box = page.locator(LAND_COM_SELECTORS.ownerFinancing).first()
+  if ((await box.count()) === 0) {
+    log('land_com: no owner-financing checkbox found; skipping')
+    return
+  }
+  const checked = async () => (await box.getAttribute('aria-checked')) === 'true' || (await box.isChecked().catch(() => false))
+  if (await checked()) return
+  await page.locator(LAND_COM_SELECTORS.ownerFinancingLabel).first().click()
+  await page.waitForTimeout(300)
+  if (!(await checked())) {
+    await box.check({ force: true }).catch(() => {})
+  }
+  if (!(await checked())) log('land_com: could not tick "Is Owner Financing Available"; continuing without it')
+}
+
+async function clickToggle(page: Page, name: string, kind: string): Promise<void> {
+  const btn = page.locator(LAND_COM_SELECTORS.toggle(name)).first()
+  if ((await btn.count()) === 0) throw new Error(`No ${kind} button labelled "${name}" in the Land.com editor`)
+  await btn.scrollIntoViewIfNeeded().catch(() => {})
+  await btn.click()
+  await page.waitForTimeout(200)
+}
+
+async function uploadPhotos(page: Page, photos: string[], log: (m: string) => void): Promise<void> {
+  const input = page.locator(LAND_COM_SELECTORS.photoInput).first()
+  if ((await input.count()) === 0) {
+    throw new Error(
+      `Could not find the photo input in the Land.com editor (tried: ${LAND_COM_SELECTORS.photoInput}). ` +
+        `Update the SELECTORS block in ${SCRIPT}.`
+    )
+  }
+  await input.setInputFiles(photos)
+  const want = photos.length
+  const deadline = Date.now() + 240_000
+  let seen = 0
+  while (Date.now() < deadline) {
+    seen = await page.locator(LAND_COM_SELECTORS.photoThumb).count()
+    if (seen >= want) break
+    await page.waitForTimeout(2000)
+  }
+  if (seen === 0) throw new Error(`No photo thumbnails appeared after uploading ${want} file(s)`)
+  log(`land_com: ${seen} of ${want} photo(s) showing in the editor`)
+  if (seen < want) log(`land_com: NOTE ${want - seen} photo(s) did not show within 4 minutes; check the Photos tab`)
+}
+
+/** Resolve the public URL (via the row's "View on Land Network"), screenshot it, return. */
+async function finish(page: Page, id: string, outputDir: string, log: (m: string) => void): Promise<PostResult> {
+  let listingUrl: string | null = null
+  try {
+    await page.goto(LAND_COM_SELECTORS.hubUrl, { waitUntil: 'domcontentloaded' })
+    await waitForHub(page)
+    await page.locator(LAND_COM_SELECTORS.tab('All Listings')).first().click().catch(() => {})
+    await page.waitForTimeout(1500)
+    const row = page.locator(`${LAND_COM_SELECTORS.row}[row-id="${id}"]`).first()
+    await row.locator(LAND_COM_SELECTORS.rowEditMenu).first().click()
+    const view = page.locator(LAND_COM_SELECTORS.viewOnNetwork).first()
+    await view.waitFor({ state: 'visible', timeout: 10_000 })
+    const popupPromise = page.context().waitForEvent('page', { timeout: 15_000 }).catch(() => null)
+    await view.click()
+    const popup = await popupPromise
+    if (popup) {
+      await popup.waitForLoadState('domcontentloaded').catch(() => {})
+      listingUrl = popup.url()
+      await popup.close().catch(() => {})
+    } else if (!page.url().startsWith(HUB)) {
+      listingUrl = page.url()
+    }
+  } catch (err) {
+    log(`land_com: could not open "View on Land Network" for ${id}: ${err instanceof Error ? err.message.split('\n')[0] : err}`)
+  }
+  if (!listingUrl || listingUrl.startsWith(HUB)) {
+    listingUrl = LAND_COM_SELECTORS.editUrl(id)
+    log(`land_com: reporting the Marketing Hub edit URL for ${id}; the public URL was not available`)
+  }
+  await page.goto(listingUrl, { waitUntil: 'domcontentloaded' }).catch(() => {})
+  await page.waitForTimeout(1500)
+  const screenshotPath = await saveProofScreenshot(page, outputDir, PLATFORM)
   return { listingUrl, screenshotPath }
 }
 
+// --- hub helpers ---------------------------------------------------------------
+
+async function waitForHub(page: Page): Promise<void> {
+  await page
+    .locator(`${LAND_COM_SELECTORS.loggedIn}, ${LAND_COM_SELECTORS.loginForm}`)
+    .first()
+    .waitFor({ state: 'visible', timeout: 30_000 })
+    .catch(() => {})
+  await page.waitForTimeout(1000)
+}
+
 async function onLoginPage(page: Page): Promise<boolean> {
-  if (/\/login|\/signin|account\/login/i.test(page.url())) return true
+  if (/\/login|\/signin/i.test(page.url())) return true
   return (await page.locator(LAND_COM_SELECTORS.loginForm).count()) > 0
 }
+
+async function readTabCount(page: Page, tab: string): Promise<number | null> {
+  const text = await page.locator(LAND_COM_SELECTORS.tab(tab)).first().innerText().catch(() => '')
+  const m = text.match(/\((\d+)\)/)
+  return m ? Number(m[1]) : null
+}
+
+/** Reads the Listing Manager grid rows currently rendered. */
+export async function readHubRows(page: Page): Promise<HubRow[]> {
+  const rows = page.locator(LAND_COM_SELECTORS.row)
+  const n = await rows.count()
+  const out: HubRow[] = []
+  for (let i = 0; i < n; i++) {
+    const r = rows.nth(i)
+    const id = (await r.getAttribute('row-id')) ?? ''
+    if (!id) continue
+    const text = await r.innerText().catch(() => '')
+    out.push(parseHubRowText(id, text))
+  }
+  return out
+}
+
+async function visibleTexts(page: Page, selector: string): Promise<string[]> {
+  const texts: string[] = []
+  for (const part of selector.split(/,(?![^(]*\))/)) {
+    const loc = page.locator(part.trim())
+    const n = await loc.count().catch(() => 0)
+    for (let i = 0; i < Math.min(n, 10); i++) {
+      if (!(await loc.nth(i).isVisible().catch(() => false))) continue
+      const t = (await loc.nth(i).innerText().catch(() => '')).trim().replace(/\s+/g, ' ')
+      if (t) texts.push(t.slice(0, 160))
+    }
+  }
+  return [...new Set(texts)]
+}
+
+// --- pure helpers (unit-tested) ------------------------------------------------
+
+const STATUS_RE = /^(For Sale|Draft|Off Market|Sold|Pending|Active|Under Contract)$/i
+
+/** Parses an ag-grid row's innerText (one cell per line) into a HubRow. */
+export function parseHubRowText(id: string, text: string): HubRow {
+  const lines = text
+    .split('\n')
+    .map((l) => l.trim())
+    .filter(Boolean)
+  const row: HubRow = { id, title: '', city: null, stateAbbr: null, priceUsd: null, acres: null, status: '' }
+  // The ID cell renders as "ID 28909620" and the title may follow on the
+  // same line with no separator ("ID 29006903New Listing") or on the next.
+  const idIdx = lines.findIndex((l) => l.startsWith(`ID ${id}`) || l.startsWith(`ID${id}`))
+  if (idIdx !== -1) {
+    const rest = lines[idIdx].slice(lines[idIdx].indexOf(id) + id.length).trim()
+    row.title = rest || lines[idIdx + 1] || ''
+  }
+  for (const l of lines) {
+    let m: RegExpMatchArray | null
+    if ((m = l.match(/^(.+?),\s*([A-Z]{2})$/)) && row.city === null) {
+      row.city = m[1]
+      row.stateAbbr = m[2]
+    } else if ((m = l.match(/^\$([\d,]+)(?:\.\d+)?$/)) && row.priceUsd === null) {
+      row.priceUsd = Number(m[1].replace(/,/g, ''))
+    } else if (/^\d+(\.\d+)?$/.test(l) && row.acres === null && row.priceUsd !== null) {
+      row.acres = Number(l)
+    } else if (STATUS_RE.test(l) && !row.status) {
+      row.status = l
+    }
+  }
+  return row
+}
+
+export function isActive(status: string): boolean {
+  return /for sale|active|pending|under contract/i.test(status)
+}
+
+/**
+ * The listing already on the account for this lot, if any: same title, or
+ * same price + acreage + state (catches a listing posted by hand under a
+ * different headline). Sold / Off Market rows never count.
+ */
+export function findMatch(
+  rows: HubRow[],
+  headline: string,
+  priceUsd: number,
+  acreage: number,
+  stateAbbr: string
+): (HubRow & { matchedOn: string }) | null {
+  const live = rows.filter((r) => !/sold|off market/i.test(r.status))
+  const byTitle = live.find((r) => r.title && sameTitle(r.title, headline))
+  if (byTitle) return { ...byTitle, matchedOn: 'title' }
+  const byFacts = live.find(
+    (r) =>
+      r.priceUsd === priceUsd &&
+      r.acres !== null &&
+      Math.abs(r.acres - acreage) < 0.05 &&
+      (r.stateAbbr === null || stateAbbr.length !== 2 || r.stateAbbr === stateAbbr.toUpperCase())
+  )
+  if (byFacts) return { ...byFacts, matchedOn: 'price + acreage + state' }
+  return null
+}
+
+export function coordinatesFromTask(task: PosterTask): { latitude: number; longitude: number } | null {
+  const m = task.metadata ?? {}
+  const lat = Number(m['latitude'] ?? m['lat'])
+  const lon = Number(m['longitude'] ?? m['lng'] ?? m['lon'])
+  if (!Number.isFinite(lat) || !Number.isFinite(lon) || lat === 0 || lon === 0) return null
+  if (Math.abs(lat) > 90 || Math.abs(lon) > 180) return null
+  return { latitude: lat, longitude: lon }
+}
+
+/**
+ * Text for the required "Location Description / Street Address" box.
+ * Never the reverse-geocoded street. Explicit metadata first, then the
+ * county and state.
+ */
+export function locationDescription(task: PosterTask, location: { county: string; stateAbbr: string; state: string }): string {
+  return (
+    stringMeta(task, 'address') ??
+    stringMeta(task, 'location_description') ??
+    `${location.county} County, ${location.stateAbbr.length === 2 ? location.stateAbbr : location.state}`
+  )
+}
+
+export function propertyTypesFromTask(task: PosterTask): string[] {
+  return pickFromList(task, 'land_com_property_types', PROPERTY_TYPES, ['Undeveloped'])
+}
+
+export function activitiesFromTask(task: PosterTask): string[] {
+  return pickFromList(task, 'land_com_activities', ACTIVITIES, [])
+}
+
+function pickFromList(task: PosterTask, key: string, allowed: string[], fallback: string[]): string[] {
+  const raw = task.metadata?.[key]
+  const values = Array.isArray(raw) ? raw : typeof raw === 'string' ? raw.split(',') : null
+  if (!values) return fallback
+  const out: string[] = []
+  for (const v of values) {
+    if (typeof v !== 'string') continue
+    const hit = allowed.find((a) => a.toLowerCase() === v.trim().toLowerCase())
+    if (hit && !out.includes(hit)) out.push(hit)
+  }
+  return out.length > 0 ? out : fallback
+}
+
+function stringMeta(task: PosterTask, key: string): string | undefined {
+  const v = task.metadata?.[key]
+  return typeof v === 'string' && v.trim() ? v.trim() : undefined
+}
+
+function numberMeta(task: PosterTask, key: string): number | undefined {
+  const v = task.metadata?.[key]
+  return typeof v === 'number' && Number.isFinite(v) ? v : undefined
+}
+
