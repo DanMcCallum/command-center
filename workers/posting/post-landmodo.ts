@@ -64,6 +64,9 @@ export const LANDMODO_SELECTORS = {
   // --- property list ---
   listUrl: `${ORIGIN}/account/properties/view`,
   listRow: 'tr[role="row"]',
+  // The list is a server-side DataTable: rows arrive by XHR after load.
+  listProcessing: '.dataTables_processing',
+  listEmpty: '.dataTables_empty',
   rowTitle: '.post-title a',
   rowViewPost: 'a:text-is("View Post")',
   rowPhotos: 'a[href*="/account/properties/addphotos/"]',
@@ -296,8 +299,20 @@ async function visibleTexts(page: Page, selector: string): Promise<string[]> {
 
 /** Reads every property row on the My Properties page. */
 export async function readPropertyRows(page: Page): Promise<PropertyRow[]> {
+  // Rows come from an XHR after the page loads (the table shows
+  // "Processing..." meanwhile). Wait for a real row or the empty marker,
+  // then for the processing overlay to clear, before reading anything.
+  await page
+    .locator(`${LANDMODO_SELECTORS.rowTitle}, ${LANDMODO_SELECTORS.listEmpty}`)
+    .first()
+    .waitFor({ state: 'attached', timeout: 30_000 })
+    .catch(() => {})
+  await page
+    .locator(LANDMODO_SELECTORS.listProcessing)
+    .first()
+    .waitFor({ state: 'hidden', timeout: 30_000 })
+    .catch(() => {})
   const rows = page.locator(LANDMODO_SELECTORS.listRow)
-  await rows.first().waitFor({ state: 'attached', timeout: 15_000 }).catch(() => {})
   const n = await rows.count()
   const out: PropertyRow[] = []
   for (let i = 0; i < n; i++) {
