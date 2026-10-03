@@ -21,8 +21,8 @@
     },
     "land_com": {
       "display_name": "Land.com",
-      "headline_max": 100,
-      "description_max": 1500,
+      "headline_max": 75,
+      "description_max": 2000,
       "buyer_profile": "Umbrella network for LandWatch and Lands of America. Same serious-buyer audience: out-of-state retirees, recreational and investor types. Wants acreage, access, utilities, zoning, comps."
     },
     "land_listings": {

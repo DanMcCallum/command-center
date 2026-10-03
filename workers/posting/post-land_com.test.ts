@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import {
   activitiesFromTask,
+  titleForLandCom,
   coordinatesFromTask,
   findMatch,
   isActive,
@@ -87,4 +88,12 @@ test('property types and activities default and validate', () => {
   ])
   assert.deepEqual(activitiesFromTask({ id: 't', title: '', metadata: {} }), [])
   assert.deepEqual(activitiesFromTask({ id: 't', title: '', metadata: { land_com_activities: ['Camping', 'Skiing'] } }), ['Camping', 'Skiing'])
+})
+
+test('titleForLandCom enforces the 75-character cap and honours the override', () => {
+  const long = '1 Wooded Acre in Redhill Forest, Fairplay CO. Power at Road, Community Water. $35,000 or 30% Down'
+  assert.throws(() => titleForLandCom({ id: 't', title: '', metadata: {} }, long), /cannot be over 75/)
+  const short = '1 Wooded Acre, Redhill Forest, Fairplay CO. Power at Road. $35K or 30% Down'
+  assert.equal(titleForLandCom({ id: 't', title: '', metadata: {} }, short), short)
+  assert.equal(titleForLandCom({ id: 't', title: '', metadata: { land_com_headline: short } }, long), short)
 })

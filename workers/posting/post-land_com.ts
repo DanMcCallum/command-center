@@ -51,6 +51,8 @@ const HUB = 'https://market.land.com'
 export const LAND_COM_LIMITS = {
   /** Active listings allowed on the account (metadata.land_com_active_cap overrides). */
   activeCap: 5,
+  /** The editor rejects longer titles ("cannot be over 75 characters"). */
+  titleMaxChars: 75,
   /** Photos sent per listing (the app shows no hard cap; it nudges toward 16). */
   maxPhotos: 20,
 }
@@ -106,7 +108,7 @@ export const LAND_COM_SELECTORS = {
   save: 'button:text-is("Save")',
   savedIndicator: 'text=/no unsaved changes/i',
   publish: 'button:has-text("Publish Changes")',
-  validation: '[role="alert"], text=/required|invalid|must be/i',
+  validation: '[role="alert"], text=/required|invalid|must be|cannot be|too long|at least|maximum|exceed/i',
 }
 
 const EDIT_URL_RE = /\/listing\/edit\/(\d+)/
@@ -136,6 +138,8 @@ export async function postToLandCom(
   const ownerFinanced = financing.downPaymentUsd !== null || financing.monthlyPaymentUsd !== null
   const page = opts.page
   const cap = numberMeta(task, 'land_com_active_cap') ?? LAND_COM_LIMITS.activeCap
+  const title = titleForLandCom(task, adCopy.headline)
+  if (title !== adCopy.headline) log(`land_com: using metadata.land_com_headline as the title (${title.length} chars)`)
 
   // 1. Listing Manager: existing listing? draft to finish? room under the cap?
   log(`land_com: opening the Marketing Hub`)
@@ -153,7 +157,7 @@ export async function postToLandCom(
   log(`land_com: hub open, ${activeCount ?? '?'} active listing(s), cap ${cap}`)
   const rows = await readAllRows(page)
   log(`land_com: ${rows.length} row(s) across All Listings + Draft: ${rows.map((r) => `${r.id} [${r.status || '?'}] ${r.title.slice(0, 40)}`).join('; ') || 'none'}`)
-  const match = findMatch(rows, adCopy.headline, facts.priceUsd, facts.acreage, location.stateAbbr)
+  const match = findMatch(rows, title, facts.priceUsd, facts.acreage, location.stateAbbr)
 
   if (match && isActive(match.status)) {
     log(`land_com: listing ${match.id} "${match.title}" is already active for this lot (matched on ${match.matchedOn}); recording it, not creating another`)
@@ -204,16 +208,16 @@ export async function postToLandCom(
   await fillText(page, LAND_COM_SELECTORS.price, String(facts.priceUsd), 'price')
   await fillText(page, LAND_COM_SELECTORS.acres, String(facts.acreage), 'acres')
   if (ownerFinanced) await setOwnerFinancing(page, log)
-  await fillText(page, LAND_COM_SELECTORS.title, adCopy.headline, 'title')
+  await fillText(page, LAND_COM_SELECTORS.title, title, 'title')
   await fillText(page, LAND_COM_SELECTORS.description, adCopy.description, 'description')
   // Make sure nothing reset the text before we save.
   const titleNow = await page.locator(LAND_COM_SELECTORS.title).first().inputValue().catch(() => '')
-  if (!sameTitle(titleNow, adCopy.headline)) {
+  if (!sameTitle(titleNow, title)) {
     throw new Error(`The title field reads "${titleNow}" right after filling it; the editor is resetting fields. Update ${SCRIPT}.`)
   }
 
   if (opts.dryRun) {
-    await saveAndVerify(page, listingId, adCopy.headline, log)
+    await saveAndVerify(page, listingId, title, log)
     log(`land_com: dry run, leaving draft ${listingId} filled, saved and unpublished in the Marketing Hub`)
     const screenshotPath = await saveProofScreenshot(page, opts.outputDir, PLATFORM)
     return { listingUrl: null, screenshotPath }
@@ -221,7 +225,7 @@ export async function postToLandCom(
 
   // Publish. Text fields only persist on Save, and Publish Changes stays
   // disabled until the draft is saved, so save first and prove it landed.
-  await saveAndVerify(page, listingId, adCopy.headline, log)
+  await saveAndVerify(page, listingId, title, log)
   const publish = page.locator(LAND_COM_SELECTORS.publish).first()
   await publish.waitFor({ state: 'visible', timeout: 15_000 })
   const publishDeadline = Date.now() + 20_000
@@ -613,6 +617,24 @@ export function findMatch(
   )
   if (byFacts) return { ...byFacts, matchedOn: 'price + acreage + state' }
   return null
+}
+
+/**
+ * The title the editor will accept: metadata.land_com_headline when set,
+ * else the ad headline, which must fit the 75-character cap. Over-long
+ * titles fail with a message rather than being silently chopped, because
+ * the headline is crafted copy.
+ */
+export function titleForLandCom(task: PosterTask, headline: string): string {
+  const override = stringMeta(task, 'land_com_headline')
+  const title = override ?? headline
+  if (title.length > LAND_COM_LIMITS.titleMaxChars) {
+    throw new Error(
+      `Land.com titles cannot be over ${LAND_COM_LIMITS.titleMaxChars} characters and this one is ${title.length}: "${title}". ` +
+        `Shorten the land_com headline or set metadata.land_com_headline, then Publish again`
+    )
+  }
+  return title
 }
 
 export function coordinatesFromTask(task: PosterTask): { latitude: number; longitude: number } | null {
