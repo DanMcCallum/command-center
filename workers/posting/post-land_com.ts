@@ -53,8 +53,8 @@ export const LAND_COM_LIMITS = {
   activeCap: 5,
   /** The editor rejects longer titles ("cannot be over 75 characters"). */
   titleMaxChars: 75,
-  /** Photos sent per listing (the app shows no hard cap; it nudges toward 16). */
-  maxPhotos: 20,
+  /** Photos sent per listing (the app states no hard cap; it nudges toward 16). */
+  maxPhotos: 30,
 }
 
 export const PROPERTY_TYPES = [
