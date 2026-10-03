@@ -61,10 +61,11 @@ async function fetchTask(taskId: string): Promise<PosterTask> {
 async function main(): Promise<void> {
   const args = process.argv.slice(2)
   const dryRun = args.includes('--dry-run')
+  const headed = args.includes('--headed')
   const [platformKey, taskId] = args.filter((a) => !a.startsWith('--'))
 
   if (!platformKey || !taskId) {
-    console.error('Usage: npm run post -- <platform> <taskId> [--dry-run]')
+    console.error('Usage: npm run post -- <platform> <taskId> [--dry-run] [--headed]')
     console.error(`Implemented platforms: ${Object.keys(POSTERS).join(', ')}`)
     process.exit(1)
   }
@@ -92,7 +93,8 @@ async function main(): Promise<void> {
   console.error(
     `Posting task ${taskId} to ${platform.display_name}${dryRun ? ' (dry run)' : ''}...`
   )
-  const browser = await chromium.launch()
+  // --headed shows the window, the same way the agent runs.
+  const browser = await chromium.launch({ headless: !headed })
   try {
     const context = await browser.newContext({ storageState: authPath })
     const page = await context.newPage()
