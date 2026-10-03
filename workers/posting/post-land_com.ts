@@ -104,6 +104,7 @@ export const LAND_COM_SELECTORS = {
   photoInput: 'input#imageUploadText',
   photoThumb: 'button[aria-label="Make Cover Photo"], button[aria-label="Cover Photo"]',
   save: 'button:text-is("Save")',
+  savedIndicator: 'text=/no unsaved changes/i',
   publish: 'button:has-text("Publish Changes")',
   validation: '[role="alert"], text=/required|invalid|must be/i',
 }
@@ -205,15 +206,15 @@ export async function postToLandCom(
   }
 
   if (opts.dryRun) {
-    await clickIfEnabled(page, LAND_COM_SELECTORS.save, log)
+    await saveAndVerify(page, listingId, adCopy.headline, log)
     log(`land_com: dry run, leaving draft ${listingId} filled, saved and unpublished in the Marketing Hub`)
     const screenshotPath = await saveProofScreenshot(page, opts.outputDir, PLATFORM)
     return { listingUrl: null, screenshotPath }
   }
 
   // Publish. Text fields only persist on Save, and Publish Changes stays
-  // disabled until the draft is saved, so save first and wait for it.
-  await clickIfEnabled(page, LAND_COM_SELECTORS.save, log)
+  // disabled until the draft is saved, so save first and prove it landed.
+  await saveAndVerify(page, listingId, adCopy.headline, log)
   const publish = page.locator(LAND_COM_SELECTORS.publish).first()
   await publish.waitFor({ state: 'visible', timeout: 15_000 })
   const publishDeadline = Date.now() + 20_000
@@ -466,6 +467,39 @@ async function readAllRows(page: Page): Promise<HubRow[]> {
     }
   }
   return [...seen.values()]
+}
+
+/**
+ * Presses Save, waits for the editor to report nothing unsaved, surfaces any
+ * validation text, then reloads the editor and checks the title persisted.
+ * Throws with what it saw when the save did not stick.
+ */
+async function saveAndVerify(page: Page, listingId: string, expectedTitle: string, log: (m: string) => void): Promise<void> {
+  const pressed = await clickIfEnabled(page, LAND_COM_SELECTORS.save, log)
+  if (!pressed) log('land_com: Save was not enabled (nothing to save, or the editor is not ready)')
+  const indicator = page.locator(LAND_COM_SELECTORS.savedIndicator).first()
+  const settled = await indicator
+    .waitFor({ state: 'visible', timeout: 30_000 })
+    .then(() => true)
+    .catch(() => false)
+  const complaints = await visibleTexts(page, LAND_COM_SELECTORS.validation)
+  if (complaints.length > 0) log(`land_com: editor messages after Save: ${complaints.slice(0, 6).join(' | ')}`)
+  log(`land_com: after Save the editor ${settled ? 'reports no unsaved changes' : 'never reported "no unsaved changes" within 30s'}`)
+  await page.waitForTimeout(1500)
+
+  await page.goto(LAND_COM_SELECTORS.editUrl(listingId), { waitUntil: 'domcontentloaded' })
+  const titleBox = page.locator(LAND_COM_SELECTORS.title).first()
+  await titleBox.waitFor({ state: 'visible', timeout: 30_000 })
+  await page.waitForTimeout(1500)
+  const title = await titleBox.inputValue().catch(() => '')
+  const price = await page.locator(LAND_COM_SELECTORS.price).first().inputValue().catch(() => '')
+  if (!title.trim() || !sameTitle(title, expectedTitle)) {
+    throw new Error(
+      `Draft ${listingId} did not keep its fields after Save (title reads "${title}", price "${price}")` +
+        (complaints.length ? `; editor said: ${complaints.slice(0, 4).join(' | ')}` : '')
+    )
+  }
+  log(`land_com: draft ${listingId} saved and verified after reload (price ${price || 'blank'})`)
 }
 
 async function clickIfEnabled(page: Page, selector: string, log: (m: string) => void): Promise<boolean> {
