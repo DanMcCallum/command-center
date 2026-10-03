@@ -63,14 +63,16 @@ const LOGIN_PATH = platform.login_success?.redirect_off ?? '/login'
 
 /** Let a client-rendered page finish: network quiet, then a real control on screen. */
 async function settle(page: import('playwright').Page): Promise<void> {
-  await page.waitForLoadState('networkidle', { timeout: 20_000 }).catch(() => {})
+  // Short cap: apps with analytics/Stripe frames never reach network idle,
+  // and a React screen renders well within this after a click.
+  await page.waitForLoadState('networkidle', { timeout: 4_000 }).catch(() => {})
   await page
     .waitForSelector('input:not([type="hidden"]), textarea, select, [contenteditable="true"], [role="combobox"]', {
       state: 'attached',
-      timeout: 20_000,
+      timeout: 8_000,
     })
     .catch(() => {})
-  await page.waitForTimeout(2000)
+  await page.waitForTimeout(1000)
 }
 
 async function dump(page: import('playwright').Page, step: number): Promise<void> {
