@@ -211,10 +211,23 @@ export async function postToLandCom(
     return { listingUrl: null, screenshotPath }
   }
 
-  // Publish.
-  log('land_com: clicking Publish Changes')
+  // Publish. Text fields only persist on Save, and Publish Changes stays
+  // disabled until the draft is saved, so save first and wait for it.
+  await clickIfEnabled(page, LAND_COM_SELECTORS.save, log)
   const publish = page.locator(LAND_COM_SELECTORS.publish).first()
   await publish.waitFor({ state: 'visible', timeout: 15_000 })
+  const publishDeadline = Date.now() + 20_000
+  while (!(await publish.isEnabled().catch(() => false)) && Date.now() < publishDeadline) {
+    await page.waitForTimeout(500)
+  }
+  if (!(await publish.isEnabled().catch(() => false))) {
+    const errors = await visibleTexts(page, LAND_COM_SELECTORS.validation)
+    throw new Error(
+      `Publish Changes stayed disabled after saving draft ${listingId}` +
+        (errors.length ? `: ${errors.slice(0, 5).join(' | ')}` : '. Open it in the Marketing Hub to see what it still needs')
+    )
+  }
+  log('land_com: clicking Publish Changes')
   await publish.click()
   await page.waitForTimeout(3000)
   const errors = await visibleTexts(page, LAND_COM_SELECTORS.validation)
