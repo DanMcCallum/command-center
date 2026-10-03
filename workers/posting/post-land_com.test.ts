@@ -3,6 +3,7 @@ import { test } from 'node:test'
 import {
   activitiesFromTask,
   titleForLandCom,
+  publicListingUrl,
   coordinatesFromTask,
   findMatch,
   isActive,
@@ -96,4 +97,9 @@ test('titleForLandCom enforces the 75-character cap and honours the override', (
   const short = '1 Wooded Acre, Redhill Forest, Fairplay CO. Power at Road. $35K or 30% Down'
   assert.equal(titleForLandCom({ id: 't', title: '', metadata: {} }, short), short)
   assert.equal(titleForLandCom({ id: 't', title: '', metadata: { land_com_headline: short } }, long), short)
+})
+
+test('publicListingUrl matches the live pattern', () => {
+  assert.equal(publicListingUrl('29013311', 1, 'Park', 'Colorado'), 'https://www.land.com/property/1-acre-in-park-county-colorado/29013311/')
+  assert.equal(publicListingUrl('5', 2.27, 'Elko', 'Nevada'), 'https://www.land.com/property/2-27-acres-in-elko-county-nevada/5/')
 })

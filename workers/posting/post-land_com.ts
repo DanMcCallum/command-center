@@ -161,7 +161,7 @@ export async function postToLandCom(
 
   if (match && isActive(match.status)) {
     log(`land_com: listing ${match.id} "${match.title}" is already active for this lot (matched on ${match.matchedOn}); recording it, not creating another`)
-    return finish(page, match.id, opts.outputDir, log)
+    return finish(page, match.id, opts.outputDir, log, publicListingUrl(match.id, facts.acreage, location.county, location.state))
   }
 
   let listingId: string
@@ -260,7 +260,7 @@ export async function postToLandCom(
     )
   }
   log(`land_com: listing ${listingId} is ${after.status}`)
-  return finish(page, listingId, opts.outputDir, log)
+  return finish(page, listingId, opts.outputDir, log, publicListingUrl(listingId, facts.acreage, location.county, location.state))
 }
 
 // --- steps ---------------------------------------------------------------------
@@ -412,8 +412,24 @@ async function uploadPhotos(page: Page, photos: string[], log: (m: string) => vo
   if (seen < want) log(`land_com: NOTE ${want - seen} photo(s) did not show within 4 minutes; check the Photos tab`)
 }
 
-/** Resolve the public URL (via the row's "View on Land Network"), screenshot it, return. */
-async function finish(page: Page, id: string, outputDir: string, log: (m: string) => void): Promise<PostResult> {
+/**
+ * Public listing URL as land.com builds it: "<acres>-acre(s)-in-<county>-county-<state>/<id>/".
+ * Seen live: https://www.land.com/property/1-acre-in-park-county-colorado/29013311/
+ */
+export function publicListingUrl(id: string, acreage: number, county: string, state: string): string {
+  const slugify = (t: string) => t.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+  const acres = Number.isInteger(acreage) ? String(acreage) : String(acreage).replace('.', '-')
+  return `https://www.land.com/property/${acres}-acre${acreage === 1 ? '' : 's'}-in-${slugify(county)}-county-${slugify(state)}/${id}/`
+}
+
+/** Resolve the public URL (via the row's "View on Land Network", else built from the ID), screenshot it, return. */
+async function finish(
+  page: Page,
+  id: string,
+  outputDir: string,
+  log: (m: string) => void,
+  fallbackUrl?: string
+): Promise<PostResult> {
   let listingUrl: string | null = null
   try {
     await page.goto(LAND_COM_SELECTORS.hubUrl, { waitUntil: 'domcontentloaded' })
@@ -438,8 +454,12 @@ async function finish(page: Page, id: string, outputDir: string, log: (m: string
     log(`land_com: could not open "View on Land Network" for ${id}: ${err instanceof Error ? err.message.split('\n')[0] : err}`)
   }
   if (!listingUrl || listingUrl.startsWith(HUB)) {
-    listingUrl = LAND_COM_SELECTORS.editUrl(id)
-    log(`land_com: reporting the Marketing Hub edit URL for ${id}; the public URL was not available`)
+    listingUrl = fallbackUrl ?? LAND_COM_SELECTORS.editUrl(id)
+    log(
+      fallbackUrl
+        ? `land_com: "View on Land Network" gave no URL; using the pattern URL ${fallbackUrl}`
+        : `land_com: reporting the Marketing Hub edit URL for ${id}; the public URL was not available`
+    )
   }
   await page.goto(listingUrl, { waitUntil: 'domcontentloaded' }).catch(() => {})
   await page.waitForTimeout(1500)
