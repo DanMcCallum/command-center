@@ -305,6 +305,13 @@ export async function postToParcelView(
   if (financing.downPaymentUsd !== null && !pricingNow.down) {
     log(`parcelview: NOTE the down payment ($${financing.downPaymentUsd}) did not persist; check the Pricing section by hand`)
   }
+  const featuresWanted = featuresFromTask(task, adCopy)
+  const featuresNow = await readFeatures(page)
+  const missingFeatures = featuresWanted.filter((f) => !featuresNow.includes(f))
+  log(`parcelview: features on after save: ${featuresNow.join(', ') || 'none'}`)
+  if (missingFeatures.length) {
+    log(`parcelview: NOTE feature(s) ${missingFeatures.join(', ')} did not persist; tick them in the Property features section by hand`)
+  }
   if (financing.months !== null && !pricingNow.term) {
     log(`parcelview: NOTE the loan term (${financing.months} months) did not persist; check the Pricing section by hand`)
   }
@@ -489,16 +496,42 @@ async function selectTerrain(page: Page, terrain: string | null, log: (m: string
   await selectValue(page, PARCELVIEW_SELECTORS.terrain, terrain, 'terrain', log, true)
 }
 
+/**
+ * Feature chips are <label><input type=checkbox><span>. Clicking them from
+ * Playwright did not stick on the first live run (the public page read
+ * "Camping Not Allowed" after three saves that each logged the chip on), so
+ * the checked property is set directly, a change event dispatched, and the
+ * state verified. The save payload reads `:checked`, which this satisfies.
+ */
 async function setFeatures(page: Page, features: Feature[], log: (m: string) => void): Promise<void> {
   for (const f of FEATURES) {
     const box = page.locator(PARCELVIEW_SELECTORS.feature(f)).first()
     if ((await box.count()) === 0) continue
     const want = features.includes(f)
-    const is = await box.isChecked().catch(() => false)
-    if (is === want) continue
-    await box.setChecked(want, { force: true }).catch(() => {})
-    log(`parcelview: feature ${f} ${want ? 'on' : 'off'}`)
+    const before = await box.isChecked().catch(() => false)
+    if (before === want) continue
+    await box.evaluate((el, checked) => {
+      const input = el as HTMLInputElement
+      input.checked = checked
+      input.dispatchEvent(new Event('input', { bubbles: true }))
+      input.dispatchEvent(new Event('change', { bubbles: true }))
+    }, want)
+    let after = await box.isChecked().catch(() => false)
+    if (after !== want) {
+      await box.click({ force: true }).catch(() => {})
+      after = await box.isChecked().catch(() => false)
+    }
+    log(`parcelview: feature ${f} ${want ? 'on' : 'off'}${after === want ? '' : ' (did not take; check the Property features section)'}`)
   }
+}
+
+async function readFeatures(page: Page): Promise<Feature[]> {
+  const on: Feature[] = []
+  for (const f of FEATURES) {
+    const box = page.locator(PARCELVIEW_SELECTORS.feature(f)).first()
+    if ((await box.count()) > 0 && (await box.isChecked().catch(() => false))) on.push(f)
+  }
+  return on
 }
 
 /**

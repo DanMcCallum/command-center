@@ -1,4 +1,4 @@
-# Handoff: marketplace posting (Landmodo and Land.com verified; ParcelView written, awaiting its first run)
+# Handoff: marketplace posting (Landmodo, Land.com and ParcelView verified live)
 
 Written 2026-10-03 at the end of a long session. Read this before touching
 `workers/posting`. The repo's `AGENTS.md` has the durable rules; this file is
@@ -164,7 +164,7 @@ Land Network" (captured as a popup) for the public URL, screenshot it.
    Landmodo one, and record anything new in the memory file
    `poster-agent-laptop.md`.
 
-## ParcelView: written 2026-10-04, NOT yet run
+## ParcelView: DONE and verified live 2026-10-04
 
 `post-parcelview.ts` was built from four recon dumps (new-property before and
 after the APN search, edit-property for Nevada listing 445, properties,
@@ -209,7 +209,18 @@ The AGENTS.md bullet has the flow. Facts worth keeping:
   "__name is not defined". The re-encoder is kept as source text and built
   with `new Function` for that reason.
 
-First run from the laptop (dry run leaves the Park County lot Unlisted):
+- Live result: property 726, public URL
+  https://parcelview.com/listing/f5bc2a597ade461e4c2ffd61fb8d1503/ , 15
+  photos, full pricing block, "Fairplay, Colorado". Published through the
+  dashboard with the agent on the laptop; the posting record says
+  attempts: 2, so the first attempt failed for a reason not yet seen (ask
+  for the agent log). Open items after the live run: the Camping chip did
+  not persist (public page said "Camping Not Allowed"); setFeatures now sets
+  the checked property directly and the poster reads features back after
+  Save. Dan ticks it by hand on 726. The dry run's embed hash (6741…) was
+  not the published hash (f5bc…): read the hash after the final save only.
+
+Dry run from the laptop (leaves the lot Unlisted):
 `DASHBOARD_URL=http://100.83.155.65:3000 npm run post -- parcelview task-1790275652160-rlxk9l --dry-run --headed`
 
 ## Remaining platforms on this task
