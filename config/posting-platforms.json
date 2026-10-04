@@ -40,7 +40,7 @@
     },
     "parcelview": {
       "display_name": "ParcelView",
-      "enabled": false,
+      "enabled": true,
       "login_url": "https://parcelview.com/login/",
       "new_listing_url": "https://parcelview.com/new-property/",
       "login_success": {

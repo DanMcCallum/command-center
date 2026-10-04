@@ -28,6 +28,7 @@ import {
 } from './post-common'
 import { postToLandCom } from './post-land_com'
 import { postToLandmodo } from './post-landmodo'
+import { postToParcelView } from './post-parcelview'
 
 const DASHBOARD_URL = process.env.DASHBOARD_URL || 'http://localhost:3000'
 
@@ -40,6 +41,7 @@ export type Poster = (
 export const POSTERS: Record<string, Poster> = {
   landmodo: postToLandmodo,
   land_com: postToLandCom,
+  parcelview: postToParcelView,
 }
 
 async function fetchTask(taskId: string): Promise<PosterTask> {

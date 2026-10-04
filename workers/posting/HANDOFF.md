@@ -1,4 +1,4 @@
-# Handoff: marketplace posting (Landmodo and Land.com done and verified)
+# Handoff: marketplace posting (Landmodo and Land.com verified; ParcelView written, awaiting its first run)
 
 Written 2026-10-03 at the end of a long session. Read this before touching
 `workers/posting`. The repo's `AGENTS.md` has the durable rules; this file is
@@ -163,6 +163,39 @@ Land Network" (captured as a popup) for the public URL, screenshot it.
 3. After it works, add the Land.com bullet to `AGENTS.md` next to the
    Landmodo one, and record anything new in the memory file
    `poster-agent-laptop.md`.
+
+## ParcelView: written 2026-10-04, NOT yet run
+
+`post-parcelview.ts` was built from four recon dumps (new-property before and
+after the APN search, edit-property for Nevada listing 445, properties,
+account), all on this server under `.agent-cache/recon/parcelview_com_*`.
+The AGENTS.md bullet has the flow. Facts worth keeping:
+
+- Growth plan, $99/mo, 50 properties (5 used), no per-listing credit.
+- Existing Nevada listings: 349, 444, 445, 549, 686 (ids in the edit URLs).
+- The save handler is jQuery `$('#property-form').on('submit')` posting
+  `pv3d_save_property` to admin-ajax. New property: response carries
+  `redirect` to the edit page. Existing: `#pv3d-msg` says "Saved!" and the
+  page reloads 500 ms later. Errors go to `#pv3d-msg` in red.
+- Photos: `uploadPropertyPhotos(files)` on the hidden file input (onchange),
+  refuses with an alert() unless `#pv3d-photo-copyright` is ticked, posts
+  each file separately with `pv3dConfig.propertyId`, which is 0 on the new
+  page, so the poster only uploads on the edit page. First photo becomes the
+  cover (gold border on the thumb); `setCoverPhoto` exists if that is wrong.
+- The description textarea exists only on the edit page (section 5 on the new
+  page holds just the map-layer checkboxes). It has an AI generator next to
+  it; the poster never touches that.
+- `listing_status` options: unlisted, available, pending (Under Contract),
+  sold. `listing_badge`: '', available, new, reduced, financing. `listing_kind`:
+  land, residential. All three sit outside the form with form="property-form".
+- Unknowns the first run will answer: whether `fill()` on the APN box and
+  `selectOption` on the state select trigger the county load (the recon used
+  the same calls, so probably yes); whether the new-property Save validates
+  anything beyond name/state/county/acres; how long the parcel search takes
+  (the recon took a few seconds, cached).
+
+First run from the laptop (dry run leaves the Park County lot Unlisted):
+`DASHBOARD_URL=http://100.83.155.65:3000 npm run post -- parcelview task-1790275652160-rlxk9l --dry-run --headed`
 
 ## Remaining platforms on this task
 
