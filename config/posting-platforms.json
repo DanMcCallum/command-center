@@ -42,7 +42,7 @@
       "display_name": "ParcelView",
       "enabled": false,
       "login_url": "https://parcelview.com/login/",
-      "new_listing_url": "https://parcelview.com/login/",
+      "new_listing_url": "https://parcelview.com/new-property/",
       "login_success": {
         "redirect_off": "/login"
       }

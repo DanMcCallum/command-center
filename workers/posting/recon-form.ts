@@ -15,6 +15,7 @@
  *                             selector (css, or xpath=... for unlabeled buttons)
  *   --type=<css>::<text>      type text into the element matching the selector
  *   --fill=<css>::<text>      replace the element's value (empty text clears it)
+ *   --select=<css>::<value>   choose a <select> option by value, else by label
  *   --key=<Key>               press a key (ArrowDown, Enter, Tab, ...)
  *   --wait=<ms>               pause (dumps nothing)
  *   --allow=<text>            permit one otherwise-refused click label
@@ -34,8 +35,8 @@ import { chromium } from 'playwright'
 import { AUTH_DIR, loadPlatformConfig } from './post-common'
 
 const args = process.argv.slice(2)
-type Step = { kind: 'click' | 'clicksel' | 'type' | 'fill' | 'key' | 'wait'; value: string }
-const STEP_RE = /^--(click|clicksel|type|fill|key|wait)=(.*)$/s
+type Step = { kind: 'click' | 'clicksel' | 'type' | 'fill' | 'select' | 'key' | 'wait'; value: string }
+const STEP_RE = /^--(click|clicksel|type|fill|select|key|wait)=(.*)$/s
 const allowed = new Set(
   args.filter((a) => a.startsWith('--allow=')).map((a) => a.slice('--allow='.length).trim().toLowerCase())
 )
@@ -291,6 +292,22 @@ async function main(): Promise<void> {
         }
         await target.fill(st.value.slice(sep + 2))
         await target.press('Tab')
+      } else if (st.kind === 'select') {
+        const sep = st.value.indexOf('::')
+        if (sep === -1) throw new Error(`--select needs <css>::<value>, got "${st.value}"`)
+        const target = page.locator(st.value.slice(0, sep)).first()
+        if ((await target.count()) === 0) {
+          console.log(`  no element matches "${st.value.slice(0, sep)}"; stopping here`)
+          break
+        }
+        const want = st.value.slice(sep + 2)
+        try {
+          await target.selectOption(want)
+        } catch {
+          await target.selectOption({ label: want })
+        }
+        const chosen = await target.inputValue().catch(() => '')
+        console.log(`  selected value "${chosen}"`)
       } else if (st.kind === 'key') {
         await page.keyboard.press(st.value)
       }
