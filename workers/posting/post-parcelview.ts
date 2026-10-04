@@ -120,6 +120,8 @@ export const PARCELVIEW_SELECTORS = {
   county: '#prop-county',
   state: '#prop-state',
   city: '#prop-city',
+  /** Hidden parcel-record field; the town when the lot has no street address. */
+  muniName: '#prop-muni-name',
   zip: '#prop-zip',
   latitude: '#prop-lat',
   longitude: '#prop-lng',
@@ -254,6 +256,7 @@ export async function postToParcelView(
   // Re-filled on the edit page even right after createFromApn: the first
   // dry run came back without a down payment or loan term, so every save
   // sends the full pricing block and the read-back below reports it.
+  await fillCityIfEmpty(page, log)
   await fillText(page, PARCELVIEW_SELECTORS.acres, String(facts.acreage), 'acres')
   await fillPricing(page, facts.priceUsd, financing)
   await selectTerrain(page, terrainForParcelView(task), log)
@@ -428,6 +431,7 @@ async function createFromApn(page: Page, a: CreateArgs): Promise<string> {
     await fillText(page, PARCELVIEW_SELECTORS.latitude, String(a.coords.latitude), 'latitude')
     await fillText(page, PARCELVIEW_SELECTORS.longitude, String(a.coords.longitude), 'longitude')
   }
+  await fillCityIfEmpty(page, log)
   await fillText(page, PARCELVIEW_SELECTORS.acres, String(a.acreage), 'acres')
   await fillPricing(page, a.priceUsd, a.financing)
   await selectTerrain(page, a.terrain, log)
@@ -448,6 +452,23 @@ async function createFromApn(page: Page, a: CreateArgs): Promise<string> {
   const id = page.url().match(EDIT_URL_RE)?.[1]
   if (!id) throw new Error(`Unexpected edit URL ${page.url()}`)
   return id
+}
+
+/**
+ * Vacant lots usually come back with "No address" and an empty City box, so
+ * the preview reads "COLORADO, 80440". The parcel record still names the
+ * town (hidden muni_name, "Fairplay" for the Park County lot); use it.
+ */
+async function fillCityIfEmpty(page: Page, log: (m: string) => void): Promise<void> {
+  const city = page.locator(PARCELVIEW_SELECTORS.city).first()
+  if ((await city.count()) === 0) return
+  if ((await city.inputValue().catch(() => '')).trim()) return
+  const muni = (await page.locator(PARCELVIEW_SELECTORS.muniName).first().inputValue().catch(() => '')).trim()
+  if (!muni) return
+  const pretty = muni.toLowerCase().replace(/\b[a-z]/g, (c) => c.toUpperCase())
+  await city.fill(pretty, { force: true })
+  await city.dispatchEvent('change').catch(() => {})
+  log(`parcelview: city was empty; using the parcel record's town "${pretty}"`)
 }
 
 async function fillPricing(page: Page, priceUsd: number, financing: ReturnType<typeof financingFromTask>): Promise<void> {
