@@ -6,6 +6,7 @@ import {
   featuresFromTask,
   findCard,
   hashFromEditPage,
+  needsShrink,
   normalizeApn,
   parsePropertyCard,
   parseUsage,
@@ -117,4 +118,11 @@ test('badgeForTask: financing when owner financed, else new; metadata override',
   assert.equal(badgeForTask(task({}), false), 'new')
   assert.equal(badgeForTask(task({ parcelview_badge: 'reduced' }), true), 'reduced')
   assert.equal(badgeForTask(task({ parcelview_badge: 'bogus' }), true), 'financing')
+})
+
+test('needsShrink: anything over 900 KB is re-encoded before upload', () => {
+  assert.equal(needsShrink(276 * 1024), false)
+  assert.equal(needsShrink(900 * 1024), false)
+  assert.equal(needsShrink(1003 * 1024), true)
+  assert.equal(needsShrink(1.5 * 1024 * 1024), true)
 })

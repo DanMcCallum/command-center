@@ -37,6 +37,8 @@
  * Nothing is paid: the Growth plan allows 50 properties, no per-listing credit.
  */
 import * as fs from 'node:fs'
+import * as os from 'node:os'
+import * as path from 'node:path'
 import type { Page } from 'playwright'
 import {
   AdCopy,
@@ -62,9 +64,18 @@ export const PARCELVIEW_LIMITS = {
   descriptionMaxChars: 2000,
   /** No hard cap on the name field; config/ad-platforms.json headline_max. */
   titleMaxChars: 75,
-  /** uploadPropertyPhotos(): maxPhotos = 15, files over 5 MB are skipped. */
+  /** uploadPropertyPhotos(): maxPhotos = 15, files over 5 MB are skipped client-side. */
   maxPhotos: 15,
   maxPhotoBytes: 5 * 1024 * 1024,
+  /**
+   * The first dry run (2026-10-04) landed exactly the 5 of 15 photos under
+   * 1 MB, and every photo on the account's older listings is under 1 MB as
+   * served, so the server's real limit sits near 1 MB. Anything bigger is
+   * re-encoded in the browser before upload.
+   */
+  uploadTargetBytes: 900 * 1024,
+  /** Long side after re-encoding; plenty for the gallery. */
+  shrinkMaxDimension: 2000,
 }
 
 /** <select name="terrain"> option values on the property form. */
@@ -240,13 +251,14 @@ export async function postToParcelView(
   // not reload the page, so order only matters for the final Save.
   await fillText(page, PARCELVIEW_SELECTORS.name, title, 'property name')
   await fillText(page, PARCELVIEW_SELECTORS.description, description, 'description')
-  if (!created) {
-    // A property finished across two runs never went through createFromApn.
-    await fillText(page, PARCELVIEW_SELECTORS.acres, String(facts.acreage), 'acres')
-    await fillPricing(page, facts.priceUsd, financing)
-    await selectTerrain(page, terrainForParcelView(task), log)
-    await setFeatures(page, featuresFromTask(task, adCopy), log)
-  }
+  // Re-filled on the edit page even right after createFromApn: the first
+  // dry run came back without a down payment or loan term, so every save
+  // sends the full pricing block and the read-back below reports it.
+  await fillText(page, PARCELVIEW_SELECTORS.acres, String(facts.acreage), 'acres')
+  await fillPricing(page, facts.priceUsd, financing)
+  await selectTerrain(page, terrainForParcelView(task), log)
+  await setFeatures(page, featuresFromTask(task, adCopy), log)
+  void created
   await selectValue(page, PARCELVIEW_SELECTORS.listingKind, 'land', 'listing kind', log, true)
   await selectValue(page, PARCELVIEW_SELECTORS.listingBadge, badgeForTask(task, ownerFinanced), 'badge', log, true)
   await selectValue(page, PARCELVIEW_SELECTORS.listingStatus, opts.dryRun ? 'unlisted' : 'available', 'listing status', log)
@@ -258,7 +270,8 @@ export async function postToParcelView(
     log(`parcelview: property already shows ${already} photo(s); nothing to upload`)
   } else if (remaining.length > 0) {
     log(`parcelview: uploading ${remaining.length} photo(s)${already ? ` (${already} already on the property)` : ''}`)
-    await uploadPhotos(page, remaining, already, log)
+    const prepared = await shrinkPhotos(page, remaining, task.id, log)
+    await uploadPhotos(page, prepared, already, log)
   }
 
   await saveEditPage(page, propertyId, log)
@@ -281,7 +294,17 @@ export async function postToParcelView(
     throw new Error(`After saving, property ${propertyId} has Listing status "${statusNow}" instead of "${want}". ${saveHint(propertyId, dialogs)}`)
   }
   const shown = await photoCount(page)
-  log(`parcelview: saved; ${shown} photo(s) on the property, status ${statusNow}`)
+  const pricingNow = await readPricing(page)
+  log(
+    `parcelview: saved; ${shown} photo(s) on the property, status ${statusNow}, pricing ` +
+      `cash ${pricingNow.cash || '-'} / down ${pricingNow.down || '-'} / monthly ${pricingNow.monthly || '-'} / term ${pricingNow.term || '-'}`
+  )
+  if (financing.downPaymentUsd !== null && !pricingNow.down) {
+    log(`parcelview: NOTE the down payment ($${financing.downPaymentUsd}) did not persist; check the Pricing section by hand`)
+  }
+  if (financing.months !== null && !pricingNow.term) {
+    log(`parcelview: NOTE the loan term (${financing.months} months) did not persist; check the Pricing section by hand`)
+  }
 
   if (opts.dryRun) {
     const hash = hashFromEditPage(await page.locator(PARCELVIEW_SELECTORS.embedInput).first().inputValue().catch(() => ''))
@@ -457,6 +480,12 @@ async function setFeatures(page: Page, features: Feature[], log: (m: string) => 
   }
 }
 
+/**
+ * Uploads one file at a time. The site fires one ajax request per file and
+ * reports nothing per file on failure, so each upload is confirmed by the
+ * thumbnail count going up before the next starts. A file that does not
+ * land gets one retry, then is reported by name.
+ */
 async function uploadPhotos(page: Page, photos: string[], already: number, log: (m: string) => void): Promise<void> {
   const copyright = page.locator(PARCELVIEW_SELECTORS.photoCopyright).first()
   if ((await copyright.count()) > 0 && !(await copyright.isChecked().catch(() => false))) {
@@ -469,22 +498,135 @@ async function uploadPhotos(page: Page, photos: string[], already: number, log: 
         `Update the SELECTORS block in ${SCRIPT}.`
     )
   }
-  await input.setInputFiles(photos)
-  const want = already + photos.length
-  const deadline = Date.now() + 240_000
-  let seen = already
-  while (Date.now() < deadline) {
-    seen = await page.locator(PARCELVIEW_SELECTORS.photoThumb).count()
-    if (seen >= want) break
-    await page.waitForTimeout(2000)
+  const thumbs = () => page.locator(PARCELVIEW_SELECTORS.photoThumb).count()
+  const statusText = async () => (await page.locator(PARCELVIEW_SELECTORS.photoStatus).first().innerText().catch(() => '')).trim()
+  let seen = Math.max(already, await thumbs())
+  const failed: string[] = []
+  for (const photo of photos) {
+    const name = path.basename(photo)
+    let landed = false
+    for (let attempt = 1; attempt <= 2 && !landed; attempt++) {
+      const before = seen
+      await input.setInputFiles([photo])
+      const deadline = Date.now() + 90_000
+      while (Date.now() < deadline) {
+        seen = await thumbs()
+        if (seen > before) break
+        const st = await statusText()
+        if (/too large|failed|error|limit reached/i.test(st)) {
+          log(`parcelview: ${name} attempt ${attempt}: site says "${st}"`)
+          break
+        }
+        await page.waitForTimeout(1000)
+      }
+      landed = seen > before
+      if (!landed && attempt === 1) {
+        log(`parcelview: ${name} did not appear after attempt ${attempt}; retrying once`)
+        await page.waitForTimeout(2000)
+      }
+    }
+    if (!landed) failed.push(name)
+    else log(`parcelview: photo ${seen - already}/${photos.length} ${name} uploaded`)
+    if (seen >= PARCELVIEW_LIMITS.maxPhotos) break
   }
   if (seen <= already) {
-    const status = (await page.locator(PARCELVIEW_SELECTORS.photoStatus).first().innerText().catch(() => '')).trim()
-    throw new Error(`No new photo thumbnails appeared after uploading ${photos.length} file(s)` + (status ? `: "${status}"` : ''))
+    const st = await statusText()
+    throw new Error(`No new photo thumbnails appeared after uploading ${photos.length} file(s)` + (st ? `: "${st}"` : ''))
   }
-  log(`parcelview: ${seen} of ${want} photo(s) showing on the property`)
-  if (seen < want) log(`parcelview: NOTE ${want - seen} photo(s) did not show within 4 minutes; check the Media section`)
+  log(`parcelview: ${seen} photo(s) showing on the property`)
+  if (failed.length) log(`parcelview: NOTE ${failed.length} photo(s) never showed: ${failed.join(', ')}`)
   await page.waitForTimeout(1500)
+}
+
+/**
+ * Browser-side re-encoder, kept as source text and turned into a function at
+ * runtime: tsx injects a `__name` helper into nested named functions in
+ * compiled TypeScript, and that helper does not exist inside the page.
+ */
+const SHRINK_IN_BROWSER = `async ({ b64, mime, maxBytes, maxDim }) => {
+  const img = new Image()
+  img.src = 'data:' + mime + ';base64,' + b64
+  await img.decode()
+  const toB64 = (blob) => new Promise((resolve) => {
+    const r = new FileReader()
+    r.onload = () => resolve(String(r.result).split(',')[1])
+    r.readAsDataURL(blob)
+  })
+  const encode = (scale, q) => new Promise((resolve) => {
+    const w = Math.max(1, Math.round(img.naturalWidth * scale))
+    const h = Math.max(1, Math.round(img.naturalHeight * scale))
+    const c = document.createElement('canvas')
+    c.width = w
+    c.height = h
+    c.getContext('2d').drawImage(img, 0, 0, w, h)
+    c.toBlob(resolve, 'image/jpeg', q)
+  })
+  let scale = Math.min(1, maxDim / Math.max(img.naturalWidth, img.naturalHeight))
+  for (let round = 0; round < 4; round++) {
+    for (const q of [0.85, 0.8, 0.75, 0.7, 0.62, 0.55]) {
+      const blob = await encode(scale, q)
+      if (blob && blob.size <= maxBytes) return { b64: await toB64(blob), bytes: blob.size, q, scale }
+    }
+    scale *= 0.8
+  }
+  return null
+}`
+// eslint-disable-next-line @typescript-eslint/no-implied-eval
+const shrinkInBrowser = new Function('arg', `return (${SHRINK_IN_BROWSER})(arg)`)
+
+/**
+ * Re-encodes photos over uploadTargetBytes as JPEG in the poster's own
+ * browser (canvas; no image library on the operator's machine) into a temp
+ * dir, returning the paths to upload in the same order.
+ */
+export async function shrinkPhotos(page: Page, photos: string[], taskId: string, log: (m: string) => void): Promise<string[]> {
+  const needs = photos.filter((p) => needsShrink(fs.statSync(p).size))
+  if (needs.length === 0) return photos
+  const tmpDir = path.join(os.tmpdir(), `parcelview-photos-${taskId}`)
+  fs.mkdirSync(tmpDir, { recursive: true })
+  log(`parcelview: re-encoding ${needs.length} photo(s) over ${Math.round(PARCELVIEW_LIMITS.uploadTargetBytes / 1024)} KB`)
+  const worker = await page.context().newPage()
+  const out: string[] = []
+  try {
+    await worker.setContent('<!doctype html><html><body></body></html>')
+    for (const p of photos) {
+      const size = fs.statSync(p).size
+      if (!needsShrink(size)) {
+        out.push(p)
+        continue
+      }
+      const b64 = fs.readFileSync(p).toString('base64')
+      const mime = /\.png$/i.test(p) ? 'image/png' : /\.webp$/i.test(p) ? 'image/webp' : 'image/jpeg'
+      const result = (await worker.evaluate(shrinkInBrowser as (arg: unknown) => unknown, {
+        b64,
+        mime,
+        maxBytes: PARCELVIEW_LIMITS.uploadTargetBytes,
+        maxDim: PARCELVIEW_LIMITS.shrinkMaxDimension,
+      })) as { b64: string; bytes: number; q: number; scale: number } | null
+      if (!result) {
+        log(`parcelview: could not get ${path.basename(p)} under the size target; sending it as is`)
+        out.push(p)
+        continue
+      }
+      const dest = path.join(tmpDir, path.basename(p).replace(/\.[^.]+$/, '') + '.jpg')
+      fs.writeFileSync(dest, Buffer.from(result.b64, 'base64'))
+      log(`parcelview: ${path.basename(p)} ${(size / 1024).toFixed(0)} KB -> ${(result.bytes / 1024).toFixed(0)} KB (q ${result.q}, scale ${result.scale.toFixed(2)})`)
+      out.push(dest)
+    }
+  } finally {
+    await worker.close().catch(() => {})
+  }
+  return out
+}
+
+async function readPricing(page: Page): Promise<{ cash: string; down: string; monthly: string; term: string }> {
+  const v = async (sel: string) => (await page.locator(sel).first().inputValue().catch(() => '')).trim()
+  return {
+    cash: await v(PARCELVIEW_SELECTORS.cashPrice),
+    down: await v(PARCELVIEW_SELECTORS.downPayment),
+    monthly: await v(PARCELVIEW_SELECTORS.monthlyPayment),
+    term: await v(PARCELVIEW_SELECTORS.loanTermMonths),
+  }
 }
 
 /** Presses Save on the edit page and waits for "Saved!" (the page then reloads itself). */
@@ -814,6 +956,10 @@ export function coordinatesFromTask(task: PosterTask): { latitude: number; longi
   if (!Number.isFinite(lat) || !Number.isFinite(lon) || lat === 0 || lon === 0) return null
   if (Math.abs(lat) > 90 || Math.abs(lon) > 180) return null
   return { latitude: lat, longitude: lon }
+}
+
+export function needsShrink(bytes: number): boolean {
+  return bytes > PARCELVIEW_LIMITS.uploadTargetBytes
 }
 
 /** First 15 photos under 5 MB (the uploader skips bigger files without saying which). */

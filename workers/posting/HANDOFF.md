@@ -194,6 +194,21 @@ The AGENTS.md bullet has the flow. Facts worth keeping:
   anything beyond name/state/county/acres; how long the parcel search takes
   (the recon took a few seconds, cached).
 
+- First dry run 2026-10-04: created the property, but only 5 of 15 photos
+  landed, exactly the five under 1 MB, and Dan saw no down payment or loan
+  term. Photos: the poster now re-encodes anything over 900 KB in its own
+  browser (canvas, 2000 px long side) and uploads one file at a time with a
+  per-file check. Pricing: the site's save payload does read down_payment
+  and loan_term_months, so the cause is still open; the poster now re-fills
+  the whole pricing block on the edit page and logs the values it reads back
+  after Save. Cause candidates: the create path on the server ignoring them,
+  or Dan looking at the card / collapsed Pricing summary, which only show
+  cash and monthly.
+- Gotcha: tsx injects a `__name` helper into nested named functions, so a
+  `page.evaluate` callback with inner arrow functions fails in the page with
+  "__name is not defined". The re-encoder is kept as source text and built
+  with `new Function` for that reason.
+
 First run from the laptop (dry run leaves the Park County lot Unlisted):
 `DASHBOARD_URL=http://100.83.155.65:3000 npm run post -- parcelview task-1790275652160-rlxk9l --dry-run --headed`
 
