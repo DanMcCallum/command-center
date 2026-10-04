@@ -3,12 +3,12 @@
 ## HEADLINE (75/75 chars)
 1 Wooded Acre, Redhill Forest, Fairplay CO. Power at Road. $35K or 30% Down
 
-## DESCRIPTION (1923/2000 chars)
+## DESCRIPTION (1902/2000 chars)
 A wooded acre at about 9,600 feet on the Redhill Forest ridge, across South Park from the Mosquito Range. You park under your own pines, and Fairplay is 20 minutes away.
 
 The facts:
 
-- 1 acre, Lot 366, Redhill Forest Filing 3, Park County, CO (APN R0037546)
+- Lot 366, Redhill Forest Filing 3, zoned Residential
 - Forested, about 9,600 ft elevation
 - Zoned Residential by Park County
 - Dirt road, graded in summer and plowed in winter by the HOA
@@ -29,7 +29,7 @@ A nearby 1 acre lot sold for $150,000. This one is $35,000, about 23% of that sa
 There's one lot at this price, and the next acre here gets measured against that $150,000 sale. Message me for the map pin and parcel details. (Property: Timber Park)
 
 ## Why this angle
-Serious-buyer angle for Land.com: subdivision, utilities, HOA, distances, and the comp laid out plainly, with financing added per the coach review.
+Same brief as Land.com (serious out-of-state buyers who want acreage, access, utilities, zoning and comps). ParcelView renders the APN, acreage and county in its own facts panel, so the facts bullet drops the APN and acreage and the copy leans on access, utilities, the financing terms and the comp.
 
 ## DREAMS
 All six categories Pass (revision cycle 1)
