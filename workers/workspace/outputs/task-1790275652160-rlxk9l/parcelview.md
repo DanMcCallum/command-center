@@ -3,7 +3,7 @@
 ## HEADLINE (75/75 chars)
 1 Wooded Acre, Redhill Forest, Fairplay CO. Power at Road. $35K or 30% Down
 
-## DESCRIPTION (1902/2000 chars)
+## DESCRIPTION (1964/2000 chars)
 A wooded acre at about 9,600 feet on the Redhill Forest ridge, across South Park from the Mosquito Range. You park under your own pines, and Fairplay is 20 minutes away.
 
 The facts:
@@ -20,7 +20,7 @@ Utilities: CORE Electric power runs along Redhill Road. Water is the HOA communi
 
 Nearby: Fairplay 11 miles, Hartsel 11, Alma 16, Breckenridge 33, Buena Vista 38, Colorado Springs 76, Denver 93.
 
-Top 3 things people do here: 1. Fly fish the South Platte. Lot owners get private water on 5.5 miles of the Middle Fork, with Antero, Spinney, and Eleven Mile close by. 2. Ski Breckenridge over Hoosier Pass, an hour away, and hike Mt Silverheels in summer. 3. Walk the 1880s buildings at South Park City in Fairplay. Camping on your lot runs May 1 to October 31.
+Top 3 things people do here: 1. Fly fish the South Platte. Lot owners get private water on 5.5 miles of the Middle Fork, with Antero, Spinney, and Eleven Mile close by. 2. Ski Breckenridge over Hoosier Pass, an hour away, and hike Mt Silverheels in summer. 3. Walk the 1880s buildings at South Park City in Fairplay. Tent or RV camping on your lot runs May 1 to October 31; an RV cannot stay on a vacant lot over the winter.
 
 Find the corners with LandGlide: 1. Install the LandGlide app (free trial). 2. Tap search and enter R0037546. 3. Tap the outlined parcel to see the lot lines. 4. Turn on location, and the blue dot shows where you stand against the lines as you walk it.
 
