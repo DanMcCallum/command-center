@@ -26,6 +26,7 @@ import {
   requireAuthState,
   requirePhotos,
 } from './post-common'
+import { postToLandCentury } from './post-land_century'
 import { postToLandCom } from './post-land_com'
 import { postToLandmodo } from './post-landmodo'
 import { postToParcelView } from './post-parcelview'
@@ -42,6 +43,7 @@ export const POSTERS: Record<string, Poster> = {
   landmodo: postToLandmodo,
   land_com: postToLandCom,
   parcelview: postToParcelView,
+  land_century: postToLandCentury,
 }
 
 async function fetchTask(taskId: string): Promise<PosterTask> {

@@ -83,6 +83,12 @@ async function trySnapshot(
     if (signal?.logged_in_selector !== undefined) {
       snap.hasLoggedInMarker = (await page.locator(signal.logged_in_selector).count()) > 0
     }
+    if (signal?.local_storage_key !== undefined) {
+      // Presence only; the value (a session token) is never read into the agent.
+      snap.hasStorageMarker = await page
+        .evaluate((key) => window.localStorage.getItem(key) !== null, signal.local_storage_key)
+        .catch(() => false)
+    }
     return snap
   } catch (err) {
     if (page.isClosed()) throw err

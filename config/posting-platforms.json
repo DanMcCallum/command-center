@@ -13,11 +13,13 @@
     },
     "land_century": {
       "display_name": "Land Century",
-      "enabled": false,
-      "login_url": "https://www.landcentury.com/login",
-      "new_listing_url": "https://www.landcentury.com/submit-listing",
+      "enabled": true,
+      "_doc": "Next.js SPA. There is no login page: logged-out visits to /admin bounce to the home page, where the account icon (top right) opens the Sign In modal. The session is the apiToken key in localStorage (plus the site's cookies); the create form (form.properties-admin-form) renders only when logged in. Mapped 2026-10-05 from the site's front-end source; see post-land_century.ts.",
+      "login_url": "https://www.landcentury.com/",
+      "new_listing_url": "https://www.landcentury.com/admin/listings/form/create",
       "login_success": {
-        "redirect_off": "/login"
+        "local_storage_key": "apiToken",
+        "logged_in_selector": "form.properties-admin-form"
       }
     },
     "landflip": {

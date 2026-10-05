@@ -34,6 +34,12 @@ export interface LoginSuccessSignal {
    * sites that keep a logged-in user parked on the login URL.
    */
   logged_in_selector?: string
+  /**
+   * Logged in when window.localStorage holds this key on the site's origin
+   * (e.g. a JWT the SPA keeps there). A positive signal like the selector,
+   * valid on any page of the site, for sites whose cookies carry nothing.
+   */
+  local_storage_key?: string
 }
 
 export interface PlatformConfig {

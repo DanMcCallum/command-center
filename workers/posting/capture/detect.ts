@@ -27,6 +27,8 @@ export interface SessionSnapshot {
   title?: string
   /** Whether login_success.logged_in_selector matched on the page, when configured. */
   hasLoggedInMarker?: boolean
+  /** Whether login_success.local_storage_key is present in the page's localStorage, when configured. */
+  hasStorageMarker?: boolean
 }
 
 export type LoginDetection = 'logged_in' | 'not_logged_in' | 'blocked'
@@ -72,6 +74,9 @@ export function detectLogin(
   if (signal?.logged_in_selector !== undefined && snapshot.hasLoggedInMarker === true) {
     return 'logged_in'
   }
+  if (signal?.local_storage_key !== undefined && snapshot.hasStorageMarker === true) {
+    return 'logged_in'
+  }
   if (signal?.redirect_off !== undefined) {
     const pathname = pathnameOf(snapshot.url)
     if (pathname !== null && pathname.includes(signal.redirect_off)) {
@@ -89,15 +94,19 @@ export function detectLogin(
  */
 export function isLoggedIn(
   signal: LoginSuccessSignal | undefined,
-  { cookies, url, hasLoggedInMarker }: SessionSnapshot
+  { cookies, url, hasLoggedInMarker, hasStorageMarker }: SessionSnapshot
 ): boolean {
   if (
     !signal ||
-    (signal.cookie === undefined && signal.redirect_off === undefined && signal.logged_in_selector === undefined)
+    (signal.cookie === undefined &&
+      signal.redirect_off === undefined &&
+      signal.logged_in_selector === undefined &&
+      signal.local_storage_key === undefined)
   ) {
     return false
   }
   if (signal.logged_in_selector !== undefined && hasLoggedInMarker === true) return true
+  if (signal.local_storage_key !== undefined && hasStorageMarker === true) return true
   if (signal.cookie === undefined && signal.redirect_off === undefined) return false
   if (signal.cookie !== undefined && !cookies.some((c) => c.name === signal.cookie)) {
     return false

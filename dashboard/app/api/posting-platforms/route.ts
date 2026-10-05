@@ -15,6 +15,7 @@ export interface LoginSuccessSignal {
   cookie?: string;
   redirect_off?: string;
   logged_in_selector?: string;
+  local_storage_key?: string;
 }
 
 export interface PostingPlatformConfig {

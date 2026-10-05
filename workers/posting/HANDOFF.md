@@ -1,4 +1,4 @@
-# Handoff: marketplace posting (Landmodo, Land.com and ParcelView verified live)
+# Handoff: marketplace posting (Landmodo, Land.com and ParcelView verified live; Land Century built, unverified)
 
 Written 2026-10-03 at the end of a long session. Read this before touching
 `workers/posting`. The repo's `AGENTS.md` has the durable rules; this file is
@@ -223,9 +223,64 @@ The AGENTS.md bullet has the flow. Facts worth keeping:
 Dry run from the laptop (leaves the lot Unlisted):
 `DASHBOARD_URL=http://100.83.155.65:3000 npm run post -- parcelview task-1790275652160-rlxk9l --dry-run --headed`
 
+## Land Century: BUILT 2026-10-05, not yet run against the live admin
+
+`post-land_century.ts` was written from the site's front-end source (the
+Next.js chunk for `/admin/listings/form/[slug]`, fetched from this server)
+plus a logged-out look at the live site in Chrome. The AGENTS.md bullet has
+the flow and the facts. Nothing has been created on the account yet; the
+first supervised dry run on the laptop answers the unknowns below.
+
+What needs Dan first:
+
+- A Land Century seller account on a plan (Single Listing $5/mo, Basic
+  $50/mo for 30 listings, Pro $100/mo; `https://www.landcentury.com/sell`).
+  If the account is not a seller account the create page shows an "Account
+  update required" company form and the poster reports exactly that.
+- Pull, restart the agent, and run the dry run (leaves a Draft):
+  `DASHBOARD_URL=http://100.83.155.65:3000 npm run post -- land_century task-1790275652160-rlxk9l --dry-run --headed`
+  The headed window bounces `/admin/...` to the home page when logged out;
+  log in through the account icon (top right) > Sign In. Detection fires on
+  the `apiToken` localStorage key (new `local_storage_key` signal in
+  `config/posting-platforms.json`, presence only). Paste the agent log and
+  the session cookie names line.
+
+Unknowns the first run answers (each has a fallback or a loud error):
+
+1. Whether the react-quill instance is reachable through the React fiber
+   (`QUILL_SET_HTML`); if not the poster types the description plainly and
+   says so in the log.
+2. What the reverse geocoder puts in State/Region (full name or code) and
+   County (with or without "County"). The poster overwrites both with the
+   resolver's values ("Colorado", "Park"); the site appends "County" itself
+   (showcase cards read "Apache County County" where sellers typed it in).
+3. Whether the Ant Design version renders `.ant-form-item-row` (the label
+   selector is an xpath ancestor walk, so either layout works) and whether
+   the Deed/Zoning/Road/Utilities AutoCompletes accept `fill` on
+   `.ant-select-selection-search-input` (the poster logs what each reads
+   back).
+4. Whether Publish on step 4 needs more than the fields filled: the server
+   answers with a `publishMessage` ("Missing Data" / "Listing not published")
+   that the poster throws with, and `errors[]` on the record is logged.
+5. The public slug format. `publicListingUrl` builds
+   `/land-for-sale/<state-name>/<slug>` from the record's `slug` and
+   `stateRegion`; sitemap samples show both `...-colorado-<id>` and
+   `...-ms-<id>` slugs, so the slug is taken from the record, never guessed.
+6. Photo cap. The uploader has none client-side; the poster sends the first
+   20 (`metadata.land_century_max_photos` overrides).
+
+Metadata the poster reads (all optional unless noted): `price_usd`,
+`acreage`, `location` (required), `apn`, `latitude`/`longitude` (else a full
+address and the site's geocoder), `address` or `location_description` for
+Street, `city`, `zip`, `access`, `utilities`/`utilities_notes`, `zoning`,
+`must_include` (financing terms), `legal_description`, `taxes_usd`,
+`video_url`, `owner_finance_terms`, `owner_finance_price_usd`,
+`land_century_categories`, `land_century_zoning`, `land_century_road_access`,
+`land_century_utilities`, `land_century_deed_type`, `land_century_max_photos`.
+
 ## Remaining platforms on this task
 
-land_century, landflip, land_listings, landhub have ad copy under
+landflip, land_listings, landhub have ad copy under
 `workers/workspace/outputs/task-1790275652160-rlxk9l/` but no poster. Each
 needs the same recon-first approach. Add the key to `POSTERS` in `post.ts`.
 

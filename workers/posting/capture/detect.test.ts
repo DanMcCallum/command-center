@@ -212,3 +212,23 @@ test('marker signal: Access Denied still wins over a marker', () => {
   const denied = { cookies: [], url: 'https://x/account', title: 'Access Denied', hasLoggedInMarker: true }
   assert.strictEqual(detectLogin(signal, denied, { sawLoginPage: false }), 'blocked')
 })
+
+test('storage signal: the configured localStorage key present means logged in on any page', () => {
+  const signal = { local_storage_key: 'apiToken', logged_in_selector: 'form.properties-admin-form' }
+  const home = { cookies: [], url: 'https://www.landcentury.com/', title: 'Land Century', hasLoggedInMarker: false, hasStorageMarker: true }
+  assert.strictEqual(detectLogin(signal, home, { sawLoginPage: false }), 'logged_in')
+  assert.strictEqual(isLoggedIn(signal, home), true)
+})
+
+test('storage signal: key absent and no marker fails closed', () => {
+  const signal = { local_storage_key: 'apiToken', logged_in_selector: 'form.properties-admin-form' }
+  const home = { cookies: [], url: 'https://www.landcentury.com/', title: 'Land Century', hasLoggedInMarker: false, hasStorageMarker: false }
+  assert.strictEqual(detectLogin(signal, home, { sawLoginPage: false }), 'not_logged_in')
+  assert.strictEqual(isLoggedIn(signal, home), false)
+  assert.strictEqual(isLoggedIn({ local_storage_key: 'apiToken' }, { cookies: [], url: 'https://www.landcentury.com/' }), false)
+})
+
+test('storage signal: Access Denied still wins over the key', () => {
+  const denied = { cookies: [], url: 'https://x/', title: 'Access Denied', hasStorageMarker: true }
+  assert.strictEqual(detectLogin({ local_storage_key: 'apiToken' }, denied, { sawLoginPage: false }), 'blocked')
+})
