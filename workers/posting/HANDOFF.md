@@ -1,4 +1,4 @@
-# Handoff: marketplace posting (Landmodo, Land.com and ParcelView verified live; Land Century built, unverified)
+# Handoff: marketplace posting (Landmodo, Land.com, ParcelView and Land Century verified live)
 
 Written 2026-10-03 at the end of a long session. Read this before touching
 `workers/posting`. The repo's `AGENTS.md` has the durable rules; this file is
@@ -223,7 +223,7 @@ The AGENTS.md bullet has the flow. Facts worth keeping:
 Dry run from the laptop (leaves the lot Unlisted):
 `DASHBOARD_URL=http://100.83.155.65:3000 npm run post -- parcelview task-1790275652160-rlxk9l --dry-run --headed`
 
-## Land Century: BUILT 2026-10-05, not yet run against the live admin
+## Land Century: DONE and verified live 2026-10-05 (listing 26439)
 
 `post-land_century.ts` was written from the site's front-end source (the
 Next.js chunk for `/admin/listings/form/[slug]`, fetched from this server)
@@ -372,7 +372,18 @@ reports the plan id/name in the preflight line and turns this refusal into
 an error naming the live listings and the two ways out (upgrade at /sell,
 or untick Published on a live listing). Waiting on Dan's choice.
 
-Unknowns the first run answers (each has a fallback or a loud error):
+LIVE: after Dan unpublished the Wells listing, the dashboard Publish ran
+unattended (attempt 3, 23:37 to 23:38 UTC) and the task records
+https://www.landcentury.com/land-for-sale/colorado/100-acres-for-sale-in-fairplay-colorado-26439
+(slug from the record; the site slugified "1.00" as "100"). Checked from
+this server: HTTP 200, title "1.00 Acres for Sale in Fairplay, Colorado",
+$35,000, the headline as the description's first line, address "Redhill
+Forest Filing 3, Lot 366", parcel R0037546, zoning Residential, Dirt Road,
+utilities line, legal description, GPS 39.146135, -105.921237, 20 photos.
+Deed Type and Taxes show "-" (not in the task metadata; `deed_type` /
+`taxes_usd` fill them). Plan cap: Single Listing = one live listing.
+
+Unknowns the first run answered (kept for context):
 
 1. Whether the react-quill instance is reachable through the React fiber
    (`QUILL_SET_HTML`); if not the poster types the description plainly and
