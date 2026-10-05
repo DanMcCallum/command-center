@@ -116,7 +116,35 @@ async function main(): Promise<void> {
   if (login) {
     // The agent's transaction: headed window, probe, operator login if stale,
     // session saved, then post in the same context.
-    const auth = await authenticate({ platformKey, platform, log })
+    const auth = await authenticate({
+      platformKey,
+      platform,
+      log,
+      // Diagnostics for the login itself: status and top-level KEY NAMES of
+      // the site's auth responses (never values), so a session that comes
+      // back without a token can be traced to the response that minted it.
+      _onLoginWait: (p) => {
+        p.on('response', (res) => {
+          const url = res.url()
+          if (!/\/api\/(auth\/login|auth\/register[a-z-]*|users\/me)(\?|$)/.test(url)) return
+          res
+            .text()
+            .then((body) => {
+              let keys = ''
+              try {
+                const j = JSON.parse(body) as Record<string, unknown>
+                keys = Object.entries(j)
+                  .map(([k, v]) => `${k}=${v === null ? 'null' : Array.isArray(v) ? 'array' : typeof v}`)
+                  .join(', ')
+              } catch {
+                keys = `(non-JSON, ${body.length} bytes)`
+              }
+              log(`${platformKey}: login flow ${res.request().method()} ${url.replace(/^https?:\/\//, '')} -> ${res.status()} {${keys}}`)
+            })
+            .catch(() => {})
+        })
+      },
+    })
     if (auth.outcome !== 'ready') throw new Error(`login ${auth.outcome}: ${auth.message}`)
     browser = auth.browser
     page = auth.page

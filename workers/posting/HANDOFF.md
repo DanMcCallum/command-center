@@ -287,6 +287,23 @@ leaves the window up for exactly that). The preflight now also reports
 `user.token` and `user.type`, and rejected calls log their request header
 names.
 
+Fourth run (`--login --keep-open`, saved session reused): preflight
+`isLoggedIn=true user=true (type 0) token=false user.token=false`, the
+reverse-geocoder returned 200 with Fairplay / Park County / Colorado, and
+the create POST failed the same way three times, twice from Dan clicking
+Next by hand in the Playwright window. The rejected request carried
+`x-xsrf-token` (so the www routes are CSRF-protected session routes) and no
+authorization header, exactly like the site's own code sends. Checked from
+this server logged out: reverse-geocoder, geocoder, switch-to-seller and
+GET /api/admin/properties/1 all answer the same 400 "Unauthenticated.", so
+the session DOES authenticate admin POSTs; the property create/update
+routes need something more, most likely the user's backend token that the
+session reports as missing. Open: whether a fresh login in a normal
+browser creates listings today at all (if not, the site is broken for new
+sessions and this is a LandCentury support ticket), and what `/api/users/me`
+reports for `token` there. `post.ts --login` now logs the status and key
+names of the login flow's responses.
+
 Unknowns the first run answers (each has a fallback or a loud error):
 
 1. Whether the react-quill instance is reachable through the React fiber
