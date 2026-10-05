@@ -363,6 +363,15 @@ publishes from the dashboard with the agent running (the poster matches
 26439 on parcel number, re-fills, and presses Publish on step 4; the
 public URL comes from the record's slug).
 
+First publish attempt through the dashboard (2026-10-05 23:30): the
+poster matched draft 26439, re-filled every step, pressed Publish, and the
+site answered "Missing Data: Listings limit exceeded. Please upgrade your
+account to publish more listings." The account has one Live listing
+(25178, Wells NV), which is the Single Listing plan's cap. The poster now
+reports the plan id/name in the preflight line and turns this refusal into
+an error naming the live listings and the two ways out (upgrade at /sell,
+or untick Published on a live listing). Waiting on Dan's choice.
+
 Unknowns the first run answers (each has a fallback or a loud error):
 
 1. Whether the react-quill instance is reachable through the React fiber

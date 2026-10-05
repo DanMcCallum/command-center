@@ -291,7 +291,20 @@ export async function postToLandCentury(
     return { listingUrl: null, screenshotPath }
   }
 
-  await clickNext(page, 'Publish', log)
+  try {
+    await clickNext(page, 'Publish', log)
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    if (/limit exceeded|upgrade your account/i.test(msg)) {
+      const live = existing.filter((p) => p.isPublished && !p.isSold)
+      throw new Error(
+        `Land Century refused to publish: the account's plan allows no more live listings (${live.length} live now: ` +
+          `${live.map((p) => `${p.id} "${p.name.trim()}"`).join('; ') || 'none'}). Draft ${propertyId} is saved and complete. ` +
+          `Either upgrade the plan at ${SITE}/sell (Basic is 30 listings) or untick Published on one of the live listings, then Publish again`
+      )
+    }
+    throw err
+  }
   await page.waitForTimeout(2500)
   const record = await readProperty(page, propertyId)
   if (!record) throw new Error(`Could not read listing ${propertyId} back after Publish. ${noticeHint(notices)}`)
@@ -809,6 +822,9 @@ const PREFLIGHT_FN = new Function(
       hasToken: !!(meBody && meBody.token),
       hasUserToken: !!(meBody && meBody.user && meBody.user.token),
       userType: meBody && meBody.user ? meBody.user.type : null,
+      plan: meBody && meBody.user && meBody.user.get_subscription
+        ? String(meBody.user.get_subscription.id) + ' ' + String(meBody.user.get_subscription.name || meBody.user.get_subscription.title || '')
+        : null,
       hasLocalToken: !!localStorage.getItem('apiToken'),
       probeStatus: probe.status,
       probeMessage: probeText.slice(0, 200),
@@ -825,6 +841,7 @@ interface Preflight {
   hasToken: boolean
   hasUserToken: boolean
   userType: number | null
+  plan: string | null
   hasLocalToken: boolean
   probeStatus: number
   probeMessage: string
@@ -852,7 +869,7 @@ async function preflightServerSession(
     return
   }
   log(
-    `land_century: server session: /api/users/me ${r.meStatus} isLoggedIn=${r.isLoggedIn} user=${r.hasUser} (type ${r.userType}) token=${r.hasToken} user.token=${r.hasUserToken}; ` +
+    `land_century: server session: /api/users/me ${r.meStatus} isLoggedIn=${r.isLoggedIn} user=${r.hasUser} (type ${r.userType}, plan ${r.plan ?? 'unknown'}) token=${r.hasToken} user.token=${r.hasUserToken}; ` +
       `browser token=${r.hasLocalToken}; reverse-geocoder ${r.probeStatus}${r.probeMessage ? ` ${r.probeMessage.replace(/\s+/g, ' ').slice(0, 120)}` : ''}`
   )
   if (/unauthenticated/i.test(r.probeMessage) || r.probeStatus === 401 || !r.isLoggedIn) {
