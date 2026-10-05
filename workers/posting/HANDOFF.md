@@ -321,6 +321,19 @@ anonymous one. Fix: reads send `credentials: 'omit'`, and
 saved session from an earlier run may carry them). Next: rerun
 `npm run post -- land_century task-1790275652160-rlxk9l --dry-run --login`.
 
+Fifth run (after the cookie fix, 2026-10-05): Main Info created listing
+26439, the Quill description landed through the react-quill instance (no
+typing fallback in the log), "Get Location" reverse-geocoded 39.146135,
+-105.921237 to "565 Middle Fork Vista", Fairplay, Park County, Colorado
+80440 (the poster overwrites Street with location_description), 20 of 24
+photos uploaded one by one, and Detailed Info failed: Zoning read "" after
+the option click and its still-open dropdown intercepted the click on Road
+Access. The AutoComplete picker now types the value, clicks the option by
+exact title, closes the dropdown (Escape, then blur) and reads back, with
+one retry; dropdowns are closed before every Next/Save/Publish click. Draft
+26439 carries parcel number R0037546, so the rerun matches it and finishes
+it instead of creating another.
+
 Unknowns the first run answers (each has a fallback or a loud error):
 
 1. Whether the react-quill instance is reachable through the React fiber

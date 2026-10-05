@@ -140,6 +140,8 @@ export const LANDCENTURY_SELECTORS = {
   selectSearch: '.ant-select-selection-search-input',
   selectedTag: '.ant-select-selection-item',
   dropdownOption: '.ant-select-dropdown:not(.ant-select-dropdown-hidden) .ant-select-item-option',
+  openDropdown: '.ant-select-dropdown:not(.ant-select-dropdown-hidden)',
+  dropdownOptionByTitle: (title: string) => `.ant-select-dropdown:not(.ant-select-dropdown-hidden) .ant-select-item-option[title="${title}"]`,
   dropdownOptionByText: (text: string) =>
     `.ant-select-dropdown:not(.ant-select-dropdown-hidden) .ant-select-item-option:has(.ant-select-item-option-content:text-is("${text}"))`,
   checkboxByText: (text: string) => `label.ant-checkbox-wrapper:has-text("${text}") input[type="checkbox"]`,
@@ -559,7 +561,7 @@ async function selectSingle(page: Page, label: string, option: string, log: (m: 
   const opt = page.locator(LANDCENTURY_SELECTORS.dropdownOption).filter({ hasText: option }).first()
   await opt.waitFor({ state: 'visible', timeout: 10_000 })
   await opt.click()
-  await page.waitForTimeout(300)
+  await closeDropdowns(page)
   log(`land_century: ${label} = ${option}`)
 }
 
@@ -601,8 +603,7 @@ async function selectCategories(page: Page, wanted: string[], log: (m: string) =
       throw new Error(`Clicking the "${name}" category did not select it (tags now: ${after.join(', ') || 'none'})`)
     }
   }
-  await page.keyboard.press('Escape')
-  await page.waitForTimeout(300)
+  await closeDropdowns(page)
   const now = await chosen()
   if (now.length === 0) {
     throw new Error(`No category got selected (wanted ${wanted.join(', ')}; dropdown offered ${names.join(', ') || 'nothing'})`)
@@ -612,23 +613,57 @@ async function selectCategories(page: Page, wanted: string[], log: (m: string) =
   log(`land_century: categories = ${now.join(', ')}`)
 }
 
-/** The Deed/Zoning/Road/Utilities controls are Ant AutoCompletes: type the value, pick the option. */
+/**
+ * The Deed/Zoning/Road/Utilities controls are Ant AutoCompletes (rc-select in
+ * combobox mode): type the value, click the option with that exact title,
+ * then make sure the dropdown is closed. The first live run left the Zoning
+ * dropdown open, and its options then intercepted every click on the fields
+ * below it.
+ */
 async function pickAutoComplete(page: Page, label: string, value: string, log: (m: string) => void): Promise<void> {
   const sel = await requireItem(page, label, LANDCENTURY_SELECTORS.select, true)
   if (!sel) {
     log(`land_century: no "${label}" control on this page; skipping`)
     return
   }
+  await closeDropdowns(page)
   const input = sel.locator(LANDCENTURY_SELECTORS.selectSearch).first()
-  await input.click()
-  await input.fill(value)
-  const opt = page.locator(LANDCENTURY_SELECTORS.dropdownOption).filter({ hasText: value }).first()
-  if (await opt.isVisible().catch(() => false)) await opt.click()
-  else await page.keyboard.press('Escape')
-  await page.waitForTimeout(200)
-  const got = (await input.inputValue().catch(() => '')).trim()
-  if (!sameText(got, value)) log(`land_century: NOTE ${label} reads "${got}" after choosing "${value}"`)
-  else log(`land_century: ${label} = ${value}`)
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    await input.click()
+    await input.fill('')
+    await input.pressSequentially(value, { delay: 15 })
+    const option = page.locator(LANDCENTURY_SELECTORS.dropdownOptionByTitle(value)).first()
+    if (await option.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await option.click()
+    } else {
+      // No matching option showing: Enter takes the active one, if any.
+      await input.press('Enter')
+    }
+    await closeDropdowns(page)
+    const got = (await input.inputValue().catch(() => '')).trim()
+    if (sameText(got, value)) {
+      log(`land_century: ${label} = ${value}`)
+      return
+    }
+    log(`land_century: ${label} reads "${got}" after attempt ${attempt} at "${value}"`)
+  }
+  log(`land_century: NOTE ${label} could not be set to "${value}"; set it by hand`)
+}
+
+/** Closes any open Ant Select dropdown (Escape, then blur the focused combobox). */
+async function closeDropdowns(page: Page): Promise<void> {
+  const open = page.locator(LANDCENTURY_SELECTORS.openDropdown)
+  for (let i = 0; i < 3; i++) {
+    if ((await open.count()) === 0) return
+    await page.keyboard.press('Escape')
+    await page.waitForTimeout(200)
+    if ((await open.count()) === 0) return
+    await page.evaluate(() => {
+      const el = document.activeElement as HTMLElement | null
+      if (el && typeof el.blur === 'function') el.blur()
+    })
+    await page.waitForTimeout(300)
+  }
 }
 
 async function clickNext(page: Page, label: 'Next' | 'Save Changes' | 'Publish', log: (m: string) => void): Promise<void> {
@@ -637,6 +672,7 @@ async function clickNext(page: Page, label: 'Next' | 'Save Changes' | 'Publish',
     throw new Error(`Could not find the "${label}" button on the Land Century form. Update the SELECTORS block in ${SCRIPT}.`)
   }
   const urlBefore = page.url()
+  await closeDropdowns(page)
   await btn.scrollIntoViewIfNeeded().catch(() => {})
   await btn.click()
   // The button shows a spinner while the request is in flight.
