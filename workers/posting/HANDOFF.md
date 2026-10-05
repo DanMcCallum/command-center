@@ -254,6 +254,25 @@ function is parenthesised, exported as READ_PROPERTIES_FN and unit-tested).
 `landcentury_session` is the site's own session cookie; not added as a
 cookie signal because it may exist logged-out too.
 
+Second run (CLI dry run from the saved session, 2026-10-05): the listings
+read worked (account has 25178, Live, 2.27 ac Wells NV, APN 011-108-042),
+the create form rendered, the categories came out wrong (index-based clicks
+after a re-render; now clicked by exact text and verified), and Next on
+Main Info answered "Error: Unauthenticated." That message is what
+`www.landcentury.com/api/admin/*` returns with no server session (checked
+logged-out with curl: 400 `{"success":false,"message":"Unauthenticated."}`),
+while `/api/users/me` returns `{isLoggedIn, user, token}`. So the site has
+two sessions: the browser-side `apiToken` (api-prod reads, which worked) and
+the server-side `landcentury_session` cookie behind the form's write routes.
+The poster now runs a preflight (`/api/users/me` plus the reverse-geocoder
+POST, which the Location step makes anyway) and stops before creating
+anything if the server routes say Unauthenticated. `post.ts --login` runs
+the agent's auth flow (headed, fresh login if stale, session saved) and
+posts in that same browser, which is the next thing to try:
+`DASHBOARD_URL=http://100.83.155.65:3000 npm run post -- land_century task-1790275652160-rlxk9l --dry-run --login`
+after `rm auth/land_century.json`. The preflight line in the log says which
+session is dead.
+
 Unknowns the first run answers (each has a fallback or a loud error):
 
 1. Whether the react-quill instance is reachable through the React fiber

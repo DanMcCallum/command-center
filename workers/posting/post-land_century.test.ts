@@ -15,6 +15,7 @@ import {
   roadAccessForTask,
   sameState,
   sameText,
+  selectedTags,
   statusOf,
   utilitiesForTask,
   zoningForTask,
@@ -154,4 +155,8 @@ test('the in-page reader and the Quill setter are real functions (no "return" + 
   const quill = new Function('el', 'html', QUILL_SET_HTML)
   assert.equal(typeof quill, 'function')
   assert.equal(quill({}, '<p>x</p>'), false)
+})
+
+test('selectedTags drops the responsive "+ N ..." overflow tag', () => {
+  assert.deepEqual(selectedTags(['Vacant Land', ' Owner Finance Deals ', '+ 0 ...', '', '+ 2 ...']), ['Vacant Land', 'Owner Finance Deals'])
 })

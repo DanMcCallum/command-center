@@ -140,6 +140,8 @@ export const LANDCENTURY_SELECTORS = {
   selectSearch: '.ant-select-selection-search-input',
   selectedTag: '.ant-select-selection-item',
   dropdownOption: '.ant-select-dropdown:not(.ant-select-dropdown-hidden) .ant-select-item-option',
+  dropdownOptionByText: (text: string) =>
+    `.ant-select-dropdown:not(.ant-select-dropdown-hidden) .ant-select-item-option:has(.ant-select-item-option-content:text-is("${text}"))`,
   checkboxByText: (text: string) => `label.ant-checkbox-wrapper:has-text("${text}") input[type="checkbox"]`,
   stepTitle: (title: string) => `.ant-steps-item:has-text("${title}")`,
   quillEditor: '.ql-editor',
@@ -189,12 +191,14 @@ export async function postToLandCentury(
   const categories = categoriesForTask(task, adCopy, ownerFinanced)
   const descriptionHtml = descriptionHtmlForLandCentury(adCopy, log)
   const notices = watchNotifications(page, log)
+  watchApiResponses(page, log)
 
   // 1. Existing listings on the account (same call the admin list makes).
   log('land_century: reading the account listings')
   await page.goto(LANDCENTURY_SELECTORS.listingsUrl, { waitUntil: 'domcontentloaded' })
   await settle(page)
   if (await loggedOut(page)) throw loginExpiredError(PLATFORM, page.url())
+  await preflightServerSession(page, coordinatesFromTask(task), log)
   const existing = await readProperties(page)
   log(
     `land_century: ${existing.length} listing(s) on the account: ` +
@@ -558,12 +562,15 @@ async function selectSingle(page: Page, label: string, option: string, log: (m: 
   log(`land_century: ${label} = ${option}`)
 }
 
-/** Multi-select categories: open the dropdown, read every option, tick the wanted ones. */
+/**
+ * Multi-select categories: open the dropdown and click each wanted option by
+ * its exact text. Never by index: the first live run picked the neighbours of
+ * the wanted options because the list re-rendered after the first click.
+ */
 async function selectCategories(page: Page, wanted: string[], log: (m: string) => void): Promise<void> {
   const sel = await requireItem(page, 'Select Categories', LANDCENTURY_SELECTORS.select)
   if (!sel) return
-  const chosen = async () =>
-    (await sel.locator(LANDCENTURY_SELECTORS.selectedTag).allInnerTexts()).map((t) => t.trim()).filter(Boolean)
+  const chosen = async () => selectedTags(await sel.locator(LANDCENTURY_SELECTORS.selectedTag).allInnerTexts())
   const have = await chosen()
   const missing = wanted.filter((w) => !have.some((h) => sameText(h, w)))
   if (missing.length === 0) {
@@ -575,13 +582,23 @@ async function selectCategories(page: Page, wanted: string[], log: (m: string) =
   await options.first().waitFor({ state: 'visible', timeout: 15_000 }).catch(() => {})
   const names = (await options.allInnerTexts()).map((t) => t.trim())
   for (const want of missing) {
-    const idx = names.findIndex((n) => sameText(n, want))
-    if (idx === -1) {
+    const name = names.find((n) => sameText(n, want))
+    if (!name) {
       log(`land_century: NOTE category "${want}" is not offered (options: ${names.join(', ')}); skipping it`)
       continue
     }
-    await options.nth(idx).click()
-    await page.waitForTimeout(150)
+    const option = page.locator(LANDCENTURY_SELECTORS.dropdownOptionByText(name)).first()
+    if ((await option.count()) === 0) {
+      log(`land_century: NOTE could not locate the "${name}" option by text; skipping it`)
+      continue
+    }
+    const before = await chosen()
+    await option.click()
+    await page.waitForTimeout(250)
+    const after = await chosen()
+    if (!after.some((t) => sameText(t, name)) || after.length <= before.length) {
+      throw new Error(`Clicking the "${name}" category did not select it (tags now: ${after.join(', ') || 'none'})`)
+    }
   }
   await page.keyboard.press('Escape')
   await page.waitForTimeout(300)
@@ -589,6 +606,8 @@ async function selectCategories(page: Page, wanted: string[], log: (m: string) =
   if (now.length === 0) {
     throw new Error(`No category got selected (wanted ${wanted.join(', ')}; dropdown offered ${names.join(', ') || 'nothing'})`)
   }
+  const wrong = now.filter((t) => !wanted.some((w) => sameText(w, t)))
+  if (wrong.length) throw new Error(`Unexpected categories selected: ${wrong.join(', ')} (wanted ${wanted.join(', ')})`)
   log(`land_century: categories = ${now.join(', ')}`)
 }
 
@@ -673,6 +692,97 @@ async function uploadPhotos(page: Page, photos: string[], already: number, log: 
 
 async function photoCount(page: Page): Promise<number> {
   return page.locator(LANDCENTURY_SELECTORS.photoCard).count().catch(() => 0)
+}
+
+// --- server-session preflight ----------------------------------------------------
+
+const PREFLIGHT_FN = new Function(
+  'return (' +
+    `
+  async (arg) => {
+    var me = await fetch('/api/users/me', { headers: { Accept: 'application/json' }, credentials: 'include' })
+    var meBody = me.ok ? await me.json() : null
+    var probe = await fetch('/api/admin/reverse-geocoder', {
+      method: 'POST',
+      headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ lat: arg.lat, lng: arg.lng }),
+    })
+    var probeText = ''
+    try { probeText = await probe.text() } catch (e) { probeText = '' }
+    return {
+      meStatus: me.status,
+      isLoggedIn: !!(meBody && meBody.isLoggedIn),
+      hasUser: !!(meBody && meBody.user),
+      hasToken: !!(meBody && meBody.token),
+      hasLocalToken: !!localStorage.getItem('apiToken'),
+      probeStatus: probe.status,
+      probeMessage: probeText.slice(0, 200),
+    }
+  }
+` +
+    ')'
+)() as (arg: { lat: number; lng: number }) => unknown
+
+interface Preflight {
+  meStatus: number
+  isLoggedIn: boolean
+  hasUser: boolean
+  hasToken: boolean
+  hasLocalToken: boolean
+  probeStatus: number
+  probeMessage: string
+}
+
+/**
+ * The site has two sessions: the browser-side apiToken (localStorage) that
+ * talks to api-prod directly, and the server-side session cookie behind the
+ * www.landcentury.com/api/* routes that the listing form posts through. The
+ * first dry run (2026-10-05) read the listings with the former while the
+ * create call failed "Unauthenticated." through the latter. This asks the
+ * server routes the same questions the form will, before anything is
+ * created: /api/users/me (does the session hold a user and a token) and the
+ * reverse geocoder (an authenticated POST the Location step makes anyway).
+ */
+async function preflightServerSession(
+  page: Page,
+  coords: { latitude: number; longitude: number } | null,
+  log: (m: string) => void
+): Promise<void> {
+  const arg = { lat: coords?.latitude ?? 39.0, lng: coords?.longitude ?? -105.5 }
+  const r = (await page.evaluate(PREFLIGHT_FN, arg).catch((err) => ({ error: String(err) }))) as Preflight | { error: string }
+  if ('error' in r) {
+    log(`land_century: preflight could not run (${r.error}); continuing`)
+    return
+  }
+  log(
+    `land_century: server session: /api/users/me ${r.meStatus} isLoggedIn=${r.isLoggedIn} user=${r.hasUser} token=${r.hasToken}; ` +
+      `browser token=${r.hasLocalToken}; reverse-geocoder ${r.probeStatus}${r.probeMessage ? ` ${r.probeMessage.replace(/\s+/g, ' ').slice(0, 120)}` : ''}`
+  )
+  if (/unauthenticated/i.test(r.probeMessage) || r.probeStatus === 401 || !r.isLoggedIn) {
+    throw new Error(
+      'Land Century\'s server session cannot reach its backend (the site answers "Unauthenticated." to the calls the ' +
+        'listing form makes) even though the page shows you as signed in. Delete workers/posting/auth/land_century.json ' +
+        'and Publish again so the agent takes a fresh login, or run the CLI with --login'
+    )
+  }
+}
+
+/** Logs every non-2xx /api/ response (status and message only, never headers or bodies in full). */
+function watchApiResponses(page: Page, log: (m: string) => void): void {
+  page.on('response', (res) => {
+    const url = res.url()
+    if (!/landcentury\.com\/(api|sanctum)\//.test(url)) return
+    const status = res.status()
+    if (status >= 200 && status < 300) return
+    res
+      .text()
+      .then((body) => {
+        const message = body.match(/"message"\s*:\s*"([^"]{0,200})"/)?.[1] ?? body.replace(/\s+/g, ' ').slice(0, 120)
+        log(`land_century: ${res.request().method()} ${url.replace(/^https?:\/\//, '')} -> ${status} ${message}`)
+      })
+      .catch(() => log(`land_century: ${res.request().method()} ${url.replace(/^https?:\/\//, '')} -> ${status}`))
+  })
 }
 
 // --- reads through the site's own API (session token from the page) ------------
@@ -1073,6 +1183,11 @@ export function eligiblePhotos(photos: string[], cap: number, log: (m: string) =
   }
   if (ok.length > cap) log(`land_century: ${ok.length} photos; sending the first ${cap}`)
   return ok.slice(0, cap)
+}
+
+/** Real tag texts from an Ant multi-select: drops the "+ N ..." overflow tag and blanks. */
+export function selectedTags(texts: string[]): string[] {
+  return texts.map((t) => t.trim()).filter((t) => t && !/^\+\s*\d+/.test(t))
 }
 
 export function sameText(a: string, b: string): boolean {

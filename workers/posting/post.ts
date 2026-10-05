@@ -3,7 +3,13 @@
  * registry the local poster agent invokes (specs/local-publish-2-local-agent.md
  * US-005).
  *
- * Usage: npm run post -- <platform> <taskId> [--dry-run]
+ * Usage: npm run post -- <platform> <taskId> [--dry-run] [--headed] [--login]
+ *
+ * --login runs the agent's own auth flow first (agent-auth.ts): a headed
+ * window, the saved session probed, the operator logging in only if it is
+ * stale, the fresh session saved to auth/<platform>.json, and the post made
+ * in that same browser context. Use it to reproduce exactly what the agent
+ * does, or when a saved session reads as logged in but the site disagrees.
  *
  * The CLI is the local-dev path: it reads the server-side outputs/ layout,
  * builds a headless browser from the saved auth/<platform>.json session, and hands
@@ -14,6 +20,8 @@
  */
 import * as path from 'node:path'
 import { chromium } from 'playwright'
+import type { Browser, Page } from 'playwright'
+import { authenticate } from './agent-auth'
 import { parseAdOutput } from './parse-ad-output'
 import {
   AdCopy,
@@ -66,10 +74,11 @@ async function main(): Promise<void> {
   const args = process.argv.slice(2)
   const dryRun = args.includes('--dry-run')
   const headed = args.includes('--headed')
+  const login = args.includes('--login')
   const [platformKey, taskId] = args.filter((a) => !a.startsWith('--'))
 
   if (!platformKey || !taskId) {
-    console.error('Usage: npm run post -- <platform> <taskId> [--dry-run] [--headed]')
+    console.error('Usage: npm run post -- <platform> <taskId> [--dry-run] [--headed] [--login]')
     console.error(`Implemented platforms: ${Object.keys(POSTERS).join(', ')}`)
     process.exit(1)
   }
@@ -88,7 +97,7 @@ async function main(): Promise<void> {
     )
   }
 
-  const authPath = requireAuthState(platformKey)
+  const log = (m: string) => console.error(m)
   const task = await fetchTask(taskId)
   const outputDir = path.join(OUTPUTS_DIR, taskId)
   requirePhotos(outputDir, taskId) // fail fast before any browser launch
@@ -97,17 +106,29 @@ async function main(): Promise<void> {
   console.error(
     `Posting task ${taskId} to ${platform.display_name}${dryRun ? ' (dry run)' : ''}...`
   )
-  // --headed shows the window, the same way the agent runs.
-  const browser = await chromium.launch({ headless: !headed })
-  try {
+  let browser: Browser
+  let page: Page
+  if (login) {
+    // The agent's transaction: headed window, probe, operator login if stale,
+    // session saved, then post in the same context.
+    const auth = await authenticate({ platformKey, platform, log })
+    if (auth.outcome !== 'ready') throw new Error(`login ${auth.outcome}: ${auth.message}`)
+    browser = auth.browser
+    page = auth.page
+  } else {
+    const authPath = requireAuthState(platformKey)
+    // --headed shows the window, the same way the agent runs.
+    browser = await chromium.launch({ headless: !headed })
     const context = await browser.newContext({ storageState: authPath })
-    const page = await context.newPage()
+    page = await context.newPage()
+  }
+  try {
     const result = await poster(task, adCopy, {
       dryRun,
       outputDir,
       page,
       platform,
-      log: (m) => console.error(m),
+      log,
     })
     console.error(
       dryRun

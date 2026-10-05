@@ -31,6 +31,7 @@ With the dashboard running and a login session captured:
 cd workers/posting
 npm run post -- <platform> <taskId>             # e.g. landmodo task-123...
 npm run post -- <platform> <taskId> --dry-run   # fill + screenshot, no submit
+npm run post -- <platform> <taskId> --login     # agent-style: headed login if stale, then post
 ```
 
 The runner fetches the task from the dashboard API (`DASHBOARD_URL`, default
