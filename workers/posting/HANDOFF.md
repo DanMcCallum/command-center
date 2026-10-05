@@ -304,6 +304,23 @@ sessions and this is a LandCentury support ticket), and what `/api/users/me`
 reports for `token` there. `post.ts --login` now logs the status and key
 names of the login flow's responses.
 
+ROOT CAUSE (found after Dan created a listing by hand in his own Chrome
+with the identical session shape: isLoggedIn true, no token, same cookie
+names). The login session is a host-only `landcentury_session` cookie on
+www.landcentury.com. api-prod.landcentury.com (Laravel) answers EVERY
+credentialed request, even a 401, with its own anonymous
+`landcentury_session` + `XSRF-TOKEN` cookies scoped to `.landcentury.com`
+(checked with curl from this server). The site's own calls to api-prod pass
+withCredentials=false, so a normal browser never receives those. The
+poster's listing reads used `credentials: 'include'`, so from that point
+the browser sent two `landcentury_session` cookies to www; `/api/users/me`
+and the geocoder still read the login one, the property routes read the
+anonymous one. Fix: reads send `credentials: 'omit'`, and
+`dropStrayBackendCookies` removes any `.landcentury.com`-scoped
+`landcentury_session` / `XSRF-TOKEN` from the context before posting (a
+saved session from an earlier run may carry them). Next: rerun
+`npm run post -- land_century task-1790275652160-rlxk9l --dry-run --login`.
+
 Unknowns the first run answers (each has a fallback or a loud error):
 
 1. Whether the react-quill instance is reachable through the React fiber

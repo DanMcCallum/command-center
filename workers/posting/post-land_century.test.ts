@@ -152,6 +152,8 @@ test('sameText ignores case, punctuation and the ampersand spelling', () => {
 test('the in-page reader and the Quill setter are real functions (no "return" + newline swallow)', () => {
   assert.equal(typeof READ_PROPERTIES_FN, 'function')
   assert.ok(READ_PROPERTIES_FN.toString().includes('apiToken'))
+  // Credentialed reads of api-prod plant an anonymous .landcentury.com session cookie that breaks the site's write routes.
+  assert.ok(READ_PROPERTIES_FN.toString().includes("credentials: 'omit'"))
   const quill = new Function('el', 'html', QUILL_SET_HTML)
   assert.equal(typeof quill, 'function')
   assert.equal(quill({}, '<p>x</p>'), false)

@@ -198,6 +198,7 @@ export async function postToLandCentury(
   await page.goto(LANDCENTURY_SELECTORS.listingsUrl, { waitUntil: 'domcontentloaded' })
   await settle(page)
   if (await loggedOut(page)) throw loginExpiredError(PLATFORM, page.url())
+  await dropStrayBackendCookies(page, log)
   await preflightServerSession(page, coordinatesFromTask(task), log)
   const existing = await readProperties(page)
   log(
@@ -694,6 +695,42 @@ async function photoCount(page: Page): Promise<number> {
   return page.locator(LANDCENTURY_SELECTORS.photoCard).count().catch(() => 0)
 }
 
+// --- stray backend cookies -----------------------------------------------------------
+
+/**
+ * The login session is a host-only cookie on www.landcentury.com. The backend
+ * host (api-prod) answers every credentialed request with its own anonymous
+ * landcentury_session / XSRF-TOKEN cookies scoped to .landcentury.com, and
+ * once those exist the browser sends both session cookies to www, whose
+ * property routes then see the anonymous one and answer "Unauthenticated."
+ * (runs 2 to 4 on 2026-10-05, caused by the poster's own credentialed reads).
+ * The reads no longer send credentials; this repairs a session that already
+ * carries the strays, e.g. one saved by an earlier run.
+ */
+async function dropStrayBackendCookies(page: Page, log: (m: string) => void): Promise<void> {
+  const context = page.context()
+  const all = await context.cookies()
+  const stray = all.filter(
+    (c) => /^(landcentury_session|XSRF-TOKEN)$/.test(c.name) && /^\.?landcentury\.com$/.test(c.domain)
+  )
+  if (stray.length === 0) return
+  const keep = all.filter((c) => !stray.includes(c))
+  await context.clearCookies()
+  await context.addCookies(
+    keep.map((c) => ({
+      name: c.name,
+      value: c.value,
+      domain: c.domain,
+      path: c.path,
+      expires: c.expires,
+      httpOnly: c.httpOnly,
+      secure: c.secure,
+      sameSite: c.sameSite,
+    }))
+  )
+  log(`land_century: dropped ${stray.length} stray backend cookie(s) scoped to .landcentury.com (${stray.map((c) => c.name).join(', ')})`)
+}
+
 // --- server-session preflight ----------------------------------------------------
 
 const PREFLIGHT_FN = new Function(
@@ -798,9 +835,14 @@ const READ_PROPERTIES = `
   async (arg) => {
     var token = localStorage.getItem('apiToken')
     if (!token) return { error: 'no apiToken in localStorage' }
+    // credentials: 'omit' on purpose. Every api-prod response sets an anonymous
+    // landcentury_session cookie for .landcentury.com; with credentials the
+    // browser stores it next to the real www.landcentury.com login cookie and
+    // the site's own write routes then read the anonymous one ("Unauthenticated.").
+    // The site's own calls to api-prod never send credentials either.
     var res = await fetch(arg.url, {
       headers: { Accept: 'application/json', authorization: 'Bearer ' + token },
-      credentials: 'include',
+      credentials: 'omit',
     })
     if (!res.ok) return { error: 'HTTP ' + res.status }
     return { data: await res.json() }
