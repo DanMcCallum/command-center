@@ -273,6 +273,20 @@ posts in that same browser, which is the next thing to try:
 after `rm auth/land_century.json`. The preflight line in the log says which
 session is dead.
 
+Third run (`--login`, fresh login, 2026-10-05 22:43): preflight said
+`/api/users/me 200 isLoggedIn=true user=true token=false`, the
+reverse-geocoder reached the backend (a validation error, so that route is
+authenticated or public), categories came out right, and the create POST
+still answered 400 "Unauthenticated." from www.landcentury.com. The client
+sends no Authorization header on that call (plain axios, no defaults or
+interceptors anywhere in the bundle), so the Next.js route must take the
+token from its server session, which reports no top-level token. Still
+open: whether the site's create works at all right now by hand, and whether
+the same Playwright session accepts a hand-clicked Next (`--keep-open`
+leaves the window up for exactly that). The preflight now also reports
+`user.token` and `user.type`, and rejected calls log their request header
+names.
+
 Unknowns the first run answers (each has a fallback or a loud error):
 
 1. Whether the react-quill instance is reachable through the React fiber

@@ -706,7 +706,7 @@ const PREFLIGHT_FN = new Function(
       method: 'POST',
       headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
       credentials: 'include',
-      body: JSON.stringify({ lat: arg.lat, lng: arg.lng }),
+      body: JSON.stringify({ lat: String(arg.lat), lng: String(arg.lng) }),
     })
     var probeText = ''
     try { probeText = await probe.text() } catch (e) { probeText = '' }
@@ -715,6 +715,8 @@ const PREFLIGHT_FN = new Function(
       isLoggedIn: !!(meBody && meBody.isLoggedIn),
       hasUser: !!(meBody && meBody.user),
       hasToken: !!(meBody && meBody.token),
+      hasUserToken: !!(meBody && meBody.user && meBody.user.token),
+      userType: meBody && meBody.user ? meBody.user.type : null,
       hasLocalToken: !!localStorage.getItem('apiToken'),
       probeStatus: probe.status,
       probeMessage: probeText.slice(0, 200),
@@ -729,6 +731,8 @@ interface Preflight {
   isLoggedIn: boolean
   hasUser: boolean
   hasToken: boolean
+  hasUserToken: boolean
+  userType: number | null
   hasLocalToken: boolean
   probeStatus: number
   probeMessage: string
@@ -756,7 +760,7 @@ async function preflightServerSession(
     return
   }
   log(
-    `land_century: server session: /api/users/me ${r.meStatus} isLoggedIn=${r.isLoggedIn} user=${r.hasUser} token=${r.hasToken}; ` +
+    `land_century: server session: /api/users/me ${r.meStatus} isLoggedIn=${r.isLoggedIn} user=${r.hasUser} (type ${r.userType}) token=${r.hasToken} user.token=${r.hasUserToken}; ` +
       `browser token=${r.hasLocalToken}; reverse-geocoder ${r.probeStatus}${r.probeMessage ? ` ${r.probeMessage.replace(/\s+/g, ' ').slice(0, 120)}` : ''}`
   )
   if (/unauthenticated/i.test(r.probeMessage) || r.probeStatus === 401 || !r.isLoggedIn) {
@@ -779,7 +783,10 @@ function watchApiResponses(page: Page, log: (m: string) => void): void {
       .text()
       .then((body) => {
         const message = body.match(/"message"\s*:\s*"([^"]{0,200})"/)?.[1] ?? body.replace(/\s+/g, ' ').slice(0, 120)
-        log(`land_century: ${res.request().method()} ${url.replace(/^https?:\/\//, '')} -> ${status} ${message}`)
+        // Header NAMES only (never values): shows whether the browser sent
+        // cookies and an authorization header on the rejected call.
+        const sent = Object.keys(res.request().headers()).sort().join(', ')
+        log(`land_century: ${res.request().method()} ${url.replace(/^https?:\/\//, '')} -> ${status} ${message} [request headers: ${sent}]`)
       })
       .catch(() => log(`land_century: ${res.request().method()} ${url.replace(/^https?:\/\//, '')} -> ${status}`))
   })

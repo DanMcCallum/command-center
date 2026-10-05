@@ -3,7 +3,11 @@
  * registry the local poster agent invokes (specs/local-publish-2-local-agent.md
  * US-005).
  *
- * Usage: npm run post -- <platform> <taskId> [--dry-run] [--headed] [--login]
+ * Usage: npm run post -- <platform> <taskId> [--dry-run] [--headed] [--login] [--keep-open]
+ *
+ * --keep-open leaves the browser window open after the run (success or
+ * failure) until the operator closes it, so a failing step can be retried by
+ * hand in the very same session.
  *
  * --login runs the agent's own auth flow first (agent-auth.ts): a headed
  * window, the saved session probed, the operator logging in only if it is
@@ -75,10 +79,11 @@ async function main(): Promise<void> {
   const dryRun = args.includes('--dry-run')
   const headed = args.includes('--headed')
   const login = args.includes('--login')
+  const keepOpen = args.includes('--keep-open')
   const [platformKey, taskId] = args.filter((a) => !a.startsWith('--'))
 
   if (!platformKey || !taskId) {
-    console.error('Usage: npm run post -- <platform> <taskId> [--dry-run] [--headed] [--login]')
+    console.error('Usage: npm run post -- <platform> <taskId> [--dry-run] [--headed] [--login] [--keep-open]')
     console.error(`Implemented platforms: ${Object.keys(POSTERS).join(', ')}`)
     process.exit(1)
   }
@@ -136,8 +141,15 @@ async function main(): Promise<void> {
         : `Posted: ${result.listingUrl} (screenshot: ${result.screenshotPath})`
     )
     console.log(JSON.stringify(result))
+  } catch (err) {
+    if (keepOpen) console.error(`Failed: ${err instanceof Error ? err.message : err}`)
+    throw err
   } finally {
-    await browser.close()
+    if (keepOpen && browser.isConnected()) {
+      console.error('--keep-open: the browser stays open; close the window to finish')
+      while (browser.isConnected() && !page.isClosed()) await new Promise((r) => setTimeout(r, 1000))
+    }
+    await browser.close().catch(() => {})
   }
 }
 
