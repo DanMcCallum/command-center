@@ -2,6 +2,8 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import {
   LAND_CATEGORIES,
+  QUILL_SET_HTML,
+  READ_PROPERTIES_FN,
   apnForLandCentury,
   categoriesForTask,
   descriptionHtmlForLandCentury,
@@ -144,4 +146,12 @@ test('apnForLandCentury is optional: metadata, then an APN mention, else null', 
 test('sameText ignores case, punctuation and the ampersand spelling', () => {
   assert.equal(sameText('Recreational & Hunting Land', 'recreational and hunting land'), true)
   assert.equal(sameText('Vacant Land', 'Vacant Lot'), false)
+})
+
+test('the in-page reader and the Quill setter are real functions (no "return" + newline swallow)', () => {
+  assert.equal(typeof READ_PROPERTIES_FN, 'function')
+  assert.ok(READ_PROPERTIES_FN.toString().includes('apiToken'))
+  const quill = new Function('el', 'html', QUILL_SET_HTML)
+  assert.equal(typeof quill, 'function')
+  assert.equal(quill({}, '<p>x</p>'), false)
 })

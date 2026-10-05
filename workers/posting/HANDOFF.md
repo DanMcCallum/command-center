@@ -245,6 +245,15 @@ What needs Dan first:
   `config/posting-platforms.json`, presence only). Paste the agent log and
   the session cookie names line.
 
+First agent run 2026-10-05 22:33 UTC: login captured through the home-page
+modal (cookie names: landcentury_session plus analytics and Stripe), then
+the listings read failed with "Cannot read properties of undefined
+(reading 'error')": the in-page reader was built as `new Function('return '
++ string)` with a leading newline, so ASI returned undefined. Fixed (the
+function is parenthesised, exported as READ_PROPERTIES_FN and unit-tested).
+`landcentury_session` is the site's own session cookie; not added as a
+cookie signal because it may exist logged-out too.
+
 Unknowns the first run answers (each has a fallback or a loud error):
 
 1. Whether the react-quill instance is reachable through the React fiber

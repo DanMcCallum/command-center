@@ -354,7 +354,7 @@ async function fillDescription(page: Page, html: string, headline: string, log: 
   }
 }
 
-const QUILL_SET_HTML = `
+export const QUILL_SET_HTML = `
   var key = Object.keys(el).find(function (k) { return k.indexOf('__reactFiber$') === 0 })
   var fiber = key ? el[key] : null
   var editor = null
@@ -690,15 +690,33 @@ const READ_PROPERTIES = `
   }
 `
 
+/**
+ * The reader as a real function for page.evaluate. Parenthesised on purpose:
+ * "return" followed by the string's leading newline would return undefined
+ * (automatic semicolon insertion), which is exactly what broke the first
+ * live run on 2026-10-05.
+ */
+export const READ_PROPERTIES_FN = new Function('return (' + READ_PROPERTIES + ')')() as (arg: { url: string }) => unknown
+
+interface ApiRead<T> {
+  error?: string
+  data?: T
+}
+
+async function apiRead<T>(page: Page, url: string): Promise<ApiRead<T>> {
+  const res = (await page.evaluate(READ_PROPERTIES_FN, { url })) as ApiRead<T> | undefined
+  if (!res || typeof res !== 'object') {
+    throw new Error(`Reading ${url} from the page returned nothing (${String(res)}); ${SCRIPT} READ_PROPERTIES is broken`)
+  }
+  return res
+}
+
 /** Every listing on the account, read the way /admin/listings/all reads them. */
 export async function readProperties(page: Page): Promise<PropertyRecord[]> {
   const out: PropertyRecord[] = []
   for (let pageNo = 1; pageNo <= 10; pageNo++) {
     const url = `${API}/api/v1/users/properties/all?page=${pageNo}&limit=100`
-    const res = (await page.evaluate(new Function('return ' + READ_PROPERTIES)() as (arg: { url: string }) => unknown, { url })) as {
-      error?: string
-      data?: { properties?: { total?: number; properties?: unknown[] } }
-    }
+    const res = await apiRead<{ properties?: { total?: number; properties?: unknown[] } }>(page, url)
     if (res.error) throw new Error(`Could not read the Land Century listings (${res.error}); is the session still valid?`)
     const rows = res.data?.properties?.properties ?? []
     for (const r of rows) out.push(parsePropertyRecord(r))
@@ -709,11 +727,7 @@ export async function readProperties(page: Page): Promise<PropertyRecord[]> {
 }
 
 export async function readProperty(page: Page, id: number): Promise<PropertyRecord | null> {
-  const url = `${API}/api/v1/users/properties/single/${id}`
-  const res = (await page.evaluate(new Function('return ' + READ_PROPERTIES)() as (arg: { url: string }) => unknown, { url })) as {
-    error?: string
-    data?: { property?: unknown }
-  }
+  const res = await apiRead<{ property?: unknown }>(page, `${API}/api/v1/users/properties/single/${id}`)
   if (res.error || !res.data?.property) return null
   return parsePropertyRecord(res.data.property)
 }
