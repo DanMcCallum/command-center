@@ -350,6 +350,19 @@ step-4 save. Still to confirm by hand: whether Zoning sticks when set in
 the site's own UI (if not, the site's field is broken and the three are
 optional anyway).
 
+Seventh run (2026-10-05): CLEAN DRY RUN. Draft 26439 finished end to end;
+the saved record read back from the API: name " 1.00 Acres for Sale in
+Fairplay, Colorado" (the site renamed it once acres were saved; note the
+leading space is the site's), street "Redhill Forest Filing 3, Lot 366",
+Fairplay, Park, Colorado 80440, acres 1, zoning Residential, road Dirt
+Road, utilities "Electricity available, septic and well required", legal
+"Redhill Forest Filing 3, Lot 366", ownerFinance true, financePrice
+3500000 (cents). The AutoCompletes worked this time with the 300 ms settle
+before reading back. Next: Dan reviews the draft in the admin, then
+publishes from the dashboard with the agent running (the poster matches
+26439 on parcel number, re-fills, and presses Publish on step 4; the
+public URL comes from the record's slug).
+
 Unknowns the first run answers (each has a fallback or a loud error):
 
 1. Whether the react-quill instance is reachable through the React fiber
