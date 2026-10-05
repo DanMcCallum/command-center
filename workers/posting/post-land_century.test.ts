@@ -58,6 +58,8 @@ test('parsePropertyRecord reads the admin API shape (cents, nested info, error l
   assert.equal(p.sizeAcres, 1)
   assert.equal(p.parcelNumber, 'R0037546')
   assert.deepEqual(p.errors, ['Missing images'])
+  assert.equal(p.details.acres, '1')
+  assert.equal(p.details.state, 'Colorado')
   assert.equal(statusOf(p), 'Live')
   assert.equal(statusOf({ ...p, isPublished: false }), 'Draft')
   assert.equal(statusOf({ ...p, isSold: true }), 'Sold')

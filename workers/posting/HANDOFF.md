@@ -334,6 +334,22 @@ one retry; dropdowns are closed before every Next/Save/Publish click. Draft
 26439 carries parcel number R0037546, so the rerun matches it and finishes
 it instead of creating another.
 
+Sixth run: draft 26439 matched on parcel number and finished through all
+five steps; the only misses were the three Detailed Info AutoCompletes
+(Zoning, Road Access, Utilities), which read "" after typing + option click
+on every attempt, and the final "Listing not published: Property saved
+without errors" notice after Save Changes, which the poster wrongly treated
+as a failure (it is the dry-run success; only after Publish does it mean
+anything). Fixed: the notice is only fatal after Publish; the poster logs
+the saved record (name, address, acres, zoning, road, utilities, deed,
+legal, financing) from the API after Save/Publish so the AutoComplete
+question is answered by the server, not the input; a third keyboard-driven
+attempt was added. The listing name on create was " for Sale in Fairplay,
+Colorado" because acres only arrive on step 4; check the name after the
+step-4 save. Still to confirm by hand: whether Zoning sticks when set in
+the site's own UI (if not, the site's field is broken and the three are
+optional anyway).
+
 Unknowns the first run answers (each has a fallback or a loud error):
 
 1. Whether the react-quill instance is reachable through the React fiber

@@ -172,6 +172,8 @@ export interface PropertyRecord {
   isPublished: boolean
   isSold: boolean
   errors: string[]
+  /** Detailed Info and address fields as saved, for the read-back log. */
+  details: Record<string, string>
 }
 
 export async function postToLandCentury(
@@ -283,11 +285,8 @@ export async function postToLandCentury(
   if (opts.dryRun) {
     await clickNext(page, 'Save Changes', log)
     const after = await readProperty(page, propertyId)
-    log(
-      `land_century: dry run, listing ${propertyId} left as ${after ? statusOf(after) : 'unknown status'} at ` +
-        `${LANDCENTURY_SELECTORS.formUrl(propertyId, 0)}` +
-        (after?.errors.length ? `; site lists ${after.errors.length} issue(s): ${after.errors.join(' | ')}` : '')
-    )
+    if (after) log(`land_century: saved: ${describeRecord(after)}`)
+    log(`land_century: dry run, listing ${propertyId} left as ${after ? statusOf(after) : 'unknown status'} at ${LANDCENTURY_SELECTORS.formUrl(propertyId, 0)}`)
     const screenshotPath = await saveProofScreenshot(page, opts.outputDir, PLATFORM)
     return { listingUrl: null, screenshotPath }
   }
@@ -296,6 +295,7 @@ export async function postToLandCentury(
   await page.waitForTimeout(2500)
   const record = await readProperty(page, propertyId)
   if (!record) throw new Error(`Could not read listing ${propertyId} back after Publish. ${noticeHint(notices)}`)
+  log(`land_century: saved: ${describeRecord(record)}`)
   if (!record.isPublished) {
     throw new Error(
       `Listing ${propertyId} is still a Draft after Publish` +
@@ -628,24 +628,39 @@ async function pickAutoComplete(page: Page, label: string, value: string, log: (
   }
   await closeDropdowns(page)
   const input = sel.locator(LANDCENTURY_SELECTORS.selectSearch).first()
-  for (let attempt = 1; attempt <= 2; attempt++) {
+  const shown = async () => {
+    const typed = (await input.inputValue().catch(() => '')).trim()
+    if (typed) return typed
+    return (await sel.locator(LANDCENTURY_SELECTORS.selectedTag).first().innerText().catch(() => '')).trim()
+  }
+  for (let attempt = 1; attempt <= 3; attempt++) {
     await input.click()
-    await input.fill('')
-    await input.pressSequentially(value, { delay: 15 })
-    const option = page.locator(LANDCENTURY_SELECTORS.dropdownOptionByTitle(value)).first()
-    if (await option.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await option.click()
+    if (attempt < 3) {
+      await input.fill('')
+      await input.pressSequentially(value, { delay: 15 })
+      const option = page.locator(LANDCENTURY_SELECTORS.dropdownOptionByTitle(value)).first()
+      if (await option.isVisible({ timeout: 3000 }).catch(() => false)) await option.click()
+      else await input.press('Enter')
     } else {
-      // No matching option showing: Enter takes the active one, if any.
-      await input.press('Enter')
+      // Keyboard only: open the list and walk to the option by title.
+      await input.press('ArrowDown')
+      const option = page.locator(LANDCENTURY_SELECTORS.dropdownOptionByTitle(value)).first()
+      if (await option.isVisible({ timeout: 3000 }).catch(() => false)) {
+        await option.hover()
+        await option.click({ force: true })
+      } else {
+        await input.press('Escape')
+      }
     }
+    await page.waitForTimeout(300)
+    const before = await shown()
     await closeDropdowns(page)
-    const got = (await input.inputValue().catch(() => '')).trim()
-    if (sameText(got, value)) {
-      log(`land_century: ${label} = ${value}`)
+    const got = await shown()
+    if (sameText(got, value) || sameText(before, value)) {
+      log(`land_century: ${label} = ${value}${sameText(got, value) ? '' : ' (shown while open; cleared on close)'}`)
       return
     }
-    log(`land_century: ${label} reads "${got}" after attempt ${attempt} at "${value}"`)
+    log(`land_century: ${label} reads "${got}" (open: "${before}") after attempt ${attempt} at "${value}"`)
   }
   log(`land_century: NOTE ${label} could not be set to "${value}"; set it by hand`)
 }
@@ -682,7 +697,11 @@ async function clickNext(page: Page, label: 'Next' | 'Save Changes' | 'Publish',
     .catch(() => {})
   await page.waitForTimeout(1000)
   const notice = await latestNotification(page)
-  if (notice && /error|not published|missing data/i.test(notice)) {
+  // "Listing not published: Property saved without errors but not published"
+  // is the normal answer to Save Changes on the last step; it is only a
+  // failure after Publish (the record read-back then reports why).
+  const failed = /^error\b|missing data/i.test(notice) || (label === 'Publish' && /not published/i.test(notice))
+  if (notice && failed) {
     throw new Error(`Land Century answered "${notice.slice(0, 300)}" after ${label} at ${urlBefore}`)
   }
   log(`land_century: ${label}${notice ? ` -> "${notice.slice(0, 120)}"` : ''}`)
@@ -1031,7 +1050,34 @@ export function parsePropertyRecord(raw: unknown): PropertyRecord {
     isPublished: Boolean(r['isPublished']),
     isSold: Boolean(r['isSold']),
     errors,
+    details: Object.fromEntries(
+      (
+        [
+          ['street', r['street']],
+          ['city', r['city']],
+          ['county', r['county']],
+          ['state', r['stateRegion']],
+          ['zip', r['zip']],
+          ['acres', info['sizeAcres']],
+          ['zoning', info['zoning']],
+          ['road', info['roadAccess']],
+          ['utilities', info['utilities']],
+          ['deed', info['deedType']],
+          ['legal', info['legalDescription']],
+          ['taxes', info['taxes']],
+          ['ownerFinance', r['isOwnerFinance']],
+          ['financePrice', r['ownerFinancePrice']],
+        ] as Array<[string, unknown]>
+      )
+        .filter(([, v]) => v !== null && v !== undefined && v !== '')
+        .map(([k, v]) => [k, String(v)])
+    ),
   }
+}
+
+export function describeRecord(p: PropertyRecord): string {
+  const d = Object.entries(p.details).map(([k, v]) => `${k}=${v.length > 40 ? v.slice(0, 37) + '...' : v}`)
+  return `${p.id} [${statusOf(p)}] "${p.name}"${d.length ? ` ${d.join(' ')}` : ''}${p.errors.length ? ` issues: ${p.errors.join(' | ')}` : ''}`
 }
 
 export function statusOf(p: PropertyRecord): 'Live' | 'Sold' | 'Draft' {
