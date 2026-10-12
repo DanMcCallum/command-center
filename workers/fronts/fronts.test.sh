@@ -82,5 +82,42 @@ check "route: unrouted resets the frontmatter line" bash -c 'grep -q "^front: un
 check "route: unrouted posts a question to the review bin" bash -c 'grep -q "/api/fronts/suggestions" "$1" && grep -Eq "\"kind\": ?\"question\"" "$2" && grep -q "Which front was this session about" "$2"' _ "$STUB_CURL_LOG" "$STUB_CURL_BODIES"
 unset STUB_CURL_LOG STUB_CURL_BODIES
 
+# 4. whats-next ---------------------------------------------------------------------
+mkdir -p "$FRONTS_DIR/land-sales" "$TMP/locks"
+export FRONTS_LOCK_DIR="$TMP/locks"
+cp "$PROJECT_ROOT/fronts/_template/north-star.md" "$FRONTS_DIR/land-sales/north-star.md"
+printf '# Land sales: now\n\n## Where we are\nOld state.\n\n## Answers from Daniel\n- 2026-10-11: Q: Keep the price? A: Yes.\n\n## Open questions\n(none yet)\n' > "$FRONTS_DIR/land-sales/now.md"
+sed -i 's/^front: .*/front: [land-sales]/' "$MEM"
+export STUB_PROMPT_CAPTURE="$TMP/next-prompt.txt" STUB_CURL_LOG="$TMP/curl2.log" STUB_CURL_BODIES="$TMP/curl2-bodies.log"
+code=0; "$HERE/whats-next.sh" land-sales "$MEM" >/dev/null 2>&1 || code=$?
+NOWF="$FRONTS_DIR/land-sales/now.md"
+check "next: exits 0" test "$code" -eq 0
+check "next: prompt carried the rules, the north star, the old now.md and the session" bash -c 'grep -q "ask Daniel instead of suggesting work" "$1" && grep -q "What good looks like" "$1" && grep -q "Old state" "$1" && grep -q "Landmodo photo upload selector" "$1"' _ "$STUB_PROMPT_CAPTURE"
+check "next: now.md starts with the title and a Last session block naming the memory file" bash -c 'head -1 "$1" | grep -q "^# Land sales: now$" && grep -q "^## Last session" "$1" && grep -q "fixture-.md" "$1"' _ "$NOWF"
+check "next: now.md has a Yesterday section" bash -c 'grep -q "^## Yesterday" "$1"' _ "$NOWF"
+check "next: now.md carries the model sections" bash -c 'grep -q "^## Where we are" "$1" && grep -q "Stub state" "$1" && grep -q "^## Next for Daniel" "$1"' _ "$NOWF"
+check "next: Answers from Daniel preserved" bash -c 'grep -q "^## Answers from Daniel" "$1" && grep -q "Keep the price? A: Yes" "$1"' _ "$NOWF"
+check "next: suggestions and questions posted in one batch" bash -c 'grep -c "/api/fronts/suggestions" "$1" | grep -q "^1$" && grep -q "Stub task" "$2" && grep -q "Stub question" "$2" && grep -q "fixture-session-0001" "$2"' _ "$STUB_CURL_LOG" "$STUB_CURL_BODIES"
+check "next: task body is the prompt, kind task; question body is why it matters" bash -c 'jq -e ".[0].kind == \"task\" and .[0].body == \"Do the stub thing.\" and .[1].kind == \"question\" and .[1].body == \"Because.\"" "$1" >/dev/null' _ "$STUB_CURL_BODIES"
+unset STUB_PROMPT_CAPTURE
+
+: > "$STUB_CURL_LOG"; : > "$STUB_CURL_BODIES"; cp "$NOWF" "$TMP/now-before-fail.md"
+code=0; STUB_FAIL=1 "$HERE/whats-next.sh" land-sales "$MEM" >/dev/null 2>&1 || code=$?
+check "next: model failure exits 2, now.md untouched, failure question posted" bash -c 'test "$1" -eq 2 && cmp -s "$2" "$3" && grep -q "failed for land-sales" "$4"' _ "$code" "$NOWF" "$TMP/now-before-fail.md" "$STUB_CURL_BODIES"
+
+code=0; "$HERE/whats-next.sh" nope "$MEM" >/dev/null 2>&1 || code=$?
+check "next: unknown front exits 2" test "$code" -eq 2
+
+# Lock: a second run while the lock is held queues its file and exits 0.
+( exec 9>"$TMP/locks/land-sales.lock"; flock 9; sleep 3 ) &
+HOLDER=$!; sleep 0.5
+code=0; "$HERE/whats-next.sh" land-sales "$MEM" >/dev/null 2>&1 || code=$?
+check "next: busy front queues the file and exits 0" bash -c 'test "$1" -eq 0 && grep -q "fixture-.md" "$2"' _ "$code" "$TMP/locks/land-sales.pending"
+wait $HOLDER
+: > "$STUB_CURL_LOG"
+"$HERE/whats-next.sh" land-sales >/dev/null 2>&1 || true
+check "next: the next run drains the pending list" bash -c 'test ! -s "$1" && test "$(grep -c "/api/fronts/suggestions" "$2")" -eq 2' _ "$TMP/locks/land-sales.pending" "$STUB_CURL_LOG"
+unset STUB_CURL_LOG STUB_CURL_BODIES
+
 echo; echo "passed $PASS, failed $FAIL"
 [[ $FAIL -eq 0 ]]
