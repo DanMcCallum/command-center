@@ -54,6 +54,8 @@ export default function CallNoteForm({ callId, contactId, propertyId, caller, on
   const [outcome, setOutcome] = useState<NoteOutcome | null>(null);
   const [delivery, setDelivery] = useState<Delivery | null>(null);
   const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // State updates land after a render, so two clicks in one tick both see submitting=false.
+  const inFlightRef = useRef(false);
 
   useEffect(() => () => {
     if (pollRef.current) clearTimeout(pollRef.current);
@@ -75,7 +77,8 @@ export default function CallNoteForm({ callId, contactId, propertyId, caller, on
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (submitting || !note.trim()) return;
+    if (inFlightRef.current || !note.trim()) return;
+    inFlightRef.current = true;
     setSubmitting(true);
     setError(null);
     try {
@@ -105,6 +108,7 @@ export default function CallNoteForm({ callId, contactId, propertyId, caller, on
     } catch {
       setError('call service unreachable');
     } finally {
+      inFlightRef.current = false;
       setSubmitting(false);
     }
   };

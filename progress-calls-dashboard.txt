@@ -48,6 +48,8 @@
 - `CallsOpsStrip` takes optional `stream` and `lastPingAt` props (omit them on pages without a stream) and re-fetches ops whenever the stream goes `open` or `reconnecting`, so the strip flips to unreachable in about 100 ms instead of waiting for the 30 s interval. Badge `text` already contains the label (`dead letters: 0`); render `text` only. Test hooks: `data-testid=calls-ops-strip` with `data-state` `ok`/`unreachable`/`loading`, `calls-unreachable`, `call-pop` with `data-kind` and `data-call-id`, `calls-recent`, `calls-recent-error`.
 - Restarting the e2e runner from a Playwright script: `spawn(python, ['scripts/run_e2e_dev.py', ...], {detached: true, cwd: followupdominator})` and keep `child.pid`; a fresh db path each time keeps the seed clean. Read `SESSION=` from the new stdout file.
 - Baselines after US-012: `npm test` 83/85 (the two known `ebay-html.test.ts` failures).
+- Record page (US-013): `/calls/record/[table]/[id]` is a client page over `GET /api/calls/record/...`; test hooks `calls-record-fields`, `calls-record-nickname` (property only), `calls-record-history` (absent when empty; the e2e seed has no task links until a sync walk), `calls-record-missing` (404, also for an unknown table), `calls-record-error`. The note form there is prefilled with only the record's own id. `CallNoteForm` guards double submits with a ref as well as the `submitting` state (two clicks in one tick both saw `submitting=false`); a later resubmit answers "Duplicate submit, already logged (outbox N)" with the original id. US-014 pages should link rows to `/calls/record/<table>/<id>`.
+- `$!` gotcha bit again in US-013: `cd X && VAR=... setsid nohup cmd &` on ONE line still backgrounds the list. Put the `cd` on its own line (or take pids from `ss -ltnp`) and always confirm the ports are free after killing.
 ---
 
 ## Iteration 0 (prep session, 2026-10-12) - US-001: Inventory the HTML dashboard
@@ -146,3 +148,15 @@
   - Screenshots: `/tmp/calls-us012-1-loaded.png`, `-2-pops.png`, `-3-unreachable.png`, `-4-recovered.png`, `-5-down-fresh.png`.
 - Verified: `npx tsc --noEmit` -> exit 0; `node --import tsx --test lib/use-call-stream.test.ts` -> `# tests 8 # pass 8 # fail 0`; `npm test` -> `# tests 85 # pass 83 # fail 2` (the two known `ebay-html.test.ts` failures). Runner and next dev stopped by pid (next by process group), ports 3001 and 8101 free, temp dir deleted, `dashboard/data/*.json` checksums unchanged, no `workers/logs/*e2e*` files. No Python change.
 - Next story: US-013 (the note form component is already written; the record page and its verification remain).
+
+## Iteration 13 (2026-10-12) - US-013: Note form and record detail
+- command center: new `dashboard/app/calls/record/[table]/[id]/page.tsx` (breadcrumb, ops strip, "Ad nickname" line, record fields table with empty values dropped, task history table with due date or a "after the next sync walk" line when empty, the note form prefilled with the contact or property id, 404 state "No <table> <id> in Investment Dominator.", error line on 502). `components/CallNoteForm.tsx` (from US-012) gains an in-flight ref so a double click sends one POST. Pops already link to record pages; search, contacts and properties link there in US-014.
+- Browser check (Playwright headless, `http://localhost:3001`, e2e runner on 8101, throwaway token):
+  - `PASS matched pop shown`, `PASS pop note outcome shows outbox id 1: "Logged (outbox 1)."`, `PASS fake task id appeared "ID task 9001" 4563 ms after submit`, `PASS record log has exactly one create_task for the pop note`
+  - `PASS pop link opens contact 7 record page with its fields`, `PASS record note form prefilled with contact id 7`, `PASS contact has no nickname line`
+  - `PASS two quick clicks sent 1 POST(s); a third click later answered "Duplicate submit" with the same outbox 2`, `PASS outbox 2 exists, outbox 3 is 404: one row`, `PASS record log has exactly one create_task for the double submit`
+  - `PASS property 5692 record page: "Ad nickname: Test Meadow"`, `PASS record note form prefilled with property id 5692`
+  - `PASS unknown record shows 404 state: "No contact 999 in Investment Dominator."`, `PASS unknown table shows 404 state`
+  - Screenshots: `/tmp/calls-us013-1-pop-note.png`, `-2-contact.png`, `-3-property.png`.
+- Verified: `npx tsc --noEmit` -> exit 0; `npm test` -> `# tests 85 # pass 83 # fail 2` (the two known `ebay-html.test.ts` failures). Runner and next dev stopped by their real pids (see the `$!` learning), ports 3001 and 8101 free, temp dir deleted, `dashboard/data/*.json` checksums unchanged, no `workers/logs/*e2e*` files. No Python change.
+- Next story: US-014.

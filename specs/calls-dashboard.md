@@ -159,10 +159,10 @@ Target architecture (decided by the operator, not up for debate inside the loop)
 **Description:** As the operator, I want to log a call note from the pop and from a record page and see the ID task id when it lands.
 
 **Acceptance Criteria:**
-- [ ] `components/CallNoteForm.tsx`: fields contact id, property id, note (required), status (Not Started, Working, Completed; default Completed), follow-up date; generates `client_uuid` once at mount; disables the submit button while in flight; posts to `/api/calls/notes`; shows the outcome line ("logged", "duplicate submit", fallback-close message) and then polls `/api/calls/outbox/{id}` every 3 s for up to 60 s until `status` is `done` (shows "ID task <task_id>") or `dead_letter` (shows the error in red, links to `/calls/ops`).
-- [ ] `dashboard/app/calls/record/[table]/[id]/page.tsx`: nickname line, record fields table (non-empty only), task history table, and the note form prefilled with the record id; 404 state for unknown records; the record page is linked from pops, search results, contacts, and properties.
-- [ ] Browser verification on 3001: submit a note from a pop, see the outbox id, see the fake task id appear within 10 s; submit the same form twice quickly and confirm one outbox row (`/api/calls/outbox` ids); open a record page for contact 7 and property 5692 from the e2e seed.
-- [ ] `tsc` clean.
+- [x] `components/CallNoteForm.tsx`: fields contact id, property id, note (required), status (Not Started, Working, Completed; default Completed), follow-up date; generates `client_uuid` once at mount; disables the submit button while in flight; posts to `/api/calls/notes`; shows the outcome line ("logged", "duplicate submit", fallback-close message) and then polls `/api/calls/outbox/{id}` every 3 s for up to 60 s until `status` is `done` (shows "ID task <task_id>") or `dead_letter` (shows the error in red, links to `/calls/ops`).
+- [x] `dashboard/app/calls/record/[table]/[id]/page.tsx`: nickname line, record fields table (non-empty only), task history table, and the note form prefilled with the record id; 404 state for unknown records; the record page is linked from pops, search results, contacts, and properties.
+- [x] Browser verification on 3001: submit a note from a pop, see the outbox id, see the fake task id appear within 10 s; submit the same form twice quickly and confirm one outbox row (`/api/calls/outbox` ids); open a record page for contact 7 and property 5692 from the e2e seed.
+- [x] `tsc` clean.
 
 ### US-014: Contacts, properties, tasks, and search pages
 **Description:** As the operator, I want the list and search views.
