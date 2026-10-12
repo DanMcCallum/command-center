@@ -15,6 +15,34 @@ One summary per shipped feature. Read this **and** [readme.md](readme.md) (the c
 
 ---
 
+## Calls dashboard: the followupdominator operator UI re-homed as `/calls`
+
+**PRD:** [calls-dashboard.md](calls-dashboard.md) (inventory: [calls-dashboard-inventory.md](calls-dashboard-inventory.md); operator test: [calls-dashboard-manual-test.md](calls-dashboard-manual-test.md)) · **Shipped:** 2026-10-12 (production restarts, tunnel latency number, manual test, and nginx cutover are operator steps, see below)
+
+`~/claude/followupdominator` (Python/FastAPI on port 8100, `calls.ownaloha.land`) receives the Dialpad webhook, runs the SQLite queue and seven loops, and writes Investment Dominator (ID) tasks. Its operator dashboard now lives in the command center behind Cloudflare Access: the browser only talks to Next (`/calls/*` pages, `/api/calls/*` routes), Next talks to `http://127.0.0.1:8100/api/v1/*` on localhost with a bearer token, and call pops reach the browser through an SSE relay (`/api/calls/events`). The Python HTML dashboard is untouched and keeps working until cutover; removing it is a later loop. Pages: live pops plus recent calls with a "note logged" marker, a note form that polls the outbox until the ID task id lands, record pages with task history, contacts, properties, tasks, search (phone index plus nickname matches), unknown-caller attribution by property nickname, dial pre-tag, agents CRUD, and ops (badges, sync age, health flags, dead letters).
+
+**Surface added:**
+- followupdominator: `app/api_v1.py` (`register_api(app, deps, token=...)` over the same `DashboardDeps` the HTML dashboard uses; `require_api_token` hashes both sides and uses `compare_digest`, fail-closed 503 when the token is unset), `config.calls_api_token()` (`CALLS_API_TOKEN` in `.credentials/dashboard.env`), shared choke points in `app/dashboard.py` (`submit_note`, `attribute_caller`, `ops_badges`), `recent_calls` rows gain `has_manual_note`. Contract: **`docs/api-v1.md`** (every endpoint, SSE frame kinds, example payloads). `scripts/run_e2e_dev.py <port> <db> <record-log>`: full service plus loops over fakes (`tests/fakes.py`), `/dev/replay` enabled, prints `SESSION=<token>` first, refuses the production db. `deploy/nginx-calls-cutover.conf` and `deploy/cutover.sh [--revert]` (prints sudo commands, never runs them), `DEPLOY.md` section 8.
+- API (command center): `/api/calls/{recent,events,dev/ping,contacts,properties,record/<table>/<id>,search,nicknames/search,nicknames/property/<id>,tasks,ops,agents,agents/delete,notes,outbox/<id>,attribute,dial}`, each a thin proxy (`callsResponse(await callsApi.x(...))`, `Cache-Control: no-store`).
+- Lib: `calls-client.ts` (`callsApi.*`, never throws, maps upstream statuses: 401 becomes 500 token mismatch, never 401, which would read as an Access problem; the "token not configured" 503 becomes 502; 400/404/409/502 forwarded, 422 forwarded as `{error: "invalid request parameter"}`, unreachable 502), `calls-proxy.ts`, `calls-types.ts`, `calls-links.ts`, `sse-relay.ts` (`relaySse`: immediate and 15 s `: heartbeat`, `event: upstream-closed` when Python ends the stream, backlog cap), `use-call-stream.ts` (`startCallStream`: reconnects after 5 s itself, because EventSource gives up on a 502), `use-calls-get.ts`. Config: `CALLS_API_URL` (default `http://127.0.0.1:8100`) and `CALLS_API_TOKEN` via `readProjectEnvVar` (env first, then the root `.env.local`).
+- UI: Nav "Calls"; `app/calls/{page,contacts,properties,record/[table]/[id],tasks,search,attribute,dial,agents,ops}`; components `CallPop`, `CallNoteForm`, `CallsOpsStrip`, `CallsPageHeader` (sub-nav, title, strip, load status). `config/fronts.json` `buyer-followup` points at the section.
+- Scripts: `workers/calls-e2e/run.sh` (the whole chain against fakes on 8101 and 3001 in about 55 s), `e2e.mjs`, `measure-latency.mjs`, `TUNNEL-LATENCY.md` (browser-console snippet for the production round trip).
+
+**Invariants / gotchas:**
+- The token travels only as `Authorization: Bearer`. uvicorn's production access log prints query strings, so `?token=` (kept for ad hoc EventSource debugging) would write it to the log. The same `CALLS_API_TOKEN` value must be in followupdominator `.credentials/dashboard.env` and the command-center root `.env.local`.
+- `/api/v1/*` is never exposed on `calls.ownaloha.land`; after cutover that host serves only `/webhook/dialpad` and `/healthz`, and nginx returns an empty 404 for everything else.
+- A note returns an outbox receipt, not a task id; the id appears in `GET /api/v1/outbox/{id}` after the 5 s outbox loop. Notes carry a `client_uuid` made once per form, so a resubmit answers `enqueued: false` with the original outbox id. Attribution has no idempotency key; the form guards double clicks.
+- Ops badge thresholds live only in Python (`ops_badges`); the React strip colors by `level` and renders `text`.
+- Python on SIGTERM frees the port at once but keeps serving open SSE streams indefinitely (an open question for the operator: `timeout_graceful_shutdown=5`). Until it is decided, a restart must confirm the old pid is gone, and dev scripts stop the runner with `kill -9`.
+- `/dev/replay` is session-gated, not API-token-gated, and only exists on the e2e and receiver dev runners; production `run_service.py` never enables it.
+- `npm test` covers the client, proxy, relay, and stream plumbing with injected fakes; pages are checked by `workers/calls-e2e/run.sh` and per-story Playwright scripts recorded in `progress-calls-dashboard.txt`.
+
+**Operator steps outstanding:** restart production Python on 8100 with the API build (recipe in the progress log's Questions); rebuild and restart 3000; run the tunnel latency snippet; run the manual test; apply the cutover (`deploy/cutover.sh`, sudo); decide the graceful-shutdown question.
+
+**Extending:** a new endpoint is a route in `app/api_v1.py` (reusing a `dashboard.py` helper, never duplicating logic), a section in `docs/api-v1.md`, a `callsApi` function with a test, a proxy route file, then the page. New pop kinds need only a doc row and a `CallPop` branch, since the relay forwards bytes unchanged. New e2e checks are a `step(name, async page => detail)` in `workers/calls-e2e/e2e.mjs`.
+
+---
+
 ## Fronts: proactive per-lane "what's next" from session-end summaries
 
 **PRD:** [fronts.md](fronts.md) · **Shipped:** 2026-10-12 (hook install is a manual operator step, see below) · **Source:** Roman Colman's "Combinatorial Ralph Loops and Proactive Fronts" lecture, transcript in `operator-input/fronts-lecture-2026-10-08/`.

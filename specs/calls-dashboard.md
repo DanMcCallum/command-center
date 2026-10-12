@@ -1,6 +1,6 @@
 # PRD: Calls dashboard (re-home the followupdominator operator UI in the command center)
 
-**Status:** Draft
+**Status:** Implemented (2026-10-12); operator steps outstanding: production restart, tunnel latency number, manual test, nginx cutover
 **Date:** 2026-10-12
 **Inventory:** [calls-dashboard-inventory.md](calls-dashboard-inventory.md) (every route of the HTML dashboard, its data, its service calls, and its writes)
 **Progress log:** `progress-calls-dashboard.txt` at the command-center root
@@ -221,13 +221,13 @@ Target architecture (decided by the operator, not up for debate inside the loop)
 **Description:** As future sessions and the operator, I need the docs to describe the new shape and the operator test to be scripted.
 
 **Acceptance Criteria:**
-- [ ] `specs/calls-dashboard-manual-test.md` scripts the ten operator steps from the handoff (laptop and phone load, real inbound call pop within 2 s, note with follow-up lands in ID within a minute, ring-out missed task, unknown caller plus nickname attribution, dial pre-tag, search and record pages, tab kill and reconnect, 30 s Python stop and recovery, side-by-side comparison with `calls.ownaloha.land`), each with the expected result and a blank for the observed result, plus the cleanup list for the `[TEST]` records.
-- [ ] `specs/specs.md` gains a "Calls dashboard" entry in the established shape (what it does, surface added in both repos, invariants and gotchas, how to extend, operator steps outstanding).
-- [ ] `specs/readme.md`: pages table gains `/calls` and its subpages, the API table gains the `/api/calls/*` family in one row, the repo map gains `app/calls`, `lib/calls-*`, `workers/calls-e2e/`, and the spec list gains this PRD.
-- [ ] `AGENTS.md` gains one bullet: dev Python port recipe (`scripts/run_e2e_dev.py 8101 ...`), token mirroring rule (same `CALLS_API_TOKEN` in both files), the e2e command, and the "never restart 8100 yourself" reminder.
-- [ ] followupdominator `README.md` Architecture paragraph mentions the JSON API, the command-center UI, and that the HTML dashboard is on its way out; `DEPLOY.md` already updated in US-019.
-- [ ] This PRD's status line becomes `**Status:** Implemented (<date>); operator steps outstanding: production restart, tunnel latency number, manual test, nginx cutover`.
-- [ ] `## Questions for Daniel` in the progress log lists only operator steps.
+- [x] `specs/calls-dashboard-manual-test.md` scripts the ten operator steps from the handoff (laptop and phone load, real inbound call pop within 2 s, note with follow-up lands in ID within a minute, ring-out missed task, unknown caller plus nickname attribution, dial pre-tag, search and record pages, tab kill and reconnect, 30 s Python stop and recovery, side-by-side comparison with `calls.ownaloha.land`), each with the expected result and a blank for the observed result, plus the cleanup list for the `[TEST]` records.
+- [x] `specs/specs.md` gains a "Calls dashboard" entry in the established shape (what it does, surface added in both repos, invariants and gotchas, how to extend, operator steps outstanding).
+- [x] `specs/readme.md`: pages table gains `/calls` and its subpages, the API table gains the `/api/calls/*` family in one row, the repo map gains `app/calls`, `lib/calls-*`, `workers/calls-e2e/`, and the spec list gains this PRD.
+- [x] `AGENTS.md` gains one bullet: dev Python port recipe (`scripts/run_e2e_dev.py 8101 ...`), token mirroring rule (same `CALLS_API_TOKEN` in both files), the e2e command, and the "never restart 8100 yourself" reminder.
+- [x] followupdominator `README.md` Architecture paragraph mentions the JSON API, the command-center UI, and that the HTML dashboard is on its way out; `DEPLOY.md` already updated in US-019.
+- [x] This PRD's status line becomes `**Status:** Implemented (<date>); operator steps outstanding: production restart, tunnel latency number, manual test, nginx cutover`.
+- [x] `## Questions for Daniel` in the progress log lists only operator steps.
 
 ## Non-Goals
 

@@ -170,6 +170,7 @@ completed    -> pending        (operator reopens)
 | `/tasks` | Primary view. Task list polling every 30 s; filter tabs (All / Pending / In progress / Needs review / Completed) with counts; inline create form; expandable task rows showing priority dot, status badge, Claude's notes, links to output files. Actions per task: approve, request revision, delete, edit output files in a modal (`FileEditorModal`), **Save to knowledge base** (`SaveToKbModal`), and — on ad tasks — per-platform **Publish** buttons (specs.md → Local publish 1/3). A dismissible banner surfaces permanently failed marketplace postings (specs.md → Ad photos). A strip counts waiting front suggestions and questions, and the Needs review filter lists them as pseudo-cards ahead of the review tasks (specs.md → Fronts). Supports `?focus={id}` deep links. |
 | `/ad-builder` | Structured property form: location, acreage, price, access (paved / dirt-year-round / dirt-seasonal / none), utilities (power/water/septic/internet as yes/no/unknown), terrain, zoning, comps, must-include notes, buyer hint (retiree / off-gridder / investor / builder / hunter / remote-worker), target platforms, and photos (at least 1 required; drag-and-drop ordering with one starred primary). Submit creates a priority-1 opus `generate-ad` task with the form as `metadata`, uploads the photos into the task's outputs dir, then fires the worker and routes to `/tasks?focus={id}` (specs.md → Ad photos). |
 | `/fronts`, `/fronts/<slug>` | The operator's lanes of work (specs.md → Fronts): one card per front with its `now.md` excerpt and waiting counts; the detail page shows what's-next suggestions and questions (approve / dismiss / answer), the two markdown files with an editor, recent routed sessions, a Copy @ paths button, and Refresh what's next. |
+| `/calls` | Call operator UI over the followupdominator service (specs.md → Calls dashboard): live call pops over SSE with a note form, recent calls, ops strip. Subpages `/calls/contacts`, `/calls/properties`, `/calls/record/<table>/<id>`, `/calls/tasks`, `/calls/search`, `/calls/attribute`, `/calls/dial`, `/calls/agents`, `/calls/ops`. |
 | `/roadmap` | Read-only list of future-work items from `data/todos.json`; each is a ready-to-run prompt brief. |
 | `/settings` | Worker scheduling via `CronConfigPanel`: on/off toggle, interval picker (over the cron-config/worker-status APIs), and a status card (last run, last task, crontab installed). Also `PostingAuthPanel`: a read-only per-platform view of marketplace sessions as reported by the local poster agent, plus an agent online/offline indicator — sessions are established on the operator's machine when Publish runs (specs.md → Local publish 3/3). |
 
@@ -188,6 +189,7 @@ All routes are `force-dynamic`; the worker script consumes the same API over `cu
 | GET | `/api/worker-status` | Cron config + whether the crontab entry is actually installed. |
 | POST | `/api/run-worker` | Spawns `run-worker.sh` detached (fire-and-forget); returns pid. This is the on-demand trigger used by the Ad Builder. |
 | POST | `/api/kb/ads` | Writes a new sold-ad markdown file (frontmatter + HEADLINE/DESCRIPTION) into `knowledge-base/ads/`, slugified and de-duplicated. Backs "Save to knowledge base". |
+| GET / POST | `/api/calls/*` | Thin proxies to followupdominator `/api/v1/*` on localhost (bearer `CALLS_API_TOKEN`): recent, events (SSE relay), contacts, properties, record, search, nicknames, tasks, ops, agents, notes, outbox, attribute, dial, dev/ping. Contract in followupdominator `docs/api-v1.md` (specs.md → Calls dashboard). |
 | GET / PUT | `/api/files/{...path}` | Sandboxed file browser/editor scoped to `workers/`. GET lists dirs or serves files; PUT writes edits (`.md/.txt/.json/.html/.css/.js` only). Rejects path traversal. |
 
 **Storage:** `dashboard/data/tasks.json`, `todos.json`, `cron-config.json`. All I/O goes through `lib/data.ts` (atomic temp-file+rename writes, serialized write chain). Never import the JSON directly.
@@ -288,14 +290,18 @@ Notion-inspired dark minimalism. The principle: **the UI is a document, not an a
 ```
 command-center/
   dashboard/            Next.js app (UI + API + JSON data files)
-    app/                Routes: /, /tasks, /ad-builder, /fronts, /roadmap, /settings, /api/*
+    app/                Routes: /, /tasks, /ad-builder, /fronts, /calls, /roadmap, /settings, /api/*
+      calls/            Calls dashboard pages over followupdominator (specs.md -> Calls dashboard)
     components/         TaskCard, TaskForm, SaveToKbModal, FileEditorModal,
                         CronConfigPanel, Nav, StatusBadge, PriorityIndicator,
                         PhotoPicker, PostingChips, PostingFailureBanner,
                         PostingAuthPanel (read-only agent-reported sessions),
-                        FrontSuggestionCard, FrontsStrip, FrontFileEditor, Markdown
+                        FrontSuggestionCard, FrontsStrip, FrontFileEditor, Markdown,
+                        CallPop, CallNoteForm, CallsOpsStrip, CallsPageHeader
     lib/                types.ts, data.ts (JSON I/O), cron.ts, utils.ts,
-                        agent-auth.ts (agent-token guard), agent-liveness.ts
+                        agent-auth.ts (agent-token guard), agent-liveness.ts,
+                        calls-* (client, proxy, types, links), sse-relay.ts,
+                        use-call-stream.ts, use-calls-get.ts
     data/               tasks.json, todos.json, cron-config.json, front-suggestions.json
     start.sh            Production start (called from @reboot cron)
   workers/
@@ -308,6 +314,8 @@ command-center/
                         agent (the live-view stack is gone; specs.md -> Local publish 3/3)
     fronts/             Session-end pipeline: hook entry, summarize, route, what's-next,
                         installer, offline harness (specs.md -> Fronts)
+    calls-e2e/          run.sh: browser e2e of the calls chain against fakes on 3001/8101;
+                        TUNNEL-LATENCY.md (specs.md -> Calls dashboard)
     system-prompt.md    Claude worker operating rules
     workspace/          outputs/{task-id}/ and notes/{task-id}.md
     logs/               Per-run logs + cron.log
@@ -345,5 +353,7 @@ command-center/
     local-publish-2-local-agent.md   Feature PRD: Local publish 2/3 — local poster agent (implemented)
     local-publish-3-decommission.md  Feature PRD: Local publish 3/3 — decommission server posting (implemented)
     land-com-feed-cleanup.md         Feature PRD: repo-wide Land.com feed-API scrub -> one decision note (implemented)
+    calls-dashboard.md               Feature PRD: followupdominator operator UI re-homed as /calls (implemented;
+                                     inventory, handoff, loop prompt, and manual test alongside)
   *.md                  Original design docs (Blueprint, TLDR, Worker System Spec)
 ```
