@@ -63,13 +63,13 @@ Target architecture (decided by the operator, not up for debate inside the loop)
 **Description:** As the contacts, properties, record, and search pages, I need the ID proxies and the local index search as JSON.
 
 **Acceptance Criteria:**
-- [ ] `GET /api/v1/contacts?start=` returns `{rows: [...], next_start: <int | null>}` using `id_client.list_contacts(start, range=50)`; `next_start` is set when 50 rows came back.
-- [ ] `GET /api/v1/properties?status=0&start=` returns `{rows, next_start, status}` using `id_client.list_properties`.
-- [ ] `GET /api/v1/record/{table}/{id}` returns `{table, id, record: {...non-empty fields...}, nickname: <str | null>, history: [{task_id, title, status, task_type, start_ts, end_ts}]}`; 404 JSON for an unknown table or a record ID does not have.
-- [ ] `GET /api/v1/search?q=` returns `{records: [{record_table, record_id, display_name, address, apn, status}], nicknames: [{nickname, slug, score, property_id}]}` using the same LIKE query (max 25) and `nicknames.search(q)`; empty `q` returns empty lists.
-- [ ] `GET /api/v1/nicknames/search?q=` returns `{matches: [{nickname, slug, score, property_id}]}` via `lookup.search_nicknames` (503 JSON when `deps.lookup` is None), and `GET /api/v1/nicknames/property/{id}` returns `{nickname, slug, property_id}` or 404.
-- [ ] Tests with `FakeIDClient` from `test_dashboard.py` (promote the fakes to `tests/fakes.py` so the API tests and the e2e runner can import them): shapes above, pagination marker, 404 paths, HTML routes still render the same bodies as before (snapshot a couple of existing assertions).
-- [ ] `pytest -q` and ruff clean.
+- [x] `GET /api/v1/contacts?start=` returns `{rows: [...], next_start: <int | null>}` using `id_client.list_contacts(start, range=50)`; `next_start` is set when 50 rows came back.
+- [x] `GET /api/v1/properties?status=0&start=` returns `{rows, next_start, status}` using `id_client.list_properties`.
+- [x] `GET /api/v1/record/{table}/{id}` returns `{table, id, record: {...non-empty fields...}, nickname: <str | null>, history: [{task_id, title, status, task_type, start_ts, end_ts}]}`; 404 JSON for an unknown table or a record ID does not have.
+- [x] `GET /api/v1/search?q=` returns `{records: [{record_table, record_id, display_name, address, apn, status}], nicknames: [{nickname, slug, score, property_id}]}` using the same LIKE query (max 25) and `nicknames.search(q)`; empty `q` returns empty lists.
+- [x] `GET /api/v1/nicknames/search?q=` returns `{matches: [{nickname, slug, score, property_id}]}` via `lookup.search_nicknames` (503 JSON when `deps.lookup` is None), and `GET /api/v1/nicknames/property/{id}` returns `{nickname, slug, property_id}` or 404.
+- [x] Tests with `FakeIDClient` from `test_dashboard.py` (promote the fakes to `tests/fakes.py` so the API tests and the e2e runner can import them): shapes above, pagination marker, 404 paths, HTML routes still render the same bodies as before (snapshot a couple of existing assertions).
+- [x] `pytest -q` and ruff clean.
 
 ### US-005: Tasks, ops, and agents read endpoints
 **Description:** As the tasks page, the ops strip, and the agents page, I need their data as JSON.
