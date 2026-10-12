@@ -98,10 +98,10 @@ Target architecture (decided by the operator, not up for debate inside the loop)
 **Description:** As the command-center stories, I need a written contract with example payloads to build against, since OpenAPI stays disabled.
 
 **Acceptance Criteria:**
-- [ ] `docs/api-v1.md` in followupdominator documents every `/api/v1/*` endpoint: method, path, auth, query or body fields with types and defaults, one example request and one example response (synthetic data only, never values from the real database), error statuses, and for `/api/v1/events` the frame format, the keepalive interval, every pop `kind` with its fields, and the reconnect rule (re-fetch `/api/v1/calls/recent` on every connect).
-- [ ] The examples are the fixtures the command-center client tests will copy; the doc says so and names `dashboard/lib/calls-types.ts` as the TypeScript twin.
-- [ ] `README.md` in followupdominator gains two sentences under Architecture pointing at the API and this doc.
-- [ ] Nothing in the doc or the commit contains a token or a real phone number or name.
+- [x] `docs/api-v1.md` in followupdominator documents every `/api/v1/*` endpoint: method, path, auth, query or body fields with types and defaults, one example request and one example response (synthetic data only, never values from the real database), error statuses, and for `/api/v1/events` the frame format, the keepalive interval, every pop `kind` with its fields, and the reconnect rule (re-fetch `/api/v1/calls/recent` on every connect).
+- [x] The examples are the fixtures the command-center client tests will copy; the doc says so and names `dashboard/lib/calls-types.ts` as the TypeScript twin.
+- [x] `README.md` in followupdominator gains two sentences under Architecture pointing at the API and this doc.
+- [x] Nothing in the doc or the commit contains a token or a real phone number or name.
 
 ### US-008: Hermetic Python e2e runner
 **Description:** As the browser e2e script and the relay latency test, I need a full service (all loops) that talks to fakes instead of ID and Dialpad, exposes `/dev/replay`, and records what the fake ID client was asked to write.
