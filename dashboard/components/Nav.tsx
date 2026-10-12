@@ -7,6 +7,7 @@ const ITEMS = [
   { href: '/ad-builder', label: 'Ad Builder' },
   { href: '/tasks', label: 'Tasks' },
   { href: '/fronts', label: 'Fronts' },
+  { href: '/calls', label: 'Calls' },
   { href: '/roadmap', label: 'Roadmap' },
 ];
 
