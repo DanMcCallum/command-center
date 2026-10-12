@@ -1132,7 +1132,7 @@ export function findProperty(
   return hits.find((h) => h.isPublished && !h.isSold) ?? hits[0]
 }
 
-const STATE_NAMES: Record<string, string> = {
+export const STATE_NAMES: Record<string, string> = {
   AL: 'alabama', AK: 'alaska', AZ: 'arizona', AR: 'arkansas', CA: 'california', CO: 'colorado', CT: 'connecticut',
   DE: 'delaware', FL: 'florida', GA: 'georgia', HI: 'hawaii', ID: 'idaho', IL: 'illinois', IN: 'indiana', IA: 'iowa',
   KS: 'kansas', KY: 'kentucky', LA: 'louisiana', ME: 'maine', MD: 'maryland', MA: 'massachusetts', MI: 'michigan',

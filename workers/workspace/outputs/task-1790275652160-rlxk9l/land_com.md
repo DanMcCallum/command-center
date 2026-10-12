@@ -1,9 +1,9 @@
 # Land.com
 
 ## HEADLINE (75/75 chars)
-1 Wooded Acre, Redhill Forest, Fairplay CO. Power at Road. $35K or 30% Down
+1 Wooded Ac, Redhill Forest, Fairplay CO. Power at Rd. $40,999 or $12K Down
 
-## DESCRIPTION (1923/2000 chars)
+## DESCRIPTION (1952/2000 chars)
 A wooded acre at about 9,600 feet on the Redhill Forest ridge, across South Park from the Mosquito Range. You park under your own pines, and Fairplay is 20 minutes away.
 
 The facts:
@@ -12,9 +12,9 @@ The facts:
 - Forested, about 9,600 ft elevation
 - Zoned Residential by Park County
 - Dirt road, graded in summer and plowed in winter by the HOA
-- $35,000 cash, or $10,500 down
+- $40,999 cash, or $44,999 with $12,000 down
 
-Payment options, no credit check: $10,500 down (30%) plus a $249 document fee, then $1,095 a month for 24 months, $750 for 36, or $595 for 48. No prepayment penalty, and 10% off the balance if you pay it off within 12 months.
+Payment options, no credit check: $44,999 financed with $12,000 down plus a $249 document fee, then $1,375 a month for 24 months, $917 for 36, or $688 for 48. No prepayment penalty, and 10% off the balance if you pay it off within 12 months.
 
 Utilities: CORE Electric power runs along Redhill Road. Water is the HOA community system (no private wells) with a substantial tap fee, so get the current figure from the association before you plan a build. Septic through Park County. HOA dues about $1,250 a year per recent listings.
 
@@ -24,7 +24,7 @@ Top 3 things people do here: 1. Fly fish the South Platte. Lot owners get privat
 
 Find the corners with LandGlide: 1. Install the LandGlide app (free trial). 2. Tap search and enter R0037546. 3. Tap the outlined parcel to see the lot lines. 4. Turn on location, and the blue dot shows where you stand against the lines as you walk it.
 
-A nearby 1 acre lot sold for $150,000. This one is $35,000, about 23% of that sale.
+A nearby 1 acre lot sold for $150,000. This one is $40,999, about 27% of that sale.
 
 There's one lot at this price, and the next acre here gets measured against that $150,000 sale. Message me for the map pin and parcel details. (Property: Timber Park)
 
@@ -32,4 +32,4 @@ There's one lot at this price, and the next acre here gets measured against that
 Serious-buyer angle for Land.com: subdivision, utilities, HOA, distances, and the comp laid out plainly, with financing added per the coach review.
 
 ## DREAMS
-All six categories Pass (revision cycle 1)
+All six categories Pass (price/financing revision 2026-10-09, 1 cycle)

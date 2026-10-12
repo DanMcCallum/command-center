@@ -1,6 +1,6 @@
 # DREAMS review
 
-Cycles used: 1/3 (revision 2026-10-02; the original run used 2/3)
+Cycles used: 1/3 (price/financing revision 2026-10-09; the 2026-10-02 revision used 1/3, the original run 2/3)
 
 | Platform | D | R | E | A | M | S |
 |---|---|---|---|---|---|---|
@@ -10,6 +10,7 @@ Cycles used: 1/3 (revision 2026-10-02; the original run used 2/3)
 | land_com | Pass | Pass | Pass | Pass | Pass | Pass |
 | land_listings | Pass | Pass | Pass | Pass | Pass | Pass |
 | landhub | Pass | Pass | Pass | Pass | Pass | Pass |
+| parcelview | Pass | Pass | Pass | Pass | Pass | Pass |
 
 ## Unresolved weaknesses
 None. E (Eliminate Objections) and A (Accessibility Signals) moved from thin to Pass on every platform once financing, utilities, HOA costs, and the LandGlide steps were added.

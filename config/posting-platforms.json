@@ -24,11 +24,13 @@
     },
     "landflip": {
       "display_name": "Landflip.com",
-      "enabled": false,
-      "login_url": "https://www.landflip.com/login",
-      "new_listing_url": "https://www.landflip.com/member/listings/new",
+      "enabled": true,
+      "_doc": "Seller area is MY LANDFLIP at my.landflip.com (jQuery/Foundation, server-rendered; ajax actions on /json/listings). The public www.landflip.com sits behind Cloudflare and refuses headless browsers, so the poster never opens it (public URL is built as https://www.landflip.com/land/<id>). Sign-in lives under /sign-in; every logged-in page carries the sidebar Sign Out link. Title field is 35 chars (letters, digits, space - , . + / & $ ' only). Entry plan: 1 listing, 10 photos. Mapped 2026-10-12; see post-landflip.ts.",
+      "login_url": "https://my.landflip.com/sign-in",
+      "new_listing_url": "https://my.landflip.com/listing-add",
       "login_success": {
-        "redirect_off": "/login"
+        "redirect_off": "/sign-in",
+        "logged_in_selector": "a[href=\"/sign-in/signout\"]"
       }
     },
     "land_com": {
@@ -51,11 +53,13 @@
     },
     "land_listings": {
       "display_name": "Land-listings.com",
-      "enabled": false,
+      "enabled": true,
+      "_doc": "Laravel site. Plain POST login at /login (#email, #password); the account home is /dashboard and Sell Land goes to /add-a-listing (both bounce to /login when logged out; a logged-in visit to /login bounces away again). The dashboard sidebar (#dashboard-menu) and the POST logout form exist only when logged in. Publishing needs a paid membership (Premium Standard $49.95/mo or Deluxe $149.95/mo); a Free Account can only save Unlisted listings with one photo. Mapped 2026-10-05 from the public site and its API docs; the logged-in form is still to be confirmed, see post-land_listings.ts.",
       "login_url": "https://www.land-listings.com/login",
-      "new_listing_url": "https://www.land-listings.com/add-listing",
+      "new_listing_url": "https://www.land-listings.com/add-a-listing",
       "login_success": {
-        "redirect_off": "/login"
+        "redirect_off": "/login",
+        "logged_in_selector": "#dashboard-menu, form[action$=\"/logout\"], a[href$=\"/logout\"]"
       }
     },
     "landhub": {

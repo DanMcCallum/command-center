@@ -1,17 +1,17 @@
 # Landmodo
 
 ## HEADLINE (59/60 chars)
-1 Ac Fairplay CO. Wooded Ridge, Power at Road. $10,500 Down
+1 Ac Fairplay CO. Wooded Ridge, Power at Road. $12,000 Down
 
-## DESCRIPTION (1465/1500 chars)
+## DESCRIPTION (1482/1500 chars)
 Picture a wooded acre at 9,600 feet with your name on the deed. You pull in off a graded dirt road, park under your own pines, and Fairplay is 20 minutes away.
 
 The lot is 1 acre in Redhill Forest Filing 3, Park County, Colorado, zoned Residential.
 
 The price:
 
-- $35,000 cash, or
-- $10,500 down (30%) and a $249 document fee, then $1,095 a month for 24 months, $750 for 36 months, or $595 for 48 months
+- $40,999 cash, or
+- $44,999 financed: $12,000 down and a $249 document fee, then $1,375 a month for 24 months, $917 for 36 months, or $688 for 48 months
 
 No credit check, no prepayment penalty, and 10% off the balance if paid within 12 months. The deed records in your name at payoff, and you can camp on the lot while you pay.
 
@@ -21,7 +21,7 @@ Nearby: Fairplay 11 miles, Breckenridge 33, Denver 93. Top 3 things people do he
 
 Find the corners with LandGlide: 1. Install the LandGlide app (free trial). 2. Tap search and enter R0037546. 3. Tap the outlined parcel to see the lot lines. 4. Turn on location, and the blue dot shows where you stand against the lines as you walk it.
 
-A nearby 1 acre lot sold for $150,000. You're getting the same size for $35,000, about 23% of that.
+A nearby 1 acre lot sold for $150,000. You're getting the same size for $40,999 cash, about 27% of that.
 
 One lot at this price. Message me for the map pin. (Property: Timber Park)
 
@@ -29,4 +29,4 @@ One lot at this price. Message me for the map pin. (Property: Timber Park)
 First-time buyer angle for Landmodo: wooded ridge lot as the standout, with the low down payment and three monthly plans up front now that financing is offered.
 
 ## DREAMS
-All six categories Pass (revision cycle 1)
+All six categories Pass (price/financing revision 2026-10-09, 1 cycle)

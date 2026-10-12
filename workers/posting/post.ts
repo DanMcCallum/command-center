@@ -40,6 +40,8 @@ import {
 } from './post-common'
 import { postToLandCentury } from './post-land_century'
 import { postToLandCom } from './post-land_com'
+import { postToLandflip } from './post-landflip'
+import { postToLandListings } from './post-land_listings'
 import { postToLandmodo } from './post-landmodo'
 import { postToParcelView } from './post-parcelview'
 
@@ -56,6 +58,8 @@ export const POSTERS: Record<string, Poster> = {
   land_com: postToLandCom,
   parcelview: postToParcelView,
   land_century: postToLandCentury,
+  land_listings: postToLandListings,
+  landflip: postToLandflip,
 }
 
 async function fetchTask(taskId: string): Promise<PosterTask> {
