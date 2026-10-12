@@ -78,6 +78,14 @@ export default function AdBuilderPage() {
   const [location, setLocation] = useState('');
   const [acreage, setAcreage] = useState('');
   const [priceUsd, setPriceUsd] = useState('');
+  // Parcel coordinates. Land.com, Land Century, ParcelView and Land-listings
+  // all place the listing from metadata.latitude/longitude, so the posting
+  // agent refuses a job without them.
+  const [latitude, setLatitude] = useState('');
+  const [longitude, setLongitude] = useState('');
+  // Assessor parcel number. Landmodo and ParcelView refuse a job without one;
+  // Land Century and Land-listings use it to find an existing listing.
+  const [apn, setApn] = useState('');
   const [access, setAccess] = useState('');
   const [utilities, setUtilities] = useState<Record<string, UtilityStatus>>(
     Object.fromEntries(UTILITIES.map(u => [u.key, 'unknown'])),
@@ -246,6 +254,9 @@ export default function AdBuilderPage() {
     if (!location.trim()) return setError('Location is required.');
     if (!acreage.trim() || isNaN(Number(acreage))) return setError('Acreage must be a number.');
     if (!priceUsd.trim() || isNaN(Number(priceUsd))) return setError('Price must be a number.');
+    const coords = parseCoordinates(latitude, longitude);
+    if (typeof coords === 'string') return setError(coords);
+    if (!apn.trim()) return setError('APN (parcel number) is required.');
     const selectedPlatforms = PLATFORMS.filter(p => platforms[p.key]).map(p => p.key);
     if (selectedPlatforms.length === 0) return setError('Pick at least one platform.');
     if (photos.length === 0) return setError('At least 1 photo is required.');
@@ -264,6 +275,9 @@ export default function AdBuilderPage() {
         location: location.trim(),
         acreage: Number(acreage),
         price_usd: Number(priceUsd),
+        latitude: coords.latitude,
+        longitude: coords.longitude,
+        apn: apn.trim(),
         access: access || null,
         utilities: Object.entries(utilities).filter(([, v]) => v === 'yes').map(([k]) => k),
         utilities_absent: Object.entries(utilities).filter(([, v]) => v === 'no').map(([k]) => k),
@@ -359,6 +373,43 @@ export default function AdBuilderPage() {
             />
           </Field>
         </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Latitude" required>
+            <input
+              type="number"
+              step="any"
+              value={latitude}
+              onChange={e => setLatitude(e.target.value)}
+              placeholder="41.2345"
+              className={inputClass}
+            />
+          </Field>
+          <Field label="Longitude" required>
+            <input
+              type="number"
+              step="any"
+              value={longitude}
+              onChange={e => setLongitude(e.target.value)}
+              placeholder="-114.1234"
+              className={inputClass}
+            />
+          </Field>
+        </div>
+        <p className="-mt-2 text-xs text-[#8A8A8A]">
+          Parcel center in decimal degrees. The posting agent places the listing from these on
+          Land.com, Land Century, ParcelView and Land-listings.
+        </p>
+
+        <Field label="APN (assessor parcel number)" required>
+          <input
+            type="text"
+            value={apn}
+            onChange={e => setApn(e.target.value)}
+            placeholder="010-123-45"
+            className={inputClass}
+          />
+        </Field>
 
         <Field label="Access">
           <select
@@ -592,10 +643,34 @@ function sanitizeBasename(name: string): string {
   return /[\w-]/.test(safe) ? safe : `photo${safe}`;
 }
 
+/**
+ * Validate the coordinate boxes. Returns the parsed pair, or the error text
+ * to show. Mirrors coordinatesFromTask() in workers/posting/post-land_com.ts:
+ * finite, non-zero, within range.
+ */
+function parseCoordinates(
+  latText: string,
+  lonText: string,
+): { latitude: number; longitude: number } | string {
+  if (!latText.trim() || !lonText.trim()) return 'Latitude and longitude are required.';
+  const latitude = Number(latText);
+  const longitude = Number(lonText);
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+    return 'Latitude and longitude must be decimal numbers (e.g. 41.2345, -114.1234).';
+  }
+  if (Math.abs(latitude) > 90) return 'Latitude must be between -90 and 90.';
+  if (Math.abs(longitude) > 180) return 'Longitude must be between -180 and 180.';
+  if (latitude === 0 || longitude === 0) return 'Latitude and longitude cannot be 0.';
+  return { latitude, longitude };
+}
+
 function renderDescription(m: {
   location: string;
   acreage: number;
   price_usd: number;
+  latitude: number;
+  longitude: number;
+  apn: string;
   access: string | null;
   utilities: string[];
   utilities_absent: string[];
@@ -614,6 +689,8 @@ function renderDescription(m: {
   lines.push(`- Location: ${m.location}`);
   lines.push(`- Acreage: ${m.acreage}`);
   lines.push(`- Asking price: $${m.price_usd.toLocaleString()}`);
+  lines.push(`- Coordinates: ${m.latitude}, ${m.longitude}`);
+  lines.push(`- APN: ${m.apn}`);
   if (m.access) lines.push(`- Access: ${m.access}`);
   if (m.utilities.length > 0) lines.push(`- Utilities on site: ${m.utilities.join(', ')}`);
   if (m.utilities_absent.length > 0) {

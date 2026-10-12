@@ -1,5 +1,7 @@
 'use client';
 
+import Link from 'next/link';
+
 import { useEffect, useState } from 'react';
 import type { Task } from '@/lib/types';
 import { formatRelative } from '@/lib/utils';
@@ -78,6 +80,8 @@ export default function TaskCard({ task, parentTitle, onChange }: Props) {
 
   const isAdBuilderTask =
     task.slashCommand === 'generate-ad' || task.tags.includes('ad-builder');
+  const frontTags = task.tags.filter(t => t.startsWith('front:')).map(t => t.slice('front:'.length));
+  const plainTags = task.tags.filter(t => !t.startsWith('front:'));
 
   async function patch(updates: Partial<Task>) {
     setBusy(true);
@@ -140,8 +144,19 @@ export default function TaskCard({ task, parentTitle, onChange }: Props) {
           <div className="text-sm text-white truncate">{task.title}</div>
           <div className="text-xs text-[#6B6B6B] truncate">
             {task.type}
-            {task.tags.length > 0 && ` · ${task.tags.join(', ')}`}
+            {plainTags.length > 0 && ` · ${plainTags.join(', ')}`}
             {parentTitle && ` · child of "${parentTitle}"`}
+            {frontTags.map(slug => (
+              <Link
+                key={slug}
+                href={`/fronts/${slug}`}
+                onClick={e => e.stopPropagation()}
+                className="ml-2 px-1.5 py-0.5 rounded bg-[#4DAB9A20] text-[#4DAB9A] hover:text-white transition-colors"
+                title="Created from a front suggestion"
+              >
+                front:{slug}
+              </Link>
+            ))}
           </div>
         </div>
         <div className="text-xs text-[#6B6B6B] font-mono">

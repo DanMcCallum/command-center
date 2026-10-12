@@ -1,11 +1,13 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import FrontSuggestionCard from '@/components/FrontSuggestionCard';
+import FrontsStrip from '@/components/FrontsStrip';
 import PostingFailureBanner from '@/components/PostingFailureBanner';
 import TaskCard from '@/components/TaskCard';
 import TaskForm from '@/components/TaskForm';
 import { useAgentLiveness } from '@/lib/agent-liveness';
-import type { Task, TaskStatus } from '@/lib/types';
+import type { FrontSuggestion, FrontSummary, Task, TaskStatus } from '@/lib/types';
 
 type Filter = 'all' | TaskStatus;
 
@@ -22,12 +24,20 @@ export default function TasksPage() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<Filter>('all');
   const [showForm, setShowForm] = useState(false);
+  const [fronts, setFronts] = useState<FrontSummary[]>([]);
+  const [frontItems, setFrontItems] = useState<FrontSuggestion[]>([]);
   const agent = useAgentLiveness();
 
   const load = useCallback(async () => {
-    const res = await fetch('/api/tasks', { cache: 'no-store' });
-    const data = (await res.json()) as Task[];
+    const [tr, fr, sr] = await Promise.all([
+      fetch('/api/tasks', { cache: 'no-store' }),
+      fetch('/api/fronts', { cache: 'no-store' }).catch(() => null),
+      fetch('/api/fronts/suggestions?status=open', { cache: 'no-store' }).catch(() => null),
+    ]);
+    const data = (await tr.json()) as Task[];
     setTasks(data);
+    if (fr?.ok) setFronts((await fr.json()) as FrontSummary[]);
+    if (sr?.ok) setFrontItems((await sr.json()) as FrontSuggestion[]);
     setLoading(false);
   }, []);
 
@@ -48,11 +58,20 @@ export default function TasksPage() {
     return map;
   }, [tasks]);
 
+  const frontNameBySlug = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const f of fronts) map.set(f.slug, f.name);
+    return map;
+  }, [fronts]);
+
+  // Open front suggestions and questions count toward Needs review (they are
+  // not tasks, so "All" leaves them out).
   const counts = useMemo(() => {
     const c: Record<string, number> = { all: tasks.length };
     for (const t of tasks) c[t.status] = (c[t.status] ?? 0) + 1;
+    c.needs_review = (c.needs_review ?? 0) + frontItems.length;
     return c;
-  }, [tasks]);
+  }, [tasks, frontItems]);
 
   return (
     <div className="space-y-6">
@@ -88,6 +107,7 @@ export default function TasksPage() {
       </header>
 
       <PostingFailureBanner tasks={tasks} />
+      <FrontsStrip fronts={fronts} />
 
       {showForm && (
         <TaskForm
@@ -125,7 +145,7 @@ export default function TasksPage() {
 
       {loading ? (
         <div className="text-sm text-[#6B6B6B]">Loading…</div>
-      ) : filtered.length === 0 ? (
+      ) : filtered.length === 0 && !(filter === 'needs_review' && frontItems.length > 0) ? (
         <div className="text-sm text-[#6B6B6B] py-12 text-center">
           {filter === 'all'
             ? 'No tasks yet. Create one to get started.'
@@ -133,6 +153,15 @@ export default function TasksPage() {
         </div>
       ) : (
         <div className="border-t border-[#2F2F2F]">
+          {filter === 'needs_review' &&
+            frontItems.map(s => (
+              <FrontSuggestionCard
+                key={s.id}
+                suggestion={s}
+                frontName={frontNameBySlug.get(s.frontSlug)}
+                onChanged={load}
+              />
+            ))}
           {filtered.map(t => (
             <TaskCard
               key={t.id}
