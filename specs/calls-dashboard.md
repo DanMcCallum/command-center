@@ -118,11 +118,11 @@ Target architecture (decided by the operator, not up for debate inside the loop)
 **Description:** As the proxy routes, I need one typed, server-only client for the Python API with error mapping.
 
 **Acceptance Criteria:**
-- [ ] `dashboard/lib/calls-types.ts` declares TypeScript types for every response in `docs/api-v1.md` (`RecentCall`, `PopEvent` union by `kind`, `RecordDetail`, `SearchResult`, `OpsSummary` with `badges`, `AgentRow`, `NoteOutcome`, `OutboxStatus`, `AttributeOutcome`, `DialOutcome`, ...).
-- [ ] `dashboard/lib/calls-client.ts` exports `callsApi` with one function per endpoint, plus `callsBaseUrl()` (`CALLS_API_URL` from `readProjectEnvVar`, default `http://127.0.0.1:8100`) and `callsToken()` (`readProjectEnvVar('CALLS_API_TOKEN')`). Every request sets the bearer header, uses `AbortSignal.timeout(8000)` for reads and 20 s for writes, and `cache: 'no-store'`.
-- [ ] Error mapping is a pure function `mapCallsError(err | response) -> { status, body: { error, hint? } }` unit-tested: connection refused or timeout gives 502 `{error: "call service unreachable"}`; upstream 503 (token unset) gives 502 `{error: "call service is not configured for the API"}`; upstream 401 gives 500 `{error: "call service token mismatch"}` (never 401, which would read as an Access problem); 400, 404, 409, 502 from upstream are forwarded with their JSON body.
-- [ ] Mapper unit tests in `dashboard/lib/calls-client.test.ts` use fixture payloads copied verbatim from `docs/api-v1.md` and a fake `fetch` injected through a `deps` parameter; the token never appears in a thrown error message (assert).
-- [ ] `cd dashboard && npx tsc --noEmit` clean; `npm test` has no new failures.
+- [x] `dashboard/lib/calls-types.ts` declares TypeScript types for every response in `docs/api-v1.md` (`RecentCall`, `PopEvent` union by `kind`, `RecordDetail`, `SearchResult`, `OpsSummary` with `badges`, `AgentRow`, `NoteOutcome`, `OutboxStatus`, `AttributeOutcome`, `DialOutcome`, ...).
+- [x] `dashboard/lib/calls-client.ts` exports `callsApi` with one function per endpoint, plus `callsBaseUrl()` (`CALLS_API_URL` from `readProjectEnvVar`, default `http://127.0.0.1:8100`) and `callsToken()` (`readProjectEnvVar('CALLS_API_TOKEN')`). Every request sets the bearer header, uses `AbortSignal.timeout(8000)` for reads and 20 s for writes, and `cache: 'no-store'`.
+- [x] Error mapping is a pure function `mapCallsError(err | response) -> { status, body: { error, hint? } }` unit-tested: connection refused or timeout gives 502 `{error: "call service unreachable"}`; upstream 503 (token unset) gives 502 `{error: "call service is not configured for the API"}`; upstream 401 gives 500 `{error: "call service token mismatch"}` (never 401, which would read as an Access problem); 400, 404, 409, 502 from upstream are forwarded with their JSON body.
+- [x] Mapper unit tests in `dashboard/lib/calls-client.test.ts` use fixture payloads copied verbatim from `docs/api-v1.md` and a fake `fetch` injected through a `deps` parameter; the token never appears in a thrown error message (assert).
+- [x] `cd dashboard && npx tsc --noEmit` clean; `npm test` has no new failures.
 
 ### US-010: Proxy routes
 **Description:** As the pages, I need `/api/calls/*` routes in Next.js for every endpoint, with the token kept server-side.
