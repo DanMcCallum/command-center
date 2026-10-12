@@ -7,8 +7,10 @@
  *   platform  key from config/posting-platforms.json (landmodo, land_com, ...)
  *   url       page to inspect; defaults to the platform's new_listing_url
  *   --headed  show the browser window
- *   --login   if the page lands on a login screen, wait (headed) for the
- *             operator to sign in, then save the session to auth/<platform>.json
+ *   --login   wait (headed) for the operator to sign in, then save the session
+ *             to auth/<platform>.json. Done when the login screen goes away or
+ *             when the operator presses Enter in the terminal, so it works for
+ *             sites whose sign-in is a modal or lives at an unknown path.
  *   Steps, applied in the order given, each followed by a dump of the screen:
  *   --click=<text>            click the button/link with this visible text
  *   --clicksel=<selector>     click the first element matching a Playwright
@@ -213,6 +215,23 @@ async function dump(page: import('playwright').Page, step: number): Promise<void
   console.log(`\nsaved ${stem}.png and .html`)
 }
 
+/** Resolves `pressed` when the operator hits Enter on stdin; `stop` releases stdin. */
+function waitForEnter(): { pressed: boolean; stop: () => void } {
+  const state = { pressed: false, stop: () => {} }
+  if (!process.stdin.isTTY) return state
+  const onData = (buf: Buffer) => {
+    if (buf.toString().includes('\n') || buf.toString().includes('\r')) state.pressed = true
+  }
+  process.stdin.setEncoding('utf8')
+  process.stdin.on('data', onData)
+  process.stdin.resume()
+  state.stop = () => {
+    process.stdin.off('data', onData)
+    process.stdin.pause()
+  }
+  return state
+}
+
 async function main(): Promise<void> {
   const authPath = path.join(AUTH_DIR, `${platformKey}.json`)
   const haveSession = fs.existsSync(authPath)
@@ -231,7 +250,33 @@ async function main(): Promise<void> {
     const onLoginScreen = async (): Promise<boolean> =>
       new URL(page.url()).pathname.includes(LOGIN_PATH) ||
       (await page.locator('input[type="password"]:visible').count().catch(() => 0)) > 0
-    if (wantLogin && (await onLoginScreen())) {
+    if (wantLogin && !haveSession) {
+      // Wait for the operator to sign in. Done when the login screen goes away
+      // (if we started on one) or when the operator presses Enter here, which
+      // covers sites whose sign-in is a modal or lives at an unknown path.
+      const startedOnLogin = await onLoginScreen()
+      console.log(
+        startedOnLogin
+          ? 'On a login screen. Sign in in the browser window, or press Enter here once signed in (10 minutes)...'
+          : 'Not on a login screen. Sign in in the browser window, then press Enter here to save the session (10 minutes)...'
+      )
+      const enterPressed = waitForEnter()
+      const deadline = Date.now() + 10 * 60_000
+      let done = false
+      while (Date.now() < deadline && !done) {
+        if (enterPressed.pressed) done = true
+        else if (startedOnLogin && !(await onLoginScreen())) done = true
+        else await page.waitForTimeout(1000)
+      }
+      enterPressed.stop()
+      if (!done) throw new Error('login timed out')
+      await page.waitForTimeout(2000)
+      await context.storageState({ path: authPath })
+      fs.chmodSync(authPath, 0o600)
+      console.log(`Session saved to ${authPath}`)
+      await page.goto(url, { waitUntil: 'domcontentloaded' })
+      await settle(page)
+    } else if (wantLogin && (await onLoginScreen())) {
       console.log(`On a login screen. Sign in in the browser window (10 minutes)...`)
       const deadline = Date.now() + 10 * 60_000
       while (Date.now() < deadline && (await onLoginScreen())) {
