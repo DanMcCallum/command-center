@@ -112,7 +112,7 @@ Decisions confirmed by the operator on 2026-10-12 (the options considered are li
 **Acceptance Criteria:**
 - [x] `workers/fronts/on-session-end.sh` reads the hook JSON on stdin (`session_id`, `transcript_path`, `cwd`, `reason`), exits immediately when `FRONTS_SKIP=1` is in the environment (set by `workers/run-worker.sh`, the DREAMS gate scripts, and every `workers/fronts/*.sh` so pipeline sessions never recurse), and otherwise detaches a background runner (`setsid nohup`) that chains summarize, route, and what's-next, so the hook itself returns in under a second.
 - [x] A per-session marker in `workers/fronts/state/processed/<session_id>` prevents double runs when the hook fires twice.
-- [ ] (operator step) `workers/fronts/install-hook.sh` adds a `SessionEnd` entry to `~/.claude/settings.json` with `jq` (idempotent, keeps existing hooks, prints the diff) and `--uninstall` removes it. The hook is global because fronts span repos.
+- [x] (done by the operator 2026-10-12) `workers/fronts/install-hook.sh` adds a `SessionEnd` entry to `~/.claude/settings.json` with `jq` (idempotent, keeps existing hooks, prints the diff) and `--uninstall` removes it. The hook is global because fronts span repos.
 - [x] A dry-run mode (`FRONTS_DRY_RUN=1`) runs the chain against a copy of the fronts directory under `/tmp` and posts to `DASHBOARD_URL` (default `http://localhost:3000`), so it can be exercised against a temp `next dev -p 3001` as described in AGENTS.md.
 - [x] `fronts.test.sh` covers the skip rules and the processed marker.
 
