@@ -11,6 +11,8 @@ const SUBPAGES = [
   { href: '/calls/tasks', label: 'Tasks' },
   { href: '/calls/attribute', label: 'Attribute' },
   { href: '/calls/dial', label: 'Dial' },
+  { href: '/calls/agents', label: 'Agents' },
+  { href: '/calls/ops', label: 'Ops' },
 ];
 
 /** Links to the `/calls` sub-pages, optionally led by a link back to `/calls`. */

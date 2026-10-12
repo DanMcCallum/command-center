@@ -186,10 +186,10 @@ Target architecture (decided by the operator, not up for debate inside the loop)
 **Description:** As the operator, I want the agent mapping admin and the ops drill-down.
 
 **Acceptance Criteria:**
-- [ ] `/calls/agents`: mapping table (default row marked), edit link prefilling the form, delete button (confirm inline, not with `window.confirm`), add/update form posting to `/api/calls/agents`, the DialPad users table or the error line, the explanatory text about the `*` default row.
-- [ ] `/calls/ops`: last sync age, sync error and warning, health flags, dead-letter table with the explanatory paragraph; the strip's "detail" link lands here.
-- [ ] Browser verification on 3001: add an agent row, edit it, delete it (record counts through `/api/calls/agents`); ops page renders with zero dead letters and after forcing one in the scratch database (insert a `dead_letter` outbox row through sqlite3 in the scratch db) shows it and the strip turns red.
-- [ ] `tsc` clean.
+- [x] `/calls/agents`: mapping table (default row marked), edit link prefilling the form, delete button (confirm inline, not with `window.confirm`), add/update form posting to `/api/calls/agents`, the DialPad users table or the error line, the explanatory text about the `*` default row.
+- [x] `/calls/ops`: last sync age, sync error and warning, health flags, dead-letter table with the explanatory paragraph; the strip's "detail" link lands here.
+- [x] Browser verification on 3001: add an agent row, edit it, delete it (record counts through `/api/calls/agents`); ops page renders with zero dead letters and after forcing one in the scratch database (insert a `dead_letter` outbox row through sqlite3 in the scratch db) shows it and the strip turns red.
+- [x] `tsc` clean.
 
 ### US-017: Link both ways
 **Description:** As the operator, I want calls, records, tasks, and the fronts registry to point at each other.
