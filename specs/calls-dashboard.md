@@ -177,10 +177,10 @@ Target architecture (decided by the operator, not up for debate inside the loop)
 **Description:** As the operator, I want to bridge an unknown caller to a property and pre-tag an outbound call.
 
 **Acceptance Criteria:**
-- [ ] `/calls/attribute?call_id=&number=&q=`: scripted prompt line, nickname search (via `/api/calls/nicknames/search`), each match with an attribute form (first name required, last name), the "create contact, no property" form; on success shows the contact link, property link, the unresolved-slug warning when `property_id` is null, and the note form prefilled (call_id, contact_id, property_id, caller=number). The three error statuses render their messages (409 includes the duplicate-risk hint and a link to `/calls/contacts`).
-- [ ] `/calls/dial?property_id=&phone=`: shows the nickname prompt from `/api/calls/nicknames/property/{id}` when a property id is present; the form posts to `/api/calls/dial` and shows the confirmation with the 15 minute window and the nickname to say.
-- [ ] Browser verification on 3001 with the e2e runner: attribute a miss pop from `+15305550199` to "Test Meadow" with first name "Synthetic"; the record log shows one `create_contact`; the confirmation links to the new contact; dial with property 5692 shows "Test Meadow"; a replayed outbound connected to that number pops as `outbound` with property 5692.
-- [ ] `tsc` clean.
+- [x] `/calls/attribute?call_id=&number=&q=`: scripted prompt line, nickname search (via `/api/calls/nicknames/search`), each match with an attribute form (first name required, last name), the "create contact, no property" form; on success shows the contact link, property link, the unresolved-slug warning when `property_id` is null, and the note form prefilled (call_id, contact_id, property_id, caller=number). The three error statuses render their messages (409 includes the duplicate-risk hint and a link to `/calls/contacts`).
+- [x] `/calls/dial?property_id=&phone=`: shows the nickname prompt from `/api/calls/nicknames/property/{id}` when a property id is present; the form posts to `/api/calls/dial` and shows the confirmation with the 15 minute window and the nickname to say.
+- [x] Browser verification on 3001 with the e2e runner: attribute a miss pop from `+15305550199` to "Test Meadow" with first name "Synthetic"; the record log shows one `create_contact`; the confirmation links to the new contact; dial with property 5692 shows "Test Meadow"; a replayed outbound connected to that number pops as `outbound` with property 5692.
+- [x] `tsc` clean.
 
 ### US-016: Agents and ops pages
 **Description:** As the operator, I want the agent mapping admin and the ops drill-down.
