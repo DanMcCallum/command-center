@@ -3,6 +3,7 @@
 import { Fragment, useState } from 'react';
 import Link from 'next/link';
 import CallsOpsStrip from '@/components/CallsOpsStrip';
+import { CallsSubnav } from '@/components/CallsPageHeader';
 import CallPop, { attributeHref } from '@/components/CallPop';
 import CallNoteForm from '@/components/CallNoteForm';
 import { useCallStream } from '@/lib/use-call-stream';
@@ -15,6 +16,7 @@ export default function CallsPage() {
     <div className="space-y-8">
       <header className="space-y-3">
         <h1 className="text-3xl font-bold">Calls</h1>
+        <CallsSubnav />
         <CallsOpsStrip stream={status} lastPingAt={lastPingAt} />
       </header>
 

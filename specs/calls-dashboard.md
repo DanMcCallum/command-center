@@ -168,10 +168,10 @@ Target architecture (decided by the operator, not up for debate inside the loop)
 **Description:** As the operator, I want the list and search views.
 
 **Acceptance Criteria:**
-- [ ] `/calls/contacts` (paged by `start`, Next page when `next_start`), `/calls/properties` (status filter input with the "0 = all" hint, paging), `/calls/tasks` (open tasks, overdue rows tinted, due date), `/calls/search` (query box with autofocus; record matches table and nickname matches list; "Attribute them" link carrying `q`).
-- [ ] All four handle 502 with the unreachable message and never throw on an empty result.
-- [ ] Browser verification on 3001 against the e2e runner: each page renders the seed data; search "Meadow" finds the nickname; search "Buyer" finds the contact row; pagination link appears only when 50 rows come back (assert absent with the seed).
-- [ ] `tsc` clean.
+- [x] `/calls/contacts` (paged by `start`, Next page when `next_start`), `/calls/properties` (status filter input with the "0 = all" hint, paging), `/calls/tasks` (open tasks, overdue rows tinted, due date), `/calls/search` (query box with autofocus; record matches table and nickname matches list; "Attribute them" link carrying `q`).
+- [x] All four handle 502 with the unreachable message and never throw on an empty result.
+- [x] Browser verification on 3001 against the e2e runner: each page renders the seed data; search "Meadow" finds the nickname; search "Buyer" finds the contact row; pagination link appears only when 50 rows come back (assert absent with the seed).
+- [x] `tsc` clean.
 
 ### US-015: Attribute and dial pages
 **Description:** As the operator, I want to bridge an unknown caller to a property and pre-tag an outbound call.
