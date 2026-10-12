@@ -1,0 +1,24 @@
+# Progress - Calls dashboard (specs/calls-dashboard.md)
+
+## Questions for Daniel
+(Operator steps and open questions. The loop appends here when blocked; keep answered items with the answer.)
+
+- [ ] Production Python restart: after US-007 lands, 8100 must be restarted to expose `/api/v1/*` (needed only for the tunnel latency number and the manual test, not for any story). Recipe: find the pid of `.venv/bin/python .../scripts/run_service.py`, `kill <pid>`, wait for 8100 to free, relaunch with the exact `@reboot` line from `crontab -l | grep run_service` (without the `@reboot sleep 8 &&` prefix). The loop will add a reminder here when the Python stories are done.
+- [ ] Tunnel latency: run the browser-console snippet from `workers/calls-e2e/TUNNEL-LATENCY.md` (written in US-011) on `https://dashboard.ownaloha.land/calls` after the restart and paste the number here.
+
+## Learnings
+(Patterns discovered during implementation; read before starting a story.)
+
+- The Python note path returns an outbox receipt, not an ID task id; the id lands in `outbox.result` after the 5 s outbox loop. UI polls `GET /api/v1/outbox/{id}`.
+- `scripts/run_receiver_dev.py` starts no background loops, so a replayed ringing never pops there. Use `scripts/run_e2e_dev.py` (US-008) for anything involving pops.
+- The no-em-dash hook blocks writes that quote Python strings containing one (the note title format). Describe such strings instead of quoting them.
+- Baselines 2026-10-12: pytest 265 passed, ruff clean; `npx tsc --noEmit` clean; `npm test` 48/50 with the two known `ebay-html.test.ts` failures.
+
+---
+
+## Iteration 0 (prep session, 2026-10-12) - US-001: Inventory the HTML dashboard
+- Read `app/dashboard.py`, `app/webhook_receiver.py`, `app/service.py`, `app/live_pipeline.py`, `app/call_lookup.py`, `app/outbox.py`, `app/agents.py`, `scripts/run_receiver_dev.py`, `design_patterns.md`, `DEPLOY.md`, the nginx configs, the test fakes, and the command-center auth, env, nav, fronts route and page patterns.
+- Wrote `specs/calls-dashboard-inventory.md` (route table, ops strip thresholds, pop payload kinds, write choke points, dev/test surface) and `specs/calls-dashboard.md` (PRD, 20 stories, US-001 checked).
+- Generated `CALLS_API_TOKEN` (32 bytes hex) and appended it to the command-center root `.env.local` and `followupdominator/.credentials/dashboard.env`. The Python service ignores it until restarted.
+- Verified both baselines (see Learnings). Wrote `specs/calls-dashboard-loop.md` (the per-iteration prompt) and `workers/calls-loop.sh` (the runner).
+- Next story: US-002.
