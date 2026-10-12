@@ -75,11 +75,11 @@ Target architecture (decided by the operator, not up for debate inside the loop)
 **Description:** As the tasks page, the ops strip, and the agents page, I need their data as JSON.
 
 **Acceptance Criteria:**
-- [ ] `GET /api/v1/tasks` returns `{tasks: [{task_id, title, status, task_type, start_ts, end_ts, overdue: bool}], now}` from `task_index.open_tasks()`, overdue computed server-side as `start_ts < now`.
-- [ ] `GET /api/v1/ops` returns `ops_summary(deps)` plus `badges: [{label, text, level: "ok" | "warn" | "alarm"}]` computed with the inventory thresholds (so the React strip cannot drift from the Python one) plus `dead_letters: [{id, event_key, kind, attempts, last_error, finished_at}]`.
-- [ ] `GET /api/v1/agents` returns `{agents: [{dialpad_user_id, name, id_user_id, sms_number, is_default}], default_key: "*", dialpad_users: [{id, name, number}] | null, dialpad_error: <str | null>}`; 503 JSON when `deps.agents` is None.
-- [ ] Tests: badge levels at each threshold edge (0 and 1 dead letters, 25 and 26 outbox, 50 and 51 backlog, sync never, 7199 s, 7201 s), health flag and sync error badges, agents with and without a DialPad client error.
-- [ ] `pytest -q` and ruff clean.
+- [x] `GET /api/v1/tasks` returns `{tasks: [{task_id, title, status, task_type, start_ts, end_ts, overdue: bool}], now}` from `task_index.open_tasks()`, overdue computed server-side as `start_ts < now`.
+- [x] `GET /api/v1/ops` returns `ops_summary(deps)` plus `badges: [{label, text, level: "ok" | "warn" | "alarm"}]` computed with the inventory thresholds (so the React strip cannot drift from the Python one) plus `dead_letters: [{id, event_key, kind, attempts, last_error, finished_at}]`.
+- [x] `GET /api/v1/agents` returns `{agents: [{dialpad_user_id, name, id_user_id, sms_number, is_default}], default_key: "*", dialpad_users: [{id, name, number}] | null, dialpad_error: <str | null>}`; 503 JSON when `deps.agents` is None.
+- [x] Tests: badge levels at each threshold edge (0 and 1 dead letters, 25 and 26 outbox, 50 and 51 backlog, sync never, 7199 s, 7201 s), health flag and sync error badges, agents with and without a DialPad client error.
+- [x] `pytest -q` and ruff clean.
 
 ### US-006: Write endpoints
 **Description:** As the note form, attribute, dial, and agents pages, I need the writes to go through the exact same choke points as the HTML forms.
