@@ -1,0 +1,3 @@
+{"type": "user", "cwd": "/home/mazer/claude/command-center", "sessionId": "fixture-session-0002", "timestamp": "2026-10-12T10:00:00.000Z", "message": {"role": "user", "content": "hello"}, "uuid": "2026-10-12T10:00:00.000Z"}
+{"type": "assistant", "cwd": "/home/mazer/claude/command-center", "sessionId": "fixture-session-0002", "timestamp": "2026-10-12T10:00:05.000Z", "message": {"role": "assistant", "content": [{"type": "text", "text": "hi"}]}}
+{"type": "user", "cwd": "/home/mazer/claude/command-center", "sessionId": "fixture-session-0002", "timestamp": "2026-10-12T10:00:10.000Z", "message": {"role": "user", "content": "thanks"}, "uuid": "2026-10-12T10:00:10.000Z"}
