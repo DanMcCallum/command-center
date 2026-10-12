@@ -43,11 +43,11 @@ Target architecture (decided by the operator, not up for debate inside the loop)
 **Description:** As the command center, I need a bearer token that gates the JSON API, failing closed when unset.
 
 **Acceptance Criteria:**
-- [ ] `app/config.py` gains `calls_api_token() -> str | None` reading `CALLS_API_TOKEN` from `dashboard.env` (env var wins, like every accessor).
-- [ ] New module `app/api_v1.py` with `require_api_token(request, expected) -> Response | None`: returns a 503 JSON `{error: "CALLS_API_TOKEN is not configured"}` when `expected` is None or empty; otherwise accepts `Authorization: Bearer <token>` and, for `GET` routes only, `?token=<token>`; compares with `hmac.compare_digest` on sha256 digests of both sides; returns 401 JSON `{error: "Unauthorized"}` on missing or wrong token; returns None when authorized. Mirrors command-center `dashboard/lib/agent-auth.ts`.
-- [ ] `register_api(app, deps, *, token)` exists (empty for now beyond `GET /api/v1/ping` returning `{ok: true}`), is called from `build_service` and `scripts/run_receiver_dev.py` with `config.calls_api_token()`, and is NOT registered in the test apps that assert the HTML routes are unchanged.
-- [ ] Tests in `tests/test_api_v1.py`: unset token gives 503; missing header 401; wrong token 401; right header 200; right `?token=` on GET 200; `?token=` on a POST route is ignored (401). The token value never appears in any response body or log line (assert on captured logs).
-- [ ] `pytest -q` and `ruff check app scripts tests` clean.
+- [x] `app/config.py` gains `calls_api_token() -> str | None` reading `CALLS_API_TOKEN` from `dashboard.env` (env var wins, like every accessor).
+- [x] New module `app/api_v1.py` with `require_api_token(request, expected) -> Response | None`: returns a 503 JSON `{error: "CALLS_API_TOKEN is not configured"}` when `expected` is None or empty; otherwise accepts `Authorization: Bearer <token>` and, for `GET` routes only, `?token=<token>`; compares with `hmac.compare_digest` on sha256 digests of both sides; returns 401 JSON `{error: "Unauthorized"}` on missing or wrong token; returns None when authorized. Mirrors command-center `dashboard/lib/agent-auth.ts`.
+- [x] `register_api(app, deps, *, token)` exists (empty for now beyond `GET /api/v1/ping` returning `{ok: true}`), is called from `build_service` and `scripts/run_receiver_dev.py` with `config.calls_api_token()`, and is NOT registered in the test apps that assert the HTML routes are unchanged.
+- [x] Tests in `tests/test_api_v1.py`: unset token gives 503; missing header 401; wrong token 401; right header 200; right `?token=` on GET 200; `?token=` on a POST route is ignored (401). The token value never appears in any response body or log line (assert on captured logs).
+- [x] `pytest -q` and `ruff check app scripts tests` clean.
 
 ### US-003: Recent calls, SSE stream, and the ping frame
 **Description:** As the `/calls` page, I need the live feed and the reconnect re-fetch under the token.

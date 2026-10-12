@@ -12,6 +12,8 @@
 - The Python note path returns an outbox receipt, not an ID task id; the id lands in `outbox.result` after the 5 s outbox loop. UI polls `GET /api/v1/outbox/{id}`.
 - `scripts/run_receiver_dev.py` starts no background loops, so a replayed ringing never pops there. Use `scripts/run_e2e_dev.py` (US-008) for anything involving pops.
 - The no-em-dash hook blocks writes that quote Python strings containing one (the note title format). Describe such strings instead of quoting them.
+- uvicorn's access log (production runs `log_level="info"`) prints the full request line, query string included, so a `?token=` request writes the API token into the service log. The command-center client and SSE relay must send the token only as `Authorization: Bearer`; `?token=` exists for ad hoc EventSource debugging, not for anything that runs routinely.
+- `build_service(..., calls_api_token=None)` falls back to `config.calls_api_token()`; tests pass `calls_api_token="t0k"` (or `""` to exercise fail-closed) to stay hermetic. `register_api(app, deps, token=...)` takes the same `DashboardDeps` object `register_dashboard` gets.
 - Baselines 2026-10-12: pytest 265 passed, ruff clean; `npx tsc --noEmit` clean; `npm test` 48/50 with the two known `ebay-html.test.ts` failures.
 
 ---
@@ -22,3 +24,10 @@
 - Generated `CALLS_API_TOKEN` (32 bytes hex) and appended it to the command-center root `.env.local` and `followupdominator/.credentials/dashboard.env`. The Python service ignores it until restarted.
 - Verified both baselines (see Learnings). Wrote `specs/calls-dashboard-loop.md` (the per-iteration prompt) and `workers/calls-loop.sh` (the runner).
 - Next story: US-002.
+
+## Iteration 1 (2026-10-12) - US-002: API token in the Python service
+- followupdominator: `app/config.py` gains `calls_api_token()` (optional, `dashboard.env`, env wins). New `app/api_v1.py` with `require_api_token(request, expected)` (503 when unset or empty, Bearer header with case-insensitive scheme, `?token=` on GET only, sha256 digests through `hmac.compare_digest`, 401 `{error: "Unauthorized"}` with a warning log naming method and path only) and `register_api(app, deps, *, token)` holding `GET /api/v1/ping`. `build_service` now keeps the `DashboardDeps` in a variable, passes it to both registrations, and takes `calls_api_token: str | None = None` (falls back to config). `scripts/run_receiver_dev.py` registers the API too. The HTML test apps (`create_app` + `register_dashboard`) do not get it.
+- Tests: `tests/test_api_v1.py` (unset and empty token 503, missing header 401, wrong header or query token 401, right header 200, lowercase `bearer` 200, `?token=` on GET 200, `?token=` on a test POST route 401 while the header works, token absent from every body, header set, and `app.*` log record, accessor env and missing paths, plain `create_app` has no `/api/v1` routes) and one case in `tests/test_service.py` (build_service ping 200 with a token, 503 with `""`).
+- Verified: `.venv/bin/python -m pytest -q` -> `278 passed, 3 warnings in 6.09s`; `.venv/bin/ruff check app scripts tests` -> `All checks passed!`. No command-center code changed.
+- Production 8100 is untouched; it picks up the API only on the operator restart already listed under Questions.
+- Next story: US-003.
