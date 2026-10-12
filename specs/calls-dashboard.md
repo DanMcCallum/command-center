@@ -212,10 +212,10 @@ Target architecture (decided by the operator, not up for debate inside the loop)
 **Description:** As the operator, I want the nginx flip prepared so cutover is a copy and a reload, with a documented way back.
 
 **Acceptance Criteria:**
-- [ ] `deploy/nginx-calls-cutover.conf` in followupdominator: the same server blocks as `nginx-followupdominator.conf` (certbot lines kept, hardening headers kept) but only `location = /webhook/dialpad` and `location = /healthz` proxy to 8100; every other path returns 404 with an empty body; no `/events` or `/login` blocks remain. A comment at the top explains that `/api/v1/*` is intentionally NOT exposed on this host (the command center talks to 8100 on localhost).
-- [ ] `deploy/cutover.sh` prints the exact sudo commands to apply (copy to sites-available, `nginx -t`, reload) and `deploy/cutover.sh --revert` prints the commands to restore `nginx-followupdominator.conf`; neither script runs sudo itself.
-- [ ] `DEPLOY.md` gains a "Cutover to the command center" section: prerequisites (manual test passed, production service restarted with the API, `CALLS_API_TOKEN` mirrored), the apply steps, the verification curls (`/healthz` 200 or 503, `/login` 404, webhook still accepted by a real call), and the revert.
-- [ ] `nginx -t` cannot run without root here, so the config is validated by a pytest that parses it with a tiny brace-matcher and asserts exactly two proxied locations and no `proxy_buffering off` block (`tests/test_deploy_configs.py`).
+- [x] `deploy/nginx-calls-cutover.conf` in followupdominator: the same server blocks as `nginx-followupdominator.conf` (certbot lines kept, hardening headers kept) but only `location = /webhook/dialpad` and `location = /healthz` proxy to 8100; every other path returns 404 with an empty body; no `/events` or `/login` blocks remain. A comment at the top explains that `/api/v1/*` is intentionally NOT exposed on this host (the command center talks to 8100 on localhost).
+- [x] `deploy/cutover.sh` prints the exact sudo commands to apply (copy to sites-available, `nginx -t`, reload) and `deploy/cutover.sh --revert` prints the commands to restore `nginx-followupdominator.conf`; neither script runs sudo itself.
+- [x] `DEPLOY.md` gains a "Cutover to the command center" section: prerequisites (manual test passed, production service restarted with the API, `CALLS_API_TOKEN` mirrored), the apply steps, the verification curls (`/healthz` 200 or 503, `/login` 404, webhook still accepted by a real call), and the revert.
+- [x] `nginx -t` cannot run without root here, so the config is validated by a pytest that parses it with a tiny brace-matcher and asserts exactly two proxied locations and no `proxy_buffering off` block (`tests/test_deploy_configs.py`).
 
 ### US-020: Docs, manual test script, feature log
 **Description:** As future sessions and the operator, I need the docs to describe the new shape and the operator test to be scripted.
