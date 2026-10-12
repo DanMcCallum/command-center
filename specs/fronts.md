@@ -1,6 +1,6 @@
 # PRD: Fronts (proactive, per-lane "what's next" for the operator)
 
-**Status:** Draft
+**Status:** Implemented (2026-10-12); the SessionEnd hook itself is installed by the operator with `workers/fronts/install-hook.sh` after a real `/clear` rehearsal (see specs.md → Fronts)
 **Date:** 2026-10-11
 **Source:** Roman Colman, "Combinatorial Ralph Loops and Proactive Fronts" (Trajectory Engineers, recorded about 2026-10-08), the section from 50:50 to the end. Transcript: `operator-input/fronts-lecture-2026-10-08/transcript-fronts-section.md`.
 
@@ -38,133 +38,133 @@ Decisions confirmed by the operator on 2026-10-12 (the options considered are li
 **Description:** As the operator, I want a fixed place to write each front's north star so the rest of the system has something to read.
 
 **Acceptance Criteria:**
-- [ ] `config/fronts.json` exists with an array of fronts: `{ "slug", "name", "description", "cwdHints": [], "enabled": true }`. `description` is one paragraph written for the router ("this session belongs here when ..."). `cwdHints` are repo paths that bias routing (e.g. `~/claude/followupdominator`).
-- [ ] `fronts/README.md` explains the two files per front, who writes which, and that agents never edit `north-star.md`.
-- [ ] `fronts/_template/north-star.md` and `fronts/_template/now.md` exist. The north-star template has headings: What this is, What good looks like, References (few-shot examples, paths or links), Boundaries (what an agent must never do here). The now template has: Last session, Where we are, Next for Daniel, Candidate agent work, Answers from Daniel, Open questions.
-- [ ] Seed directories are created for the five fronts the operator chose on 2026-10-12, with the template copied in and a `TODO: hand-write` marker on the first line of each `north-star.md`; the operator replaces them by hand. Registry entries and routing hints:
+- [x] `config/fronts.json` exists with an array of fronts: `{ "slug", "name", "description", "cwdHints": [], "enabled": true }`. `description` is one paragraph written for the router ("this session belongs here when ..."). `cwdHints` are repo paths that bias routing (e.g. `~/claude/followupdominator`).
+- [x] `fronts/README.md` explains the two files per front, who writes which, and that agents never edit `north-star.md`.
+- [x] `fronts/_template/north-star.md` and `fronts/_template/now.md` exist. The north-star template has headings: What this is, What good looks like, References (few-shot examples, paths or links), Boundaries (what an agent must never do here). The now template has: Last session, Where we are, Next for Daniel, Candidate agent work, Answers from Daniel, Open questions.
+- [x] Seed directories are created for the five fronts the operator chose on 2026-10-12, with the template copied in and a `TODO: hand-write` marker on the first line of each `north-star.md`; the operator replaces them by hand. Registry entries and routing hints:
   - `land-sales`: listings, ad generation, DREAMS gate, posters, photos. `cwdHints`: `~/claude/command-center` (default when nothing else matches inside this repo).
   - `buyer-followup`: eBay sales and messages, inquiries, Investment Dominator, PATLive intake, payment rails. `cwdHints`: `~/claude/followupdominator`, `~/claude/command-center/workers/patlive-intake`, `~/claude/command-center/operator-input`.
   - `land-ad-pipeline`: the operator-agnostic rebuild. `cwdHints`: `~/claude/land-ad-pipeline`.
   - `day-job`: tickets and project work at the operator's employer. `cwdHints`: left empty in the seed; the operator fills in the work repo paths, and anything under them is routed here before Jev is asked (client code never leaves the summary step).
   - `ai-concierge`: the concierge practice, business plan, podcast playbook. `cwdHints`: `~/claude/command-center/research/ai-concierge`, `~/claude-accessible/dev/bwai-transcripts`.
-- [ ] `fronts/memory/` exists with a `.gitkeep`. Memory files are committed (they are the system's long-term context), but anything matching `fronts/memory/*-private.md` is gitignored for sessions the operator marks private.
-- [ ] `dashboard/lib/fronts.ts` exports `getFronts()` (registry merged with file mtimes and a 300-character `now.md` excerpt), `getFront(slug)` (north star text, now text, last 10 memory entries for that front, parsed from frontmatter), `writeNorthStar(slug, text)`, `writeNow(slug, text)`. All file access goes through `path.resolve(process.cwd(), '..')` like the other config readers (AGENTS.md rule).
-- [ ] Typecheck passes
+- [x] `fronts/memory/` exists with a `.gitkeep`. Memory files are committed (they are the system's long-term context), but anything matching `fronts/memory/*-private.md` is gitignored for sessions the operator marks private.
+- [x] `dashboard/lib/fronts.ts` exports `getFronts()` (registry merged with file mtimes and a 300-character `now.md` excerpt), `getFront(slug)` (north star text, now text, last 10 memory entries for that front, parsed from frontmatter), `writeNorthStar(slug, text)`, `writeNow(slug, text)`. All file access goes through `path.resolve(process.cwd(), '..')` like the other config readers (AGENTS.md rule).
+- [x] Typecheck passes
 
 ### US-002: Suggestion and question records with an API
 **Description:** As the operator, I want suggestions and questions stored as their own records so they can wait for review without polluting the task queue.
 
 **Acceptance Criteria:**
-- [ ] `dashboard/data/front-suggestions.json` holds `FrontSuggestion[]`: `{ id, frontSlug, kind: 'task' | 'question', title, body, sourceSessionId, sourceMemoryFile, status: 'open' | 'approved' | 'dismissed' | 'answered', operatorNotes?, answer?, taskId?, createdAt, resolvedAt? }`. Type added to `dashboard/lib/types.ts`.
-- [ ] Reads and writes go through `dashboard/lib/data.ts` using the same write mutex as tasks.
-- [ ] `GET /api/fronts/suggestions?front=<slug>&status=open` lists; `POST /api/fronts/suggestions` accepts an array (the pipeline posts a batch) and drops unknown fields; `PATCH /api/fronts/suggestions/<id>` handles `{ status: 'dismissed' }`, `{ status: 'answered', answer }`, and `{ status: 'approved', operatorNotes }`.
-- [ ] Approving a `task` suggestion calls `createTask` with `title`, `description` = suggestion body plus an `## Operator notes` section when notes were given, `type` from the suggestion (default `Building`), `priority` 3, `model` from the suggestion (default `sonnet`), `tags: ['front:<slug>']`, `metadata.frontSlug`, `metadata.suggestionId`; stores the new `taskId` on the suggestion; and fires the worker the same way `/api/run-worker` does.
-- [ ] POST from the pipeline is guarded by the same bearer check as the publish-job routes (`dashboard/lib/agent-auth.ts`), so a stray process cannot fill the review bin.
-- [ ] Unit test in `dashboard/lib/` for the approve mapping (suggestion in, task fields out).
-- [ ] Typecheck passes
+- [x] `dashboard/data/front-suggestions.json` holds `FrontSuggestion[]`: `{ id, frontSlug, kind: 'task' | 'question', title, body, sourceSessionId, sourceMemoryFile, status: 'open' | 'approved' | 'dismissed' | 'answered', operatorNotes?, answer?, taskId?, createdAt, resolvedAt? }`. Type added to `dashboard/lib/types.ts`.
+- [x] Reads and writes go through `dashboard/lib/data.ts` using the same write mutex as tasks.
+- [x] `GET /api/fronts/suggestions?front=<slug>&status=open` lists; `POST /api/fronts/suggestions` accepts an array (the pipeline posts a batch) and drops unknown fields; `PATCH /api/fronts/suggestions/<id>` handles `{ status: 'dismissed' }`, `{ status: 'answered', answer }`, and `{ status: 'approved', operatorNotes }`.
+- [x] Approving a `task` suggestion calls `createTask` with `title`, `description` = suggestion body plus an `## Operator notes` section when notes were given, `type` from the suggestion (default `Building`), `priority` 3, `model` from the suggestion (default `sonnet`), `tags: ['front:<slug>']`, `metadata.frontSlug`, `metadata.suggestionId`; stores the new `taskId` on the suggestion; and fires the worker the same way `/api/run-worker` does.
+- [x] POST from the pipeline is guarded by the same bearer check as the publish-job routes (`dashboard/lib/agent-auth.ts`), so a stray process cannot fill the review bin.
+- [x] Unit test in `dashboard/lib/` for the approve mapping (suggestion in, task fields out).
+- [x] Typecheck passes
 
 ### US-003: Front read and write API
 **Description:** As the dashboard, I need routes for front content so client components never touch the filesystem.
 
 **Acceptance Criteria:**
-- [ ] `GET /api/fronts` returns the registry with `nowExcerpt`, `nowUpdatedAt`, `lastSessionAt`, `openSuggestions`, `openQuestions` per front.
-- [ ] `GET /api/fronts/<slug>` returns north star, now, and the last 10 memory entries (`{ file, date, cwd, summary }`).
-- [ ] `PUT /api/fronts/<slug>/north-star` and `PUT /api/fronts/<slug>/now` write the file (operator edits). `now` writes keep the file's `## Answers from Daniel` section intact unless the body includes it.
-- [ ] Unknown slug returns 404; slugs are validated against the registry, never used to build a path directly.
-- [ ] Typecheck passes
+- [x] `GET /api/fronts` returns the registry with `nowExcerpt`, `nowUpdatedAt`, `lastSessionAt`, `openSuggestions`, `openQuestions` per front.
+- [x] `GET /api/fronts/<slug>` returns north star, now, and the last 10 memory entries (`{ file, date, cwd, summary }`).
+- [x] `PUT /api/fronts/<slug>/north-star` and `PUT /api/fronts/<slug>/now` write the file (operator edits). `now` writes keep the file's `## Answers from Daniel` section intact unless the body includes it.
+- [x] Unknown slug returns 404; slugs are validated against the registry, never used to build a path directly.
+- [x] Typecheck passes
 
 ### US-004: Session summary script
 **Description:** As the pipeline, I need a session turned into a short memory file so routing and "what's next" have something cheap to read.
 
 **Acceptance Criteria:**
-- [ ] `workers/fronts/summarize-session.sh <transcript.jsonl> <session_id> <cwd>` extracts user and assistant text (tool results and tool-call bodies dropped, file paths touched kept as a list), caps the input at about 60k characters by keeping the first and last thirds, and runs one tool-less `claude -p --model haiku --json-schema` session that returns `{ summary, decisions[], files_touched[], open_threads[], user_turns }`.
-- [ ] Writes `fronts/memory/<YYYY-MM-DD>-<HHMM>-<session_id_prefix>.md` with frontmatter (`session_id`, `cwd`, `started_at`, `ended_at`, `front: unrouted`, `user_turns`) and the summary body, and prints the path on stdout.
-- [ ] Sessions with fewer than 3 user turns are skipped (exit 0, nothing written). Sessions whose cwd is `/tmp` or whose first user turn starts with the worker's system-prompt marker are skipped.
-- [ ] Scripts append `~/.local/bin` to PATH (never prepend) so a stub `claude` earlier on PATH wins in tests.
-- [ ] `workers/fronts/fronts.test.sh` covers this script with a stub `claude` and a fixture transcript (no API spend).
+- [x] `workers/fronts/summarize-session.sh <transcript.jsonl> <session_id> <cwd>` extracts user and assistant text (tool results and tool-call bodies dropped, file paths touched kept as a list), caps the input at about 60k characters by keeping the first and last thirds, and runs one tool-less `claude -p --model haiku --json-schema` session that returns `{ summary, decisions[], files_touched[], open_threads[], user_turns }`.
+- [x] Writes `fronts/memory/<YYYY-MM-DD>-<HHMM>-<session_id_prefix>.md` with frontmatter (`session_id`, `cwd`, `started_at`, `ended_at`, `front: unrouted`, `user_turns`) and the summary body, and prints the path on stdout.
+- [x] Sessions with fewer than 3 user turns are skipped (exit 0, nothing written). Sessions whose cwd is `/tmp` or whose first user turn starts with the worker's system-prompt marker are skipped.
+- [x] Scripts append `~/.local/bin` to PATH (never prepend) so a stub `claude` earlier on PATH wins in tests.
+- [x] `workers/fronts/fronts.test.sh` covers this script with a stub `claude` and a fixture transcript (no API spend).
 
 ### US-005: Lane routing
 **Description:** As the pipeline, I need to know which front a session belonged to without reading it myself.
 
 **Acceptance Criteria:**
-- [ ] `POST /api/fronts/route` (bearer-guarded) takes `{ summary, cwd, files_touched }` and returns `{ fronts: [{ slug, probability }], confidence, method: 'jev' | 'claude' | 'cwd' }`.
-- [ ] Uses `dashboard/lib/typesafe.ts` with one Choice question whose criteria are the registry descriptions plus a `none` option; state is the summary, cwd, and the files list. A `cwdHints` match adds a deterministic bias in code (not in the prompt).
-- [ ] When `isConfigured()` is false, falls back to a `claude -p --model haiku --json-schema` call with the same options; when both fail, returns `none`.
-- [ ] Thresholding lives in `workers/fronts/route-session.sh`: top pick at or above 0.6 routes; a second pick above 0.3 also routes (Roman: "typically it's one, but sometimes it can be two"); otherwise the session is filed as `unrouted` and a `question` suggestion is posted ("Which front was this session about?") with the summary as body. The memory file's `front:` frontmatter is updated with the result.
-- [ ] Covered by `fronts.test.sh` with a stubbed API response.
-- [ ] Typecheck passes
+- [x] `POST /api/fronts/route` (bearer-guarded) takes `{ summary, cwd, files_touched }` and returns `{ fronts: [{ slug, probability }], confidence, method: 'jev' | 'claude' | 'cwd' }`.
+- [x] Uses `dashboard/lib/typesafe.ts` with one Choice question whose criteria are the registry descriptions plus a `none` option; state is the summary, cwd, and the files list. A `cwdHints` match adds a deterministic bias in code (not in the prompt).
+- [x] When `isConfigured()` is false, falls back to a `claude -p --model haiku --json-schema` call with the same options; when both fail, returns `none`.
+- [x] Thresholding lives in `workers/fronts/route-session.sh`: top pick at or above 0.6 routes; a second pick above 0.3 also routes (Roman: "typically it's one, but sometimes it can be two"); otherwise the session is filed as `unrouted` and a `question` suggestion is posted ("Which front was this session about?") with the summary as body. The memory file's `front:` frontmatter is updated with the result.
+- [x] Covered by `fronts.test.sh` with a stubbed API response.
+- [x] Typecheck passes
 
 ### US-006: "What's next" pass and now.md rewrite
 **Description:** As the operator, I want each routed front to end up with a fresh `now.md` and concrete, reviewable suggestions or questions.
 
 **Acceptance Criteria:**
-- [ ] `workers/fronts/whats-next.sh <slug> <memory-file>` builds a prompt from: the front's `north-star.md`, current `now.md` (including `## Answers from Daniel`), the new memory file, and the previous 5 memory files for that front. Instruction text lives in `workers/fronts/whats-next-prompt.md` and says, in this order: first spawn a subagent to research `fronts/memory/` for this front if more context is needed; answer "what's next for Daniel" and "what could an autonomous agent do end to end"; **if it isn't obvious, or there are blockers Daniel can answer, ask Daniel instead of suggesting work**; never edit `north-star.md`; keep suggestions to things the existing worker can do with a prompt (a slash command from `~/.claude/commands` may be named).
-- [ ] Runs `claude -p --model opus --json-schema` with tools limited to Read, Grep, Glob on `fronts/` and returns `{ now_md, suggestions: [{ title, prompt, type, model, slashCommand? }], questions: [{ question, why_it_matters }] }`.
-- [ ] Writes `now.md` from `now_md`, preserving the `## Answers from Daniel` section and prepending a `## Last session` block with the memory file's date and summary; keeps a `## Yesterday` line (Roman shows a "what I did yesterday" flow) computed in code from memory files dated the previous day.
-- [ ] Posts suggestions and questions to `POST /api/fronts/suggestions` in one batch; de-duplicates against open suggestions for the front by normalized title.
-- [ ] Per-front lock file in `workers/fronts/locks/<slug>.lock` with a 20-minute coalesce window: a second session ending inside the window appends its memory file to a pending list and the next run reads them all.
-- [ ] Logs to `workers/logs/fronts-<date>.log`; a failed opus run leaves `now.md` untouched and posts one question ("What's-next failed for <slug>: <reason>") so nothing fails silently.
-- [ ] Covered by `fronts.test.sh` with a stub `claude` returning a fixture JSON.
+- [x] `workers/fronts/whats-next.sh <slug> <memory-file>` builds a prompt from: the front's `north-star.md`, current `now.md` (including `## Answers from Daniel`), the new memory file, and the previous 5 memory files for that front. Instruction text lives in `workers/fronts/whats-next-prompt.md` and says, in this order: first spawn a subagent to research `fronts/memory/` for this front if more context is needed; answer "what's next for Daniel" and "what could an autonomous agent do end to end"; **if it isn't obvious, or there are blockers Daniel can answer, ask Daniel instead of suggesting work**; never edit `north-star.md`; keep suggestions to things the existing worker can do with a prompt (a slash command from `~/.claude/commands` may be named).
+- [x] Runs `claude -p --model opus --json-schema` with tools limited to Read, Grep, Glob on `fronts/` and returns `{ now_md, suggestions: [{ title, prompt, type, model, slashCommand? }], questions: [{ question, why_it_matters }] }`.
+- [x] Writes `now.md` from `now_md`, preserving the `## Answers from Daniel` section and prepending a `## Last session` block with the memory file's date and summary; keeps a `## Yesterday` line (Roman shows a "what I did yesterday" flow) computed in code from memory files dated the previous day.
+- [x] Posts suggestions and questions to `POST /api/fronts/suggestions` in one batch; de-duplicates against open suggestions for the front by normalized title.
+- [x] Per-front lock file in `workers/fronts/locks/<slug>.lock` with a 20-minute coalesce window: a second session ending inside the window appends its memory file to a pending list and the next run reads them all.
+- [x] Logs to `workers/logs/fronts-<date>.log`; a failed opus run leaves `now.md` untouched and posts one question ("What's-next failed for <slug>: <reason>") so nothing fails silently.
+- [x] Covered by `fronts.test.sh` with a stub `claude` returning a fixture JSON.
 
 ### US-007: Session-end hook and installation
 **Description:** As the operator, I want all of this to happen on its own when I close or `/clear` a session.
 
 **Acceptance Criteria:**
-- [ ] `workers/fronts/on-session-end.sh` reads the hook JSON on stdin (`session_id`, `transcript_path`, `cwd`, `reason`), exits immediately when `FRONTS_SKIP=1` is in the environment (set by `workers/run-worker.sh`, the DREAMS gate scripts, and every `workers/fronts/*.sh` so pipeline sessions never recurse), and otherwise detaches a background runner (`setsid nohup`) that chains summarize, route, and what's-next, so the hook itself returns in under a second.
-- [ ] A per-session marker in `workers/fronts/state/processed/<session_id>` prevents double runs when the hook fires twice.
-- [ ] `workers/fronts/install-hook.sh` adds a `SessionEnd` entry to `~/.claude/settings.json` with `jq` (idempotent, keeps existing hooks, prints the diff) and `--uninstall` removes it. The hook is global because fronts span repos.
-- [ ] A dry-run mode (`FRONTS_DRY_RUN=1`) runs the chain against a copy of the fronts directory under `/tmp` and posts to `DASHBOARD_URL` (default `http://localhost:3000`), so it can be exercised against a temp `next dev -p 3001` as described in AGENTS.md.
-- [ ] `fronts.test.sh` covers the skip rules and the processed marker.
+- [x] `workers/fronts/on-session-end.sh` reads the hook JSON on stdin (`session_id`, `transcript_path`, `cwd`, `reason`), exits immediately when `FRONTS_SKIP=1` is in the environment (set by `workers/run-worker.sh`, the DREAMS gate scripts, and every `workers/fronts/*.sh` so pipeline sessions never recurse), and otherwise detaches a background runner (`setsid nohup`) that chains summarize, route, and what's-next, so the hook itself returns in under a second.
+- [x] A per-session marker in `workers/fronts/state/processed/<session_id>` prevents double runs when the hook fires twice.
+- [ ] (operator step) `workers/fronts/install-hook.sh` adds a `SessionEnd` entry to `~/.claude/settings.json` with `jq` (idempotent, keeps existing hooks, prints the diff) and `--uninstall` removes it. The hook is global because fronts span repos.
+- [x] A dry-run mode (`FRONTS_DRY_RUN=1`) runs the chain against a copy of the fronts directory under `/tmp` and posts to `DASHBOARD_URL` (default `http://localhost:3000`), so it can be exercised against a temp `next dev -p 3001` as described in AGENTS.md.
+- [x] `fronts.test.sh` covers the skip rules and the processed marker.
 
 ### US-008: Fronts list page
 **Description:** As the operator, I want one page that shows every front and what is waiting on each.
 
 **Acceptance Criteria:**
-- [ ] `Nav.tsx` gains a `Fronts` item between Tasks and Roadmap.
-- [ ] `/fronts` renders one card per enabled front: name, `now.md` excerpt, "last session" relative time, and two counters (suggestions, questions) that link to the front page. Disabled fronts are listed under a collapsed "Inactive" heading.
-- [ ] Empty state when the registry is empty points at `fronts/README.md`.
-- [ ] Typecheck passes
-- [ ] Verify changes work in browser
+- [x] `Nav.tsx` gains a `Fronts` item between Tasks and Roadmap.
+- [x] `/fronts` renders one card per enabled front: name, `now.md` excerpt, "last session" relative time, and two counters (suggestions, questions) that link to the front page. Disabled fronts are listed under a collapsed "Inactive" heading.
+- [x] Empty state when the registry is empty points at `fronts/README.md`.
+- [x] Typecheck passes
+- [x] Verify changes work in browser
 
 ### US-009: Front detail page
 **Description:** As the operator, I want to read and edit a front's two files and see its recent sessions in one place.
 
 **Acceptance Criteria:**
-- [ ] `/fronts/<slug>` shows `north-star.md` (rendered markdown, Edit opens the existing `FileEditorModal` and saves through `PUT .../north-star`), `now.md` (rendered, with "updated <relative time>" and an Edit for manual corrections), and a Recent sessions list (date, cwd basename, first line of the summary; click expands the full memory entry).
-- [ ] A "Copy @ paths" button copies `@fronts/<slug>/north-star.md @fronts/<slug>/now.md` for pasting into a new Claude session (the lecture's "inject both with the at symbol").
-- [ ] Typecheck passes
-- [ ] Verify changes work in browser
+- [x] `/fronts/<slug>` shows `north-star.md` (rendered markdown, Edit opens the existing `FileEditorModal` and saves through `PUT .../north-star`), `now.md` (rendered, with "updated <relative time>" and an Edit for manual corrections), and a Recent sessions list (date, cwd basename, first line of the summary; click expands the full memory entry).
+- [x] A "Copy @ paths" button copies `@fronts/<slug>/north-star.md @fronts/<slug>/now.md` for pasting into a new Claude session (the lecture's "inject both with the at symbol").
+- [x] Typecheck passes
+- [x] Verify changes work in browser
 
 ### US-010: Review suggestions and answer questions
 **Description:** As the operator, I want to approve, annotate, dismiss, or answer what the front proposed, from the front page.
 
 **Acceptance Criteria:**
-- [ ] On `/fronts/<slug>`, a Suggestions section lists open `task` suggestions with title, the full prompt (collapsed), a notes textarea, and Approve and Dismiss buttons. Approve PATCHes `approved` with notes, shows the new task id with a link to `/tasks`, and removes the card.
-- [ ] A Questions section lists open `question` suggestions with the question, why it matters, an answer textarea, and Answer. Answering PATCHes `answered` and appends `- <date>: Q: ... A: ...` to the front's `## Answers from Daniel` section in `now.md`.
-- [ ] A "Refresh what's next" button calls `POST /api/fronts/<slug>/refresh`, which spawns `whats-next.sh` detached (same pattern as `/api/run-worker`), and the page polls `/api/fronts/<slug>` until `nowUpdatedAt` changes.
-- [ ] Typecheck passes
-- [ ] Verify changes work in browser
+- [x] On `/fronts/<slug>`, a Suggestions section lists open `task` suggestions with title, the full prompt (collapsed), a notes textarea, and Approve and Dismiss buttons. Approve PATCHes `approved` with notes, shows the new task id with a link to `/tasks`, and removes the card.
+- [x] A Questions section lists open `question` suggestions with the question, why it matters, an answer textarea, and Answer. Answering PATCHes `answered` and appends `- <date>: Q: ... A: ...` to the front's `## Answers from Daniel` section in `now.md`.
+- [x] A "Refresh what's next" button calls `POST /api/fronts/<slug>/refresh`, which spawns `whats-next.sh` detached (same pattern as `/api/run-worker`), and the page polls `/api/fronts/<slug>` until `nowUpdatedAt` changes.
+- [x] Typecheck passes
+- [x] Verify changes work in browser
 
 ### US-011: Needs-review integration on the Tasks page
 **Description:** As the operator, I want front suggestions and questions to show up inside the Tasks page's Needs review view, since that is where I already spend review time.
 
 **Acceptance Criteria:**
-- [ ] `/tasks` shows a compact strip above the list (pattern: `PostingFailureBanner`) reading "Fronts: N suggestions, M questions waiting" with per-front links, hidden when both are zero. Data from `GET /api/fronts`.
-- [ ] With the "Needs review" filter active, open suggestions and questions render as pseudo-cards (`FrontSuggestionCard`, visually distinct from `TaskCard`: front name chip, kind label, no status badge) interleaved before the `needs_review` tasks, newest first. The filter count includes them ("Needs review 7" = 4 tasks + 3 front items).
-- [ ] A pseudo-card carries the same controls as US-010 (notes + Approve, Dismiss, or Answer) and calls the same PATCH route; after an action the card disappears and the task list reloads so an approved suggestion shows up as a pending task.
-- [ ] The "All" filter does not show pseudo-cards (they are not tasks); only "Needs review" does.
-- [ ] Task cards created from a suggestion show a `front:<slug>` tag chip linking back to the front page.
-- [ ] Typecheck passes
-- [ ] Verify changes work in browser
+- [x] `/tasks` shows a compact strip above the list (pattern: `PostingFailureBanner`) reading "Fronts: N suggestions, M questions waiting" with per-front links, hidden when both are zero. Data from `GET /api/fronts`.
+- [x] With the "Needs review" filter active, open suggestions and questions render as pseudo-cards (`FrontSuggestionCard`, visually distinct from `TaskCard`: front name chip, kind label, no status badge) interleaved before the `needs_review` tasks, newest first. The filter count includes them ("Needs review 7" = 4 tasks + 3 front items).
+- [x] A pseudo-card carries the same controls as US-010 (notes + Approve, Dismiss, or Answer) and calls the same PATCH route; after an action the card disappears and the task list reloads so an approved suggestion shows up as a pending task.
+- [x] The "All" filter does not show pseudo-cards (they are not tasks); only "Needs review" does.
+- [x] Task cards created from a suggestion show a `front:<slug>` tag chip linking back to the front page.
+- [x] Typecheck passes
+- [x] Verify changes work in browser
 
 ### US-012: Documentation and feature log
 **Description:** As a future session, I need the shipped shape recorded where the repo expects it.
 
 **Acceptance Criteria:**
-- [ ] `specs/specs.md` gains a Fronts summary (data model, API routes, scripts, hook install, invariants: agents never write `north-star.md`; `FRONTS_SKIP`; lock window; bearer guard on pipeline POSTs).
-- [ ] `specs/readme.md` repo map and data-flow updated (new `fronts/` directory, new nav item, the SessionEnd hook as a fourth trigger next to cron and on-demand).
-- [ ] `AGENTS.md` gains the testing recipe (stub `claude`, `FRONTS_DRY_RUN`, temp `next dev -p 3001`, what to delete afterwards).
-- [ ] This PRD's header set to `**Status:** Implemented (<date>)`.
+- [x] `specs/specs.md` gains a Fronts summary (data model, API routes, scripts, hook install, invariants: agents never write `north-star.md`; `FRONTS_SKIP`; lock window; bearer guard on pipeline POSTs).
+- [x] `specs/readme.md` repo map and data-flow updated (new `fronts/` directory, new nav item, the SessionEnd hook as a fourth trigger next to cron and on-demand).
+- [x] `AGENTS.md` gains the testing recipe (stub `claude`, `FRONTS_DRY_RUN`, temp `next dev -p 3001`, what to delete afterwards).
+- [x] This PRD's header set to `**Status:** Implemented (<date>)`.
 
 ## Non-Goals
 

@@ -15,6 +15,57 @@ One summary per shipped feature. Read this **and** [readme.md](readme.md) (the c
 
 ---
 
+## Fronts: proactive per-lane "what's next" from session-end summaries
+
+**PRD:** [fronts.md](fronts.md) · **Shipped:** 2026-10-12 (hook install is a manual operator step, see below) · **Source:** Roman Colman's "Combinatorial Ralph Loops and Proactive Fronts" lecture, transcript in `operator-input/fronts-lecture-2026-10-08/`.
+
+A **front** is one lane of the operator's day-to-day (`config/fronts.json`: slug, name, router description, `cwdHints`, enabled; five seeded: land-sales, buyer-followup, land-ad-pipeline, day-job, ai-concierge). Each is `fronts/<slug>/north-star.md` (hand-written, **agents never write it**; the seed carries a `TODO: hand-write` marker the UI flags) and `fronts/<slug>/now.md` (agent-kept). When a Claude Code session ends, a global `SessionEnd` hook runs `workers/fronts/on-session-end.sh`, which writes an atomic processed marker and detaches `run-pipeline.sh`: `summarize-session.sh` (haiku, tool-less, writes `fronts/memory/<date>-<HHMM>-<sid8>.md` with frontmatter; skips sessions under 3 user turns or under /tmp) -> `route-session.sh` (asks `POST /api/fronts/route`; top >= 0.6 routes, second > 0.3 also; otherwise `front: unrouted` plus a "Which front was this session about?" question) -> `whats-next.sh <slug> <memory>` per routed front (opus with `--tools Read,Grep,Glob`, prompt in `whats-next-prompt.md`: ask instead of guessing, "what's next for Daniel" and "what could an agent do", never touch the north star; rewrites now.md as title / Last session / Yesterday / model sections / preserved `## Answers from Daniel`; posts suggestions and questions in one batch). The dashboard shows them on `/fronts/<slug>` and as pseudo-cards under the Tasks page's Needs review filter; Approve creates a pending task through `createTask` (tag `front:<slug>`, `metadata.frontSlug/suggestionId`, notes folded into `## Operator notes`) and fires the worker; Answer appends a dated Q/A line to the front's Answers section.
+
+**Surface added:**
+- Data: `dashboard/data/front-suggestions.json` (`FrontSuggestion`: id `fs-…`, frontSlug, kind task|question, title, body, type/model/slashCommand, source*, status open|approved|dismissed|answered, operatorNotes, answer, taskId) behind the data.ts mutex; `dashboard/lib/fronts.ts` (registry, memory parsing, `getFronts`/`getFront`, `writeNorthStar`, `writeNow` carrying the Answers section over, `appendAnswer`), `front-suggestions.ts` (`suggestionToTask`), `front-router.ts` (cwd bias +0.25 on the longest matching hint, Jev Choice when `TYPESAFE_API_KEY` is set, else `claude -p --model haiku --json-schema`, else cwd only), `run-worker.ts` (`spawnWorker`, shared with `/api/run-worker`).
+- API: `GET /api/fronts`, `GET /api/fronts/<slug>`, `PUT /api/fronts/<slug>/north-star|now`, `POST /api/fronts/<slug>/refresh` (spawns whats-next.sh detached), `GET /api/fronts/suggestions?front=&status=`, `POST /api/fronts/suggestions` (bearer `AGENT_TOKEN`, batch, drops unknown fields, dedupes open items by normalized title per front), `PATCH /api/fronts/suggestions/<id>` (dismissed | answered+answer | approved+operatorNotes; 409 when not open), `POST /api/fronts/route` (bearer).
+- UI: Nav "Fronts", `app/fronts/page.tsx`, `app/fronts/[slug]/page.tsx`, `components/FrontSuggestionCard.tsx`, `FrontsStrip.tsx`, `FrontFileEditor.tsx`, `Markdown.tsx` (the Roadmap renderer, now shared); TaskCard renders `front:` tags as a chip linking to the front.
+- Scripts: `workers/fronts/{lib,extract-transcript,summarize-session,route-session,whats-next,run-pipeline,on-session-end,install-hook}.sh`, `whats-next-prompt.md`, `fixtures/` (synthetic transcripts, `stub-claude.sh`, `stub-curl.sh`), `fronts.test.sh` (50 offline checks). Runtime dirs `workers/fronts/state/processed/<session_id>` and `workers/fronts/locks/<slug>.{lock,pending}` (gitignored). Logs: `workers/logs/fronts-<date>.log` and `fronts-pipeline.log`.
+
+**Invariants / gotchas:**
+- `FRONTS_SKIP=1` is the recursion guard: `run-worker.sh`, `dreams-gate.sh`, `dreams-score.sh`, and every fronts script export it, and `on-session-end.sh` exits when it is set, so `claude -p` runs spawned by the system never file themselves as sessions. Hooks inherit the environment; `--bare` would also skip hooks but skips slash commands too, so the env guard stays.
+- SessionEnd hooks get 1.5 s by default; the installer sets `timeout: 10`, and the hook only writes the marker and detaches (measured under 100 ms). The transcript JSONL format is internal to Claude Code: the extractor keeps any user/assistant text it recognises, drops `isMeta` entries and `<command-name>` echoes, and ships with fixtures so a format change fails `fronts.test.sh` rather than producing empty summaries.
+- `TYPESAFE_API_KEY` is not set on the worker box, so routing runs through the haiku fallback (method `claude`); set the key in the root `.env.local` to switch to Jev with no code change.
+- Per-front coalescing is lock-based (`flock` on `locks/<slug>.lock`): a run that finds the lock held queues its memory file in `<slug>.pending` and exits 0; the holder drains the queue before exiting.
+- `fronts/memory/*-private.md` is gitignored (rename a summary that must not leave the machine). Memory files are otherwise committed: they are the system's long-term context.
+- Approving a suggestion spawns the worker immediately; to test approval without running the task, hold `/tmp/command-center-worker.lock` with `flock` for the duration (the worker sees the fresh lock and exits).
+
+**Installing the hook (operator step, not yet done):** `workers/fronts/install-hook.sh` (idempotent, prints the diff; `--uninstall` reverses it). Then `/clear` a throwaway session and watch `workers/logs/fronts-pipeline.log` for the chain; rehearse first with `FRONTS_DRY_RUN=1 DASHBOARD_URL=http://localhost:3001 workers/fronts/run-pipeline.sh <transcript.jsonl> <sid> <cwd>` against a temp `next dev -p 3001`.
+
+**Extending:** a new front is one registry entry plus a copied `_template/`; a new router signal goes in `front-router.ts` (keep thresholds in `route-session.sh`); the nightly usage-aware autopilot (approved tasks picked up when the plan has spare capacity) is deferred to `specs/fronts-autopilot.md`, and its only documented usage source is the status line's `rate_limits` object.
+
+---
+
+## DREAMS score gate: independent judge, headline and description scored separately, 9/10 to pass
+
+**PRD:** [dreams-score-gate.md](dreams-score-gate.md) · **Shipped:** 2026-10-09 · Supersedes the inline self-audit below (DREAMS review loop).
+
+The generator no longer grades its own ads. `workers/dreams-gate.sh <output_dir>` scores every platform file through `workers/dreams-score.sh`, which runs one fresh, tool-less `claude -p` session per platform (prompt on stdin, `--json-schema` structured output, default model `opus`) with only the rubric, the platform's caps and buyer profile, and the copy. It returns a separate 1 to 10 score for the headline and for the description, per-category D R E A M S scores, weaknesses, and coaching suggestions. **Gate: both parts 9 or higher on every platform.** The generator loops on that verdict inside its session (write files, gate, revise only failing parts from the suggestions, re-gate only revised platforms, up to 4 runs). After the generator finishes, `workers/run-worker.sh` runs the gate again with its own judge sessions; a failure sends the task back to `pending` as `[REVISION REQUESTED] [DREAMS gate attempt N/2] <feedback>` (same Claude session via `--resume`), and after 2 regenerations it surfaces as `[DREAMS GATE FAILED ...]` in `needs_review`.
+
+**Files:**
+- `workers/dreams-score.sh` (one platform), `workers/dreams-gate.sh` (directory, parallel, merge, `--feedback`), `workers/dreams-judge-prompt.md` (scale, how the six categories apply to a headline, coaching rules), `workers/dreams-gate.test.sh` (31 offline checks with a stub `claude`).
+- `workers/run-worker.sh`: `DREAMS_GATE_COMMANDS=(generate-ad)`, `DREAMS_GATE_MAX_REGENERATIONS` (2), `DREAMS_GATE_TIMEOUT` (240 s), attempt counter parsed from the revision note.
+- `~/.claude/commands/generate-ad.md` (outside the repo): Step 6 rewritten; backup `workers/workspace/notes/generate-ad.md.bak-2026-10-09`.
+
+**Output surface:** `dreams-scores.json` in the output dir (machine-readable, merged across runs), `dreams-review.md` (gate statement, runs used `N/4`, result, per-platform scores with category numbers, `## Gate failures`, `## Run history`), README Variants table columns `DREAMS headline` / `DREAMS description`, per-platform `## DREAMS` line with both scores, `notes.md` blocks `## DREAMS gate: run <N>`.
+
+**Invariants / gotchas:**
+- Scores are numeric 1 to 10; `DREAMS_THRESHOLD` (default 9) and `DREAMS_JUDGE_MODEL` (default `opus`) are env vars read by the scripts. Haiku scores the same copy 2 to 3 points lower than opus; keep the judge on opus.
+- The judge never sees the nickname tag (stripped), the metadata, or the generator's notes (`--tools ""`). Conditional suggestions ("if the lot has legal access") may only be acted on when the metadata holds the fact.
+- A subset re-run (`dreams-gate.sh <dir> landmodo`) replaces only those platforms in `dreams-scores.json`; the gate's exit code is for the whole file, so a never-scored platform keeps it failing.
+- The scripts append `~/.local/bin` to PATH rather than prepending, so a stub `claude` earlier on PATH wins in tests (`workers/dreams-gate.test.sh`) and cron still finds the real one.
+- The worker-side gate fails open on infrastructure errors (exit 2, missing script) with a `[DREAMS gate could not run ...]` prefix; it never passes an ad it could not score and never passes one silently.
+- Expect occasional one-point disagreement between judge sessions near the threshold; that is why the worker allows two regenerations, not one.
+
+**Extending:** change the scale or how a headline is judged in `workers/dreams-judge-prompt.md`; change the rubric in `SKILL.md`; add a slash command to `DREAMS_GATE_COMMANDS` to gate another workflow (its output files must have `## HEADLINE` / `## DESCRIPTION` sections and config entries in `config/ad-platforms.json`). A dashboard score column can read `dreams-scores.json` from the output directory.
+
+---
+
 ## PATLive lead intake → Investment Dominator comments + status
 
 **PRD:** [patlive-intake.md](patlive-intake.md) · **Shipped:** 2026-09-30 · **Type:** cron poller (`# PATLIVE-INTAKE`, every 5 min), Python stdlib, no dashboard surface
@@ -297,7 +348,7 @@ After the existing headline-craft, anti-slop, and voice passes, the `generate-ad
 **Output surface** (per `workers/workspace/outputs/{task-id}/`): new `dreams-review.md` deliverable — cycles used (`N/3`), final platform × six-category verdict table, unresolved-weaknesses list ("None" when clean). `README.md` Variants table gains a `DREAMS` column (`Pass` / `2 weak`); each per-platform file gains a one-line `## DREAMS` section; `notes.md` carries the per-cycle audit logs (`## DREAMS audit — cycle <N>` blocks + why unresolved categories couldn't be fixed).
 
 **Invariants / gotchas:**
-- Verdicts are `Pass | Weak | Missing` only — no numeric scoring.
+- Verdicts are `Pass | Weak | Missing` only — no numeric scoring. **Superseded 2026-10-09:** the DREAMS score gate (entry above) replaced this self-audit with numeric 1 to 10 scores from an independent judge.
 - **Precedence:** DREAMS coaching overrides anti-slop, voice-check, and headline-craft *style* rules; platform char caps, the 90–100% `content_budget` window, no-invented-facts, and all nickname-tag rules are absolute — a DREAMS fix may never introduce a fact not in the task metadata (missing facts are logged as unresolvable instead).
 - Anti-slop still runs exactly once; DREAMS cycles never re-trigger it. The nickname tag is appended exactly once, after the final cycle, so `content_budget` math is unchanged. Char budgets are re-verified after every revision.
 - Each cycle is one scorecard pass over all platforms (no per-variant sub-loops) to keep 3 cycles inside the 30-min task timeout.

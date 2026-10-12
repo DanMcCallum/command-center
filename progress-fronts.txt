@@ -52,3 +52,8 @@
 - `components/FrontSuggestionCard.tsx` (approve with notes / dismiss / answer; teal task, amber question; `data-suggestion-id`) and `components/FrontsStrip.tsx` ("Fronts: N suggestions, M questions waiting" with per-front links, `data-testid="fronts-strip"`).
 - Tasks page: strip under the posting banner; pseudo-cards interleaved before the review tasks only under the Needs review filter; the filter count includes them; All leaves them out. TaskCard renders `front:<slug>` tags as a teal chip linking to the front.
 - Browser-verified on 3001 with Playwright (screenshots in /tmp/fronts-shots): 5 cards, nav item, answer from the front page wrote the Q/A into now.md, north star edited through the modal, strip text, 0 pseudo-cards under All and 2 under Needs review with the count at 7, approve from the Tasks page created the task and the Pending list showed the chip, roadmap unchanged, no console errors. Test task deleted, data reset.
+
+## Iteration 1 - US-012: documentation
+- `specs/specs.md` Fronts entry (data model, API, UI, scripts, invariants, the manual hook-install step, extension points); `specs/readme.md` architecture table (Session-end hook as a trigger), dashboard pages, repo map; `AGENTS.md` testing recipe and guard rules; `specs/fronts.md` set to Implemented (2026-10-12) with every criterion checked except the operator-run hook install.
+- Deviations from the PRD, all recorded in the entries above: lock-based coalescing instead of a 20-minute window; `FrontFileEditor` instead of `FileEditorModal`; "read more memory" instead of "spawn a subagent".
+- Left for the operator: hand-write the five north stars, run `workers/fronts/install-hook.sh`, `/clear` a throwaway session and watch `workers/logs/fronts-pipeline.log`.

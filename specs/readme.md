@@ -75,6 +75,7 @@ Three moving parts plus three supporting corpora:
 |---|---|---|
 | **Dashboard** (`dashboard/`) | Next.js 16 / React 19 / TypeScript / Tailwind v4 app on localhost | UI for the operator + REST API for the worker. JSON files are the database. |
 | **Worker** (`workers/run-worker.sh`) | Bash script triggered by cron or the dashboard | Picks the top pending task, spawns `claude -p`, routes output to review. |
+| **Session-end hook** (`workers/fronts/`) | Global Claude Code `SessionEnd` hook, detached bash chain | Summarizes every interactive session into `fronts/memory/`, routes it to a front, and proposes what's next into the review bin (specs.md → Fronts). |
 | **Cron / on-demand trigger** | System crontab entry (dashboard-managed) and `POST /api/run-worker` | Fires the worker. Both modes are active: cron runs every 5 minutes (schedule managed from `/settings`), and the Ad Builder triggers the worker immediately after creating a task. |
 | **Knowledge base** (`knowledge-base/`) | Markdown corpus of sold ads + headlines + property nicknames | Read at generation time for pattern matching. |
 | **Voice corpus** (`voice/`) | Raw + cleaned Dialpad call transcripts | Primes generated copy on the operator's voice. |
@@ -166,8 +167,9 @@ completed    -> pending        (operator reopens)
 | Route | Purpose |
 |---|---|
 | `/` | Redirects to `/tasks`. |
-| `/tasks` | Primary view. Task list polling every 30 s; filter tabs (All / Pending / In progress / Needs review / Completed) with counts; inline create form; expandable task rows showing priority dot, status badge, Claude's notes, links to output files. Actions per task: approve, request revision, delete, edit output files in a modal (`FileEditorModal`), **Save to knowledge base** (`SaveToKbModal`), and — on ad tasks — per-platform **Publish** buttons (specs.md → Local publish 1/3). A dismissible banner surfaces permanently failed marketplace postings (specs.md → Ad photos). Supports `?focus={id}` deep links. |
+| `/tasks` | Primary view. Task list polling every 30 s; filter tabs (All / Pending / In progress / Needs review / Completed) with counts; inline create form; expandable task rows showing priority dot, status badge, Claude's notes, links to output files. Actions per task: approve, request revision, delete, edit output files in a modal (`FileEditorModal`), **Save to knowledge base** (`SaveToKbModal`), and — on ad tasks — per-platform **Publish** buttons (specs.md → Local publish 1/3). A dismissible banner surfaces permanently failed marketplace postings (specs.md → Ad photos). A strip counts waiting front suggestions and questions, and the Needs review filter lists them as pseudo-cards ahead of the review tasks (specs.md → Fronts). Supports `?focus={id}` deep links. |
 | `/ad-builder` | Structured property form: location, acreage, price, access (paved / dirt-year-round / dirt-seasonal / none), utilities (power/water/septic/internet as yes/no/unknown), terrain, zoning, comps, must-include notes, buyer hint (retiree / off-gridder / investor / builder / hunter / remote-worker), target platforms, and photos (at least 1 required; drag-and-drop ordering with one starred primary). Submit creates a priority-1 opus `generate-ad` task with the form as `metadata`, uploads the photos into the task's outputs dir, then fires the worker and routes to `/tasks?focus={id}` (specs.md → Ad photos). |
+| `/fronts`, `/fronts/<slug>` | The operator's lanes of work (specs.md → Fronts): one card per front with its `now.md` excerpt and waiting counts; the detail page shows what's-next suggestions and questions (approve / dismiss / answer), the two markdown files with an editor, recent routed sessions, a Copy @ paths button, and Refresh what's next. |
 | `/roadmap` | Read-only list of future-work items from `data/todos.json`; each is a ready-to-run prompt brief. |
 | `/settings` | Worker scheduling via `CronConfigPanel`: on/off toggle, interval picker (over the cron-config/worker-status APIs), and a status card (last run, last task, crontab installed). Also `PostingAuthPanel`: a read-only per-platform view of marketplace sessions as reported by the local poster agent, plus an agent online/offline indicator — sessions are established on the operator's machine when Publish runs (specs.md → Local publish 3/3). |
 
@@ -217,8 +219,8 @@ The `generate-ad` slash command (lives at `~/.claude/commands/generate-ad.md`, o
 - **Platform constraints** (`config/ad-platforms.json`): per platform — display name, `headline_max` (60 for Landmodo, 100 elsewhere), `description_max` (1500), and a prose `buyer_profile` describing the marketplace audience and required angle. Generation targets 95–100% of each cap.
 - **Property nickname:** each property gets a unique two-word call-attribution nickname (registry: `knowledge-base/property-nicknames.md`), appended to every description as `(Property: Nickname)` so inbound phone calls can be attributed to a listing. The tag's length is carved out of `description_max`.
 - **Anti-slop pass:** after the first draft, the workflow loads `skills/anti-slop.md` and does one self-critique + rewrite to strip AI-tells and match the operator's voice.
-- **DREAMS review loop:** after the anti-slop and voice passes, every platform variant (headline + description sales copy; nickname tag exempt) is audited inline against the six DREAMS categories, non-Pass variants are revised in the operator's voice, and the loop repeats until all categories pass everywhere or 3 audit cycles are used. DREAMS coaching overrides style rules when they conflict; char caps, factual grounding, and nickname-tag rules are never overridden (specs.md → DREAMS review loop).
-- **Output:** one markdown file per target platform (`landmodo.md`, `land_century.md`, `land_com.md`, `landflip.md`, `land_listings.md`, `landhub.md`) with char-counted HEADLINE/DESCRIPTION sections and a "why this angle" note, plus a `README.md` index and a `dreams-review.md` scorecard (final per-platform DREAMS verdicts, cycles used, unresolved weaknesses).
+- **DREAMS score gate:** after the anti-slop and voice passes, the generator writes the platform files and runs `workers/dreams-gate.sh`, which scores every platform's headline and description **separately** (1 to 10 each) in fresh, tool-less judge sessions that see only the rubric, the platform constraints, and the copy. Both must score 9 or higher on every platform; failing parts are revised from the judge's suggestions and re-scored (up to 4 runs). The worker then re-scores the finished files itself and sends a failing ad back to the same session as a `REVISION REQUESTED` (up to 2 times) before surfacing `[DREAMS GATE FAILED]` to the operator (specs.md → DREAMS score gate).
+- **Output:** one markdown file per target platform (`landmodo.md`, `land_century.md`, `land_com.md`, `landflip.md`, `land_listings.md`, `landhub.md`) with char-counted HEADLINE/DESCRIPTION sections and a "why this angle" note, plus a `README.md` index, a `dreams-review.md` scorecard (per-platform headline and description scores, gate runs used, gate failures), and the machine-readable `dreams-scores.json`.
 
 ### 5.6 Knowledge base feedback loop
 
@@ -252,7 +254,7 @@ Notion-inspired dark minimalism. The principle: **the UI is a document, not an a
 - **Remote access:** a Cloudflare tunnel (`cloudflared`, also started `@reboot`) publishes the dashboard at `dashboard.ownaloha.land`, gated by Cloudflare Access. The app itself has no auth — the edge is the only gate.
 - **Worker deps:** `claude` CLI, `curl`, `jq`, `flock`, `timeout`, `fuser`.
 - **No database, no external services** except the Dialpad API for transcript fetch and the Cloudflare tunnel for remote access; the only in-app auth is the agent-API bearer token (`AGENT_TOKEN` in root `.env.local`). Ad platforms have no API integration — enabled ones are posted via publish jobs consumed by the local poster agent on the operator's machine, the rest manually (specs.md → Local publish 1/3 and 2/3).
-- **Timeout budget:** 30 min per task; 35 min stale-lock threshold.
+- **Timeout budget:** 30 min per task; 35 min stale-lock threshold; the worker-side DREAMS gate adds up to 4 min after a `generate-ad` task (about 1 min and $1 in judge calls for seven platforms).
 - **Config:** `config/paths.json` (external directory roots — never hardcode paths) and `config/ad-platforms.json`.
 
 ---
@@ -286,14 +288,15 @@ Notion-inspired dark minimalism. The principle: **the UI is a document, not an a
 ```
 command-center/
   dashboard/            Next.js app (UI + API + JSON data files)
-    app/                Routes: /, /tasks, /ad-builder, /roadmap, /settings, /api/*
+    app/                Routes: /, /tasks, /ad-builder, /fronts, /roadmap, /settings, /api/*
     components/         TaskCard, TaskForm, SaveToKbModal, FileEditorModal,
                         CronConfigPanel, Nav, StatusBadge, PriorityIndicator,
                         PhotoPicker, PostingChips, PostingFailureBanner,
-                        PostingAuthPanel (read-only agent-reported sessions)
+                        PostingAuthPanel (read-only agent-reported sessions),
+                        FrontSuggestionCard, FrontsStrip, FrontFileEditor, Markdown
     lib/                types.ts, data.ts (JSON I/O), cron.ts, utils.ts,
                         agent-auth.ts (agent-token guard), agent-liveness.ts
-    data/               tasks.json, todos.json, cron-config.json
+    data/               tasks.json, todos.json, cron-config.json, front-suggestions.json
     start.sh            Production start (called from @reboot cron)
   workers/
     run-worker.sh       The execution engine (cron / on-demand entry point)
@@ -303,9 +306,13 @@ command-center/
                         auth/ holds login sessions (secret)
       capture/          detect.ts only — login-success detection used by the
                         agent (the live-view stack is gone; specs.md -> Local publish 3/3)
+    fronts/             Session-end pipeline: hook entry, summarize, route, what's-next,
+                        installer, offline harness (specs.md -> Fronts)
     system-prompt.md    Claude worker operating rules
     workspace/          outputs/{task-id}/ and notes/{task-id}.md
     logs/               Per-run logs + cron.log
+  fronts/               One dir per front: north-star.md (hand-written) + now.md (agent-kept);
+                        memory/ holds per-session summaries; _template/ for new fronts
   knowledge-base/
     ads/                Sold-ad corpus (frontmatter + HEADLINE + DESCRIPTION)
     headlines/          Headline-craft corpus
@@ -321,6 +328,7 @@ command-center/
     paths.json          External directory roots
     ad-platforms.json   Per-platform caps + buyer profiles
     posting-platforms.json  Posting targets: enabled flags + login/new-listing URLs
+    fronts.json         Front registry: slug, name, router description, cwdHints
   research/
     auth-capture-spike/ Auth-capture proposal: report.md + PDF + recon artifacts (specs.md -> Marketplace auth-capture)
     land-com-connect-spike/ Land.com Akamai-block spike: report.md + home-probe.sh +
