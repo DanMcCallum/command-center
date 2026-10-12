@@ -1,7 +1,16 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
-import type { AgentPlatformSession, AgentStatus, CronConfig, Task, Todo, WorkerState } from './types';
-import { generateTaskId, nowIso } from './utils';
+import type {
+  AgentPlatformSession,
+  AgentStatus,
+  CronConfig,
+  FrontSuggestion,
+  FrontSuggestionStatus,
+  Task,
+  Todo,
+  WorkerState,
+} from './types';
+import { generateSuggestionId, generateTaskId, nowIso } from './utils';
 
 const DATA_DIR = path.join(process.cwd(), 'data');
 const TASKS_FILE = path.join(DATA_DIR, 'tasks.json');
@@ -9,6 +18,7 @@ const CRON_FILE = path.join(DATA_DIR, 'cron-config.json');
 const WORKER_STATE_FILE = path.join(DATA_DIR, 'worker-state.json');
 const TODOS_FILE = path.join(DATA_DIR, 'todos.json');
 const AGENT_STATUS_FILE = path.join(DATA_DIR, 'agent-status.json');
+const FRONT_SUGGESTIONS_FILE = path.join(DATA_DIR, 'front-suggestions.json');
 
 let writeChain: Promise<unknown> = Promise.resolve();
 
@@ -221,4 +231,116 @@ export async function getTodos(): Promise<Todo[]> {
   return [...todos].sort(
     (a, b) => a.createdAt.localeCompare(b.createdAt),
   );
+}
+
+// --- Front suggestions (specs/fronts.md US-002) ------------------------------
+
+export interface FrontSuggestionInput {
+  frontSlug: string;
+  kind: FrontSuggestion['kind'];
+  title: string;
+  body: string;
+  type?: string;
+  model?: FrontSuggestion['model'];
+  slashCommand?: string | null;
+  sourceSessionId?: string | null;
+  sourceMemoryFile?: string | null;
+}
+
+function normalizeTitle(title: string): string {
+  return title.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+}
+
+/** Newest first. */
+export async function getFrontSuggestions(filter?: {
+  frontSlug?: string;
+  status?: FrontSuggestionStatus;
+}): Promise<FrontSuggestion[]> {
+  const all = await readJson<FrontSuggestion[]>(FRONT_SUGGESTIONS_FILE, []);
+  return all
+    .filter(s => !filter?.frontSlug || s.frontSlug === filter.frontSlug)
+    .filter(s => !filter?.status || s.status === filter.status)
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+}
+
+export async function getFrontSuggestion(id: string): Promise<FrontSuggestion | null> {
+  const all = await readJson<FrontSuggestion[]>(FRONT_SUGGESTIONS_FILE, []);
+  return all.find(s => s.id === id) ?? null;
+}
+
+/**
+ * Appends a batch. Only the fields of FrontSuggestionInput are kept (the
+ * pipeline POSTs whatever the model returned). An input whose normalized
+ * title matches an open suggestion for the same front is skipped, so a
+ * re-run never doubles the review bin. Returns the records actually added.
+ */
+export async function createFrontSuggestions(
+  inputs: FrontSuggestionInput[],
+): Promise<FrontSuggestion[]> {
+  return serialize(async () => {
+    const all = await readJson<FrontSuggestion[]>(FRONT_SUGGESTIONS_FILE, []);
+    const openKeys = new Set(
+      all.filter(s => s.status === 'open').map(s => `${s.frontSlug}|${normalizeTitle(s.title)}`),
+    );
+    const added: FrontSuggestion[] = [];
+    for (const input of inputs) {
+      const key = `${input.frontSlug}|${normalizeTitle(input.title)}`;
+      if (openKeys.has(key)) continue;
+      openKeys.add(key);
+      const record: FrontSuggestion = {
+        id: generateSuggestionId(),
+        frontSlug: input.frontSlug,
+        kind: input.kind,
+        title: input.title,
+        body: input.body,
+        type: input.type,
+        model: input.model,
+        slashCommand: input.slashCommand ?? null,
+        sourceSessionId: input.sourceSessionId ?? null,
+        sourceMemoryFile: input.sourceMemoryFile ?? null,
+        status: 'open',
+        createdAt: nowIso(),
+      };
+      all.push(record);
+      added.push(record);
+    }
+    if (added.length) await writeJson(FRONT_SUGGESTIONS_FILE, all);
+    return added;
+  });
+}
+
+export type FrontSuggestionResolution =
+  | { status: 'dismissed' }
+  | { status: 'answered'; answer: string }
+  | { status: 'approved'; operatorNotes?: string; taskId: string };
+
+/** Resolves an open suggestion. Returns null when unknown; 'not_open' when
+ * it was already resolved (the caller turns that into a 409). */
+export async function resolveFrontSuggestion(
+  id: string,
+  resolution: FrontSuggestionResolution,
+): Promise<FrontSuggestion | null | 'not_open'> {
+  return serialize(async () => {
+    const all = await readJson<FrontSuggestion[]>(FRONT_SUGGESTIONS_FILE, []);
+    const idx = all.findIndex(s => s.id === id);
+    if (idx === -1) return null;
+    if (all[idx].status !== 'open') return 'not_open';
+    const merged: FrontSuggestion = { ...all[idx], ...resolution, resolvedAt: nowIso() };
+    all[idx] = merged;
+    await writeJson(FRONT_SUGGESTIONS_FILE, all);
+    return merged;
+  });
+}
+
+export async function countOpenFrontSuggestions(): Promise<
+  Record<string, { openSuggestions: number; openQuestions: number }>
+> {
+  const open = await getFrontSuggestions({ status: 'open' });
+  const counts: Record<string, { openSuggestions: number; openQuestions: number }> = {};
+  for (const s of open) {
+    const c = (counts[s.frontSlug] ??= { openSuggestions: 0, openQuestions: 0 });
+    if (s.kind === 'question') c.openQuestions += 1;
+    else c.openSuggestions += 1;
+  }
+  return counts;
 }

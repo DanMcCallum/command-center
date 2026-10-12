@@ -4,6 +4,12 @@ export function generateTaskId(): string {
   return `task-${ts}-${rand}`;
 }
 
+export function generateSuggestionId(): string {
+  const ts = Date.now();
+  const rand = Math.random().toString(36).substring(2, 8);
+  return `fs-${ts}-${rand}`;
+}
+
 export function nowIso(): string {
   return new Date().toISOString();
 }

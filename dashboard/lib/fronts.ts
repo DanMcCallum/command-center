@@ -259,3 +259,30 @@ export async function writeNow(slug: string, text: string): Promise<void> {
   }
   await writeText(nowPath(slug), next);
 }
+
+/**
+ * Appends one Q/A line to the front's `## Answers from Daniel` section in
+ * now.md (creating the section at the end when missing). The next what's-next
+ * run reads it, so an answered question never comes back.
+ */
+export async function appendAnswer(slug: string, question: string, answer: string): Promise<void> {
+  await requireFrontConfig(slug);
+  const file = nowPath(slug);
+  const existing = (await readOrNull(file)) ?? '';
+  const date = new Date().toISOString().slice(0, 10);
+  const line = `- ${date}: Q: ${question.trim()} A: ${answer.trim().replace(/\s*\n+\s*/g, ' ')}`;
+  const start = existing.indexOf(ANSWERS_HEADING);
+  let next: string;
+  if (start === -1) {
+    next = existing.trimEnd() + `\n\n${ANSWERS_HEADING}\n${line}\n`;
+  } else {
+    const afterHeading = start + ANSWERS_HEADING.length;
+    const rest = existing.slice(afterHeading);
+    const nextHeading = rest.search(/\n## /);
+    const sectionEnd = nextHeading === -1 ? existing.length : afterHeading + nextHeading;
+    let section = existing.slice(afterHeading, sectionEnd).replace(/\n?\(none yet\)\s*$/, '');
+    section = section.trimEnd() + '\n' + line + '\n';
+    next = existing.slice(0, afterHeading) + section + (nextHeading === -1 ? '' : existing.slice(sectionEnd));
+  }
+  await writeText(file, next);
+}
