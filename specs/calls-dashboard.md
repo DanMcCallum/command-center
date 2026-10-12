@@ -53,11 +53,11 @@ Target architecture (decided by the operator, not up for debate inside the loop)
 **Description:** As the `/calls` page, I need the live feed and the reconnect re-fetch under the token.
 
 **Acceptance Criteria:**
-- [ ] `GET /api/v1/calls/recent?limit=` returns the same `{events: [...]}` payload as `/calls/recent` (shared helper, not copied SQL), token-guarded.
-- [ ] `GET /api/v1/events` streams the same frames as `/events` (`id:` and `data:` lines, `: keepalive` every `sse_heartbeat` seconds, headers `Cache-Control: no-cache` and `X-Accel-Buffering: no`), token-guarded via header or `?token=`, subscribing to `app.state.broadcast`, ending when the client disconnects. `register_api` receives the heartbeat value from `create_app` (store it on `app.state.sse_heartbeat`).
-- [ ] `POST /api/v1/dev/ping` (token-guarded, always registered, no database write) publishes `{kind: "ping", sent_at: <epoch seconds float>}` on the broadcast and returns `{ok: true, seq}`. This is the harmless frame used for latency measurement.
-- [ ] Tests (live uvicorn fixture, as in `test_sse_delivery.py`): a ping published after subscribing arrives on `/api/v1/events` with the right `seq`; unauthorized stream request is 401; `?token=` works for EventSource-style clients; `/api/v1/calls/recent` shape matches `/calls/recent` for the same rows.
-- [ ] `pytest -q` and ruff clean.
+- [x] `GET /api/v1/calls/recent?limit=` returns the same `{events: [...]}` payload as `/calls/recent` (shared helper, not copied SQL), token-guarded.
+- [x] `GET /api/v1/events` streams the same frames as `/events` (`id:` and `data:` lines, `: keepalive` every `sse_heartbeat` seconds, headers `Cache-Control: no-cache` and `X-Accel-Buffering: no`), token-guarded via header or `?token=`, subscribing to `app.state.broadcast`, ending when the client disconnects. `register_api` receives the heartbeat value from `create_app` (store it on `app.state.sse_heartbeat`).
+- [x] `POST /api/v1/dev/ping` (token-guarded, always registered, no database write) publishes `{kind: "ping", sent_at: <epoch seconds float>}` on the broadcast and returns `{ok: true, seq}`. This is the harmless frame used for latency measurement.
+- [x] Tests (live uvicorn fixture, as in `test_sse_delivery.py`): a ping published after subscribing arrives on `/api/v1/events` with the right `seq`; unauthorized stream request is 401; `?token=` works for EventSource-style clients; `/api/v1/calls/recent` shape matches `/calls/recent` for the same rows.
+- [x] `pytest -q` and ruff clean.
 
 ### US-004: Read endpoints for records
 **Description:** As the contacts, properties, record, and search pages, I need the ID proxies and the local index search as JSON.

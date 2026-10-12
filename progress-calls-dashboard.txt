@@ -14,6 +14,7 @@
 - The no-em-dash hook blocks writes that quote Python strings containing one (the note title format). Describe such strings instead of quoting them.
 - uvicorn's access log (production runs `log_level="info"`) prints the full request line, query string included, so a `?token=` request writes the API token into the service log. The command-center client and SSE relay must send the token only as `Authorization: Bearer`; `?token=` exists for ad hoc EventSource debugging, not for anything that runs routinely.
 - `build_service(..., calls_api_token=None)` falls back to `config.calls_api_token()`; tests pass `calls_api_token="t0k"` (or `""` to exercise fail-closed) to stay hermetic. `register_api(app, deps, token=...)` takes the same `DashboardDeps` object `register_dashboard` gets.
+- SSE tests: wait for the first `: keepalive` line before publishing (it proves the subscription exists), with the app built at `sse_heartbeat=0.1`. `make_app(conn, token, sse_heartbeat=...)` and the `live_api` fixture in `tests/test_api_v1.py` are reusable for later API stream tests.
 - Baselines 2026-10-12: pytest 265 passed, ruff clean; `npx tsc --noEmit` clean; `npm test` 48/50 with the two known `ebay-html.test.ts` failures.
 
 ---
@@ -31,3 +32,9 @@
 - Verified: `.venv/bin/python -m pytest -q` -> `278 passed, 3 warnings in 6.09s`; `.venv/bin/ruff check app scripts tests` -> `All checks passed!`. No command-center code changed.
 - Production 8100 is untouched; it picks up the API only on the operator restart already listed under Questions.
 - Next story: US-003.
+
+## Iteration 2 (2026-10-12) - US-003: Recent calls, SSE stream, and the ping frame
+- followupdominator: `app/webhook_receiver.py` gains two module-level helpers, `recent_calls(conn, limit)` (the `{events: [...]}` payload, limit capped at 100) and `sse_response(request, broadcast, heartbeat)` (frames, keepalive, headers, disconnect); `/events` and `/calls/recent` now call them, so there is one copy of the SQL and the stream loop. `create_app` stores `app.state.sse_heartbeat`. `app/api_v1.py` adds `GET /api/v1/calls/recent`, `GET /api/v1/events` (reads `app.state.broadcast` and `app.state.sse_heartbeat`), and `POST /api/v1/dev/ping` (publishes `{kind: "ping", sent_at}` and returns `{ok: true, seq}`, no database write), all behind `require_api_token`.
+- Tests in `tests/test_api_v1.py` (new `live_api` uvicorn fixture, heartbeat 0.1 s): a ping posted after the first keepalive arrives on `/api/v1/events` with `seq` equal to the frame `id:` and the ping response, plus the three headers; `?token=` stream works; unauthorized stream is 401 JSON; dev ping rejects `?token=` on POST, increments seq, and leaves every table's row count unchanged; `/api/v1/calls/recent` JSON equals `/calls/recent` for the same three webhook rows; a dashboard session token is not accepted as an API token.
+- Verified: `.venv/bin/python -m pytest -q` -> `284 passed, 3 warnings in 6.86s`; `.venv/bin/ruff check app scripts tests` -> `All checks passed!`. No command-center code changed.
+- Next story: US-004.
