@@ -4,8 +4,12 @@
 # the task with the result. See specs in the project root for the full design.
 set -euo pipefail
 
+# Sessions this script spawns must not trigger the fronts SessionEnd hook
+# (workers/fronts/on-session-end.sh); hooks inherit the environment.
+export FRONTS_SKIP=1
+
 # Cron's minimal PATH typically lacks ~/.local/bin where `claude` lives.
-export PATH="$HOME/.local/bin:$PATH"
+export PATH="$PATH:$HOME/.local/bin"
 
 # --- Configuration -----------------------------------------------------------
 DASHBOARD_URL="${DASHBOARD_URL:-http://localhost:3000}"
@@ -18,6 +22,17 @@ SLASH_COMMANDS_DIR="${SLASH_COMMANDS_DIR:-$HOME/.claude/commands}"
 
 # Slash commands whose tasks should auto-complete (skip needs_review).
 AUTO_COMPLETE_COMMANDS=()
+
+# Slash commands whose output must pass the DREAMS score gate
+# (workers/dreams-gate.sh: an independent judge scores every platform's
+# headline and description separately; both must reach DREAMS_THRESHOLD,
+# default 9). A failing ad is sent back to the same Claude session as a
+# REVISION REQUESTED with the judge's suggestions, at most
+# DREAMS_GATE_MAX_REGENERATIONS times, then surfaced as [DREAMS GATE FAILED].
+DREAMS_GATE_COMMANDS=(generate-ad)
+DREAMS_GATE_SCRIPT="$WORKERS_DIR/dreams-gate.sh"
+DREAMS_GATE_MAX_REGENERATIONS="${DREAMS_GATE_MAX_REGENERATIONS:-2}"
+DREAMS_GATE_TIMEOUT="${DREAMS_GATE_TIMEOUT:-240}"   # 4 min; a 7-platform run takes about 1. Keeps TIMEOUT_SECONDS + gate under STALE_LOCK_SECONDS.
 
 # --- Helpers -----------------------------------------------------------------
 log() { printf '[%s] %s\n' "$(date -Iseconds)" "$*"; }
@@ -138,6 +153,14 @@ TASK_CRITERIA=$(echo "$TASK_JSON" | jq -r '
 ')
 
 log "Selected task: $TASK_ID (P$TASK_PRIORITY) — $TASK_TITLE"
+
+# How many times the DREAMS gate has already sent this task back. The count
+# rides in the revision note so no task field is needed.
+GATE_ATTEMPT=0
+if [[ "$TASK_NOTES" =~ ^\[REVISION\ REQUESTED\]\ \[DREAMS\ gate\ attempt\ ([0-9]+)/([0-9]+)\] ]]; then
+  GATE_ATTEMPT="${BASH_REMATCH[1]}"
+  log "DREAMS gate regeneration $GATE_ATTEMPT/${BASH_REMATCH[2]} for this task"
+fi
 
 # --- Step 6: Claim the task --------------------------------------------------
 api_patch "$TASK_ID" "$(jq -n --arg ts "$(date -Iseconds)" \
@@ -315,6 +338,55 @@ done
 # If Claude already moved the task to completed (and that's allowed), respect it.
 if [[ "$EXISTING_STATUS" == "completed" && "$FINAL_STATUS" == "completed" ]]; then
   FINAL_STATUS="completed"
+fi
+
+# --- DREAMS score gate --------------------------------------------------------
+# Independent re-score of the final ad files. The generator runs the same gate
+# inside its own session, but it grades its own homework otherwise; this run
+# is what decides whether the ad reaches the operator as passing.
+GATE_APPLIES=0
+for cmd in "${DREAMS_GATE_COMMANDS[@]:-}"; do
+  if [[ -n "$cmd" && "$TASK_SLASH_COMMAND" == "$cmd" ]]; then GATE_APPLIES=1; break; fi
+done
+
+if [[ $GATE_APPLIES -eq 1 ]]; then
+  if [[ ! -x "$DREAMS_GATE_SCRIPT" ]]; then
+    log "WARN: DREAMS gate script missing or not executable at $DREAMS_GATE_SCRIPT; skipping gate"
+    FINAL_NOTES="[DREAMS gate skipped: script missing] ${FINAL_NOTES}"
+  else
+    log "Running DREAMS gate on $OUTPUT_DIR"
+    GATE_EXIT=0
+    GATE_OUTPUT=$(timeout "$DREAMS_GATE_TIMEOUT" "$DREAMS_GATE_SCRIPT" "$OUTPUT_DIR" 2>&1) || GATE_EXIT=$?
+    printf '%s\n' "$GATE_OUTPUT"
+    GATE_TABLE=$(printf '%s\n' "$GATE_OUTPUT" | grep -E '^\||^RESULT' || true)
+
+    if [[ $GATE_EXIT -eq 0 ]]; then
+      log "DREAMS gate PASS"
+      FINAL_NOTES="[DREAMS gate PASS] ${FINAL_NOTES}"
+    elif [[ $GATE_EXIT -eq 1 ]]; then
+      if [[ "$GATE_ATTEMPT" -lt "$DREAMS_GATE_MAX_REGENERATIONS" ]]; then
+        NEXT_ATTEMPT=$((GATE_ATTEMPT + 1))
+        FEEDBACK=$("$DREAMS_GATE_SCRIPT" --feedback "$OUTPUT_DIR" 2>&1 || true)
+        REJECT_NOTE=$(printf '[REVISION REQUESTED] [DREAMS gate attempt %s/%s] %s' \
+          "$NEXT_ATTEMPT" "$DREAMS_GATE_MAX_REGENERATIONS" "$FEEDBACK")
+        api_patch "$TASK_ID" "$(jq -n \
+          --arg note "$REJECT_NOTE" \
+          --arg completion "$FINAL_COMPLETION" \
+          '{status: "pending", claudeNotes: $note, completionFile: (if $completion == "" then null else $completion end)}')" >/dev/null
+        log "DREAMS gate FAIL: task $TASK_ID sent back for regeneration ($NEXT_ATTEMPT/$DREAMS_GATE_MAX_REGENERATIONS)"
+        update_worker_state "$TASK_ID"
+        log "Worker finished cleanly."
+        exit 0
+      fi
+      log "DREAMS gate FAIL after $DREAMS_GATE_MAX_REGENERATIONS regenerations; surfacing to operator"
+      FINAL_NOTES=$(printf '[DREAMS GATE FAILED after %s regenerations]\n%s\n\n%s' \
+        "$DREAMS_GATE_MAX_REGENERATIONS" "$GATE_TABLE" "$FINAL_NOTES")
+    else
+      log "WARN: DREAMS gate could not score (exit $GATE_EXIT); surfacing without a verdict"
+      FINAL_NOTES=$(printf '[DREAMS gate could not run: exit %s]\n%s\n\n%s' \
+        "$GATE_EXIT" "$(printf '%s' "$GATE_OUTPUT" | tail -c 800)" "$FINAL_NOTES")
+    fi
+  fi
 fi
 
 UPDATE_BODY=$(jq -n \

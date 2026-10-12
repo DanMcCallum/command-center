@@ -119,5 +119,39 @@ wait $HOLDER
 check "next: the next run drains the pending list" bash -c 'test ! -s "$1" && test "$(grep -c "/api/fronts/suggestions" "$2")" -eq 2' _ "$TMP/locks/land-sales.pending" "$STUB_CURL_LOG"
 unset STUB_CURL_LOG STUB_CURL_BODIES
 
+# 5. on-session-end hook + run-pipeline ---------------------------------------------
+HOOK_IN=$(jq -n --arg t "$FIX/transcript-work.jsonl" '{session_id:"hook-session-0001", transcript_path:$t, cwd:"/home/mazer/claude/command-center", hook_event_name:"SessionEnd", reason:"clear"}')
+export STUB_CURL_LOG="$TMP/curl3.log" STUB_CURL_BODIES="$TMP/curl3-bodies.log"
+code=0; FRONTS_SKIP=1 "$HERE/on-session-end.sh" <<<"$HOOK_IN" || code=$?
+check "hook: FRONTS_SKIP=1 exits 0 without a marker" bash -c 'test "$1" -eq 0 && test ! -e "$2"' _ "$code" "$FRONTS_STATE_DIR/processed/hook-session-0001"
+code=0; FRONTS_INLINE=1 FRONTS_SETTLE_SECONDS=0 "$HERE/on-session-end.sh" <<<"$HOOK_IN" >/dev/null 2>&1 || code=$?
+check "hook: processes the session inline and exits 0" test "$code" -eq 0
+check "hook: processed marker written" test -d "$FRONTS_STATE_DIR/processed/hook-session-0001"
+check "hook: pipeline wrote a memory file for the hook session" bash -c 'ls "$1"/memory | grep -q "hook-ses.md"' _ "$FRONTS_DIR"
+check "hook: pipeline routed and ran what's-next (suggestions posted)" bash -c 'grep -q "/api/fronts/route" "$1" && grep -q "/api/fronts/suggestions" "$1"' _ "$STUB_CURL_LOG"
+: > "$STUB_CURL_LOG"
+code=0; FRONTS_INLINE=1 "$HERE/on-session-end.sh" <<<"$HOOK_IN" || code=$?
+check "hook: same session a second time is a no-op" bash -c 'test "$1" -eq 0 && test ! -s "$2"' _ "$code" "$STUB_CURL_LOG"
+code=0; "$HERE/on-session-end.sh" <<<'{"session_id":"","transcript_path":""}' || code=$?
+check "hook: empty payload exits 0" test "$code" -eq 0
+code=0; "$HERE/on-session-end.sh" <<<'not json' || code=$?
+check "hook: garbage payload exits 0" test "$code" -eq 0
+# Dry run works on a copy.
+: > "$STUB_CURL_LOG"
+FRONTS_DRY_RUN=1 FRONTS_SETTLE_SECONDS=0 "$HERE/run-pipeline.sh" "$FIX/transcript-work.jsonl" "dry-session-0001" "/home/mazer/claude/command-center" >"$TMP/dry.log" 2>&1 || true
+check "pipeline: dry run reports a /tmp copy and leaves the real memory dir alone" bash -c 'grep -q "DRY RUN: working on a copy at /tmp/fronts-dry-run-" "$1" && ! ls "$2"/memory | grep -q "dry-sess"' _ "$TMP/dry.log" "$FRONTS_DIR"
+rm -rf /tmp/fronts-dry-run-*
+unset STUB_CURL_LOG STUB_CURL_BODIES
+
+# 6. install-hook ---------------------------------------------------------------------
+S="$TMP/settings.json"; echo '{"hooks":{"PreToolUse":[{"matcher":"Write","hooks":[{"type":"command","command":"x"}]}]}}' > "$S"
+"$HERE/install-hook.sh" --settings "$S" >/dev/null
+check "install: adds a SessionEnd entry pointing at on-session-end.sh with a timeout" bash -c 'jq -e ".hooks.SessionEnd[0].hooks[0].command | endswith(\"on-session-end.sh\")" "$1" >/dev/null && jq -e ".hooks.SessionEnd[0].hooks[0].timeout == 10" "$1" >/dev/null' _ "$S"
+check "install: keeps existing hooks" bash -c 'jq -e ".hooks.PreToolUse[0].hooks[0].command == \"x\"" "$1" >/dev/null' _ "$S"
+OUT=$("$HERE/install-hook.sh" --settings "$S")
+check "install: second run is a no-op" bash -c 'grep -q "no change" <<<"$1" && test "$(jq ".hooks.SessionEnd | length" "$2")" -eq 1' _ "$OUT" "$S"
+"$HERE/install-hook.sh" --uninstall --settings "$S" >/dev/null
+check "uninstall: removes the entry and leaves other hooks" bash -c 'jq -e ".hooks.SessionEnd == null and .hooks.PreToolUse != null" "$1" >/dev/null' _ "$S"
+
 echo; echo "passed $PASS, failed $FAIL"
 [[ $FAIL -eq 0 ]]
