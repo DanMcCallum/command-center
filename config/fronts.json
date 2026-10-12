@@ -10,11 +10,12 @@
     {
       "slug": "buyer-followup",
       "name": "Buyer follow-up",
-      "description": "Working leads and buyers after the listing: eBay sales and messages, inquiries from any platform, payment rails (GeekPay, ACH, Zelle), purchase agreements, Investment Dominator CRM records and notes, PATLive lead intake, follow-up sequences in followupdominator.",
+      "description": "Working leads and buyers after the listing: eBay sales and messages, inquiries from any platform, payment rails (GeekPay, ACH, Zelle), purchase agreements, Investment Dominator CRM records and notes, PATLive lead intake, follow-up sequences in followupdominator, and the calls section of the command center (/calls: live call pops, call notes, caller attribution, dial pre-tags, ops).",
       "cwdHints": [
         "~/claude/followupdominator",
         "~/claude/command-center/workers/patlive-intake",
-        "~/claude/command-center/operator-input"
+        "~/claude/command-center/operator-input",
+        "~/claude/command-center/dashboard/app/calls"
       ],
       "enabled": true
     },

@@ -13,7 +13,7 @@ export function attributeHref(callId: string | null | undefined, number: string 
 const linkClass = 'text-[#4DAB9A] hover:text-[#5BC0AE] transition-colors';
 
 /** One live pop, by `kind`, as the HTML dashboard's `popHtml` shows it. */
-export default function CallPop({ pop }: { pop: Exclude<PopEvent, PingPop> }) {
+export default function CallPop({ pop, onNoteLogged }: { pop: Exclude<PopEvent, PingPop>; onNoteLogged?: () => void }) {
   const [noteOpen, setNoteOpen] = useState(false);
   const contactId = 'contact_id' in pop ? pop.contact_id : undefined;
   const propertyId = 'property_id' in pop ? pop.property_id : undefined;
@@ -88,6 +88,7 @@ export default function CallPop({ pop }: { pop: Exclude<PopEvent, PingPop> }) {
           propertyId={propertyId}
           caller={pop.number ?? undefined}
           onClose={() => setNoteOpen(false)}
+          onLogged={onNoteLogged}
         />
       ) : (
         <button

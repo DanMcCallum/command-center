@@ -9,7 +9,7 @@ import CallNoteForm from '@/components/CallNoteForm';
 import { useCallStream } from '@/lib/use-call-stream';
 
 export default function CallsPage() {
-  const { pops, recent, recentError, recentLoaded, status, lastPingAt } = useCallStream();
+  const { pops, recent, recentError, recentLoaded, status, lastPingAt, refreshRecent } = useCallStream();
   const [noteFor, setNoteFor] = useState<number | null>(null);
 
   return (
@@ -29,7 +29,7 @@ export default function CallsPage() {
         ) : (
           <div className="space-y-3" data-testid="call-pops">
             {pops.map(p => (
-              <CallPop key={`${p.seq}-${p.call_id}`} pop={p} />
+              <CallPop key={`${p.seq}-${p.call_id}`} pop={p} onNoteLogged={refreshRecent} />
             ))}
           </div>
         )}
@@ -54,6 +54,7 @@ export default function CallsPage() {
                 <th className="py-2 pr-3 font-medium">Call</th>
                 <th className="py-2 pr-3 font-medium">State</th>
                 <th className="py-2 pr-3 font-medium">Number</th>
+                <th className="py-2 pr-3 font-medium">Note</th>
                 <th className="py-2 font-medium" />
               </tr>
             </thead>
@@ -62,13 +63,20 @@ export default function CallsPage() {
                 const number = typeof ev.payload?.external_number === 'string' ? ev.payload.external_number : '';
                 return (
                   <Fragment key={ev.event_id}>
-                    <tr className="border-b border-[#202020]">
+                    <tr className="border-b border-[#202020]" data-call-id={ev.call_id ?? ''}>
                       <td className="py-2 pr-3 text-[#9B9B9B] whitespace-nowrap">
                         {new Date(ev.received_at * 1000).toLocaleString()}
                       </td>
                       <td className="py-2 pr-3 font-mono text-xs">{ev.call_id ?? ''}</td>
                       <td className="py-2 pr-3">{ev.state ?? ''}</td>
                       <td className="py-2 pr-3 font-mono text-xs">{number}</td>
+                      <td className="py-2 pr-3 text-xs">
+                        {ev.has_manual_note && (
+                          <span className="text-[#4DAB9A]" data-testid="calls-recent-note-logged">
+                            note logged
+                          </span>
+                        )}
+                      </td>
                       <td className="py-2 text-right whitespace-nowrap space-x-3">
                         <Link
                           href={attributeHref(ev.call_id, number)}
@@ -87,11 +95,12 @@ export default function CallsPage() {
                     </tr>
                     {noteFor === ev.event_id && (
                       <tr>
-                        <td colSpan={5} className="pb-3">
+                        <td colSpan={6} className="pb-3">
                           <CallNoteForm
                             callId={ev.call_id ?? undefined}
                             caller={number || undefined}
                             onClose={() => setNoteFor(null)}
+                            onLogged={refreshRecent}
                           />
                         </td>
                       </tr>

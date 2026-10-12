@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import { noteRecordHref } from '@/lib/calls-links';
 import type { CallsErrorBody, FallbackClose, NoteOutcome, NoteStatus, OutboxStatus } from '@/lib/calls-types';
 
 const inputClass =
@@ -29,6 +30,8 @@ interface Props {
   propertyId?: number | string | null;
   caller?: string;
   onClose?: () => void;
+  /** Called after a note is accepted (new or duplicate), e.g. to re-fetch recent calls. */
+  onLogged?: () => void;
 }
 
 type Delivery =
@@ -42,7 +45,7 @@ type Delivery =
  * fixed at mount (a double submit is one outbox row), then polls the outbox
  * row until ID has the task.
  */
-export default function CallNoteForm({ callId, contactId, propertyId, caller, onClose }: Props) {
+export default function CallNoteForm({ callId, contactId, propertyId, caller, onClose, onLogged }: Props) {
   const [clientUuid] = useState(newClientUuid);
   const [contact, setContact] = useState(contactId != null ? String(contactId) : '');
   const [property, setProperty] = useState(propertyId != null ? String(propertyId) : '');
@@ -53,6 +56,7 @@ export default function CallNoteForm({ callId, contactId, propertyId, caller, on
   const [error, setError] = useState<string | null>(null);
   const [outcome, setOutcome] = useState<NoteOutcome | null>(null);
   const [delivery, setDelivery] = useState<Delivery | null>(null);
+  const [recordHref, setRecordHref] = useState<string | null>(null);
   const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // State updates land after a render, so two clicks in one tick both see submitting=false.
   const inFlightRef = useRef(false);
@@ -102,6 +106,8 @@ export default function CallNoteForm({ callId, contactId, propertyId, caller, on
         return;
       }
       setOutcome(body);
+      setRecordHref(noteRecordHref(contact, property));
+      onLogged?.();
       if (pollRef.current) clearTimeout(pollRef.current);
       setDelivery({ state: 'polling' });
       poll(body.outbox_id, Date.now());
@@ -165,6 +171,15 @@ export default function CallNoteForm({ callId, contactId, propertyId, caller, on
           {delivery?.state === 'done' && (
             <div className="text-[#4DAB9A]" data-testid="call-note-task">
               ID task {delivery.taskId ?? '(id not reported)'}
+              {recordHref && (
+                <>
+                  {' '}
+                  on{' '}
+                  <Link href={recordHref} className="underline" data-testid="call-note-record">
+                    {recordHref.split('/').slice(-2).join(' ')}
+                  </Link>
+                </>
+              )}
             </div>
           )}
           {delivery?.state === 'dead_letter' && (

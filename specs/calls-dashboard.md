@@ -195,9 +195,9 @@ Target architecture (decided by the operator, not up for debate inside the loop)
 **Description:** As the operator, I want calls, records, tasks, and the fronts registry to point at each other.
 
 **Acceptance Criteria:**
-- [ ] After a note is delivered, the note form's "ID task <id>" line links to the record page of the contact or property it was logged against, and the record page's history table (which comes from the local task-link index after the next sync walk) shows the task; the recent calls table row for that call shows a "note logged" marker derived from `/api/calls/recent` (the Python side adds `has_manual_note: bool` per event by checking the `{call_id}:manual_note` claim; one small addition to the shared recent helper with a test).
-- [ ] `config/fronts.json`: the `buyer-followup` description mentions the calls section (`/calls` in the command center, call pops, notes, attribution) and `cwdHints` gains `~/claude/command-center/dashboard/app/calls`.
-- [ ] `pytest -q`, ruff, `tsc` clean.
+- [x] After a note is delivered, the note form's "ID task <id>" line links to the record page of the contact or property it was logged against, and the record page's history table (which comes from the local task-link index after the next sync walk) shows the task; the recent calls table row for that call shows a "note logged" marker derived from `/api/calls/recent` (the Python side adds `has_manual_note: bool` per event by checking the `{call_id}:manual_note` claim; one small addition to the shared recent helper with a test).
+- [x] `config/fronts.json`: the `buyer-followup` description mentions the calls section (`/calls` in the command center, call pops, notes, attribution) and `cwdHints` gains `~/claude/command-center/dashboard/app/calls`.
+- [x] `pytest -q`, ruff, `tsc` clean.
 
 ### US-018: Automated browser e2e script
 **Description:** As the loop and the operator, I want one command that proves the whole chain on a clean machine state.

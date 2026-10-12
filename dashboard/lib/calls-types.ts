@@ -36,6 +36,8 @@ export interface RecentCall {
   call_id: string | null;
   state: string | null;
   processed: boolean;
+  /** At least one note has been logged against this call_id. */
+  has_manual_note: boolean;
   payload: DialpadEventPayload;
 }
 
