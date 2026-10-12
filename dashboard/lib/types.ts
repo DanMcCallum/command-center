@@ -94,3 +94,75 @@ export interface Todo {
   createdAt: string;
   convertedToTaskId?: string;
 }
+
+// --- Fronts (specs/fronts.md) -----------------------------------------------
+
+/** One entry of config/fronts.json. */
+export interface FrontConfig {
+  slug: string;
+  name: string;
+  /** Written for the router: "this session belongs here when ...". */
+  description: string;
+  /** Repo paths (may start with ~) that bias routing toward this front. */
+  cwdHints: string[];
+  enabled: boolean;
+}
+
+/** One session summary under fronts/memory/, parsed from its frontmatter. */
+export interface FrontMemoryEntry {
+  /** File name only, e.g. 2026-10-12-0930-016d446a.md */
+  file: string;
+  sessionId: string | null;
+  cwd: string | null;
+  startedAt: string | null;
+  endedAt: string | null;
+  /** Front slugs the session was routed to; ['unrouted'] when none. */
+  fronts: string[];
+  userTurns: number | null;
+  /** Markdown body after the frontmatter. */
+  summary: string;
+}
+
+export type FrontSuggestionKind = 'task' | 'question';
+export type FrontSuggestionStatus = 'open' | 'approved' | 'dismissed' | 'answered';
+
+/** A what's-next proposal or question waiting for the operator. */
+export interface FrontSuggestion {
+  id: string;
+  frontSlug: string;
+  kind: FrontSuggestionKind;
+  title: string;
+  /** For a task: the ready-to-run prompt. For a question: why it matters. */
+  body: string;
+  /** Hints for the task created on approval. */
+  type?: string;
+  model?: ClaudeModel;
+  slashCommand?: string | null;
+  sourceSessionId: string | null;
+  sourceMemoryFile: string | null;
+  status: FrontSuggestionStatus;
+  operatorNotes?: string;
+  answer?: string;
+  taskId?: string;
+  createdAt: string;
+  resolvedAt?: string;
+}
+
+/** GET /api/fronts list item. */
+export interface FrontSummary extends FrontConfig {
+  nowExcerpt: string;
+  nowUpdatedAt: string | null;
+  northStarUpdatedAt: string | null;
+  /** True while north-star.md still carries the seed's TODO marker. */
+  northStarIsTodo: boolean;
+  lastSessionAt: string | null;
+  openSuggestions: number;
+  openQuestions: number;
+}
+
+/** GET /api/fronts/<slug>. */
+export interface FrontDetail extends FrontSummary {
+  northStar: string;
+  now: string;
+  recentSessions: FrontMemoryEntry[];
+}

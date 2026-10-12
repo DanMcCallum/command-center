@@ -31,3 +31,6 @@ workers/patlive-intake/state/
 # Python bytecode
 __pycache__/
 *.pyc
+
+# Fronts: session summaries the operator marks private stay on this machine
+fronts/memory/*-private.md

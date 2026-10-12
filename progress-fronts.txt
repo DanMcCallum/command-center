@@ -1,0 +1,12 @@
+# Progress - Fronts (specs/fronts.md)
+
+## Learnings
+(Patterns discovered during implementation)
+
+---
+
+## Iteration 1 - US-001: Front registry and directory scaffold
+- Added `config/fronts.json` (five fronts with router descriptions and cwdHints; day-job hints empty on purpose), `fronts/README.md`, `fronts/_template/{north-star,now}.md`, five seeded fronts with the `TODO: hand-write` marker, `fronts/memory/.gitkeep`, gitignore rule for `fronts/memory/*-private.md`.
+- Added Front types to `dashboard/lib/types.ts` (FrontConfig, FrontMemoryEntry, FrontSuggestion, FrontSummary, FrontDetail) and `dashboard/lib/fronts.ts` (registry, memory parsing, getFronts/getFront, writeNorthStar, writeNow that carries over `## Answers from Daniel`).
+- `dashboard/lib/fronts.test.ts` covers the parsers. Typecheck passes. `npm test`: 41 pass, 2 pre-existing failures in `ebay-html.test.ts` (the real sample `ebay.md` under workers/workspace was edited; same class as the parse-ad-output gotcha in AGENTS.md), untouched by this work.
+- Learning: suggestion counts are injected into `getFronts()` by the caller so fronts.ts stays file-only and data.ts owns the JSON store.

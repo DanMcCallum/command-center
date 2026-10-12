@@ -1,0 +1,46 @@
+{
+  "fronts": [
+    {
+      "slug": "land-sales",
+      "name": "Land sales",
+      "description": "Selling rural land parcels: ad generation and the DREAMS gate, listing copy, photos, posting to marketplaces (Landmodo, Land.com, Land Century, ParcelView, land-listings, eBay), poster agent sessions, platform recon, pricing and comps. Sessions in the command-center dashboard, workers, or posting code belong here unless they are clearly about buyer follow-up or the land-ad-pipeline rebuild.",
+      "cwdHints": ["~/claude/command-center"],
+      "enabled": true
+    },
+    {
+      "slug": "buyer-followup",
+      "name": "Buyer follow-up",
+      "description": "Working leads and buyers after the listing: eBay sales and messages, inquiries from any platform, payment rails (GeekPay, ACH, Zelle), purchase agreements, Investment Dominator CRM records and notes, PATLive lead intake, follow-up sequences in followupdominator.",
+      "cwdHints": [
+        "~/claude/followupdominator",
+        "~/claude/command-center/workers/patlive-intake",
+        "~/claude/command-center/operator-input"
+      ],
+      "enabled": true
+    },
+    {
+      "slug": "land-ad-pipeline",
+      "name": "Land ad pipeline",
+      "description": "The operator-agnostic rebuild of the ad pipeline as its own product (repo land-ad-pipeline): its posters, workflow, config schema, docs, and mirroring fixes between it and the command center.",
+      "cwdHints": ["~/claude/land-ad-pipeline"],
+      "enabled": true
+    },
+    {
+      "slug": "day-job",
+      "name": "Day job",
+      "description": "Tickets and project work for the operator's employer. Anything about the employer's systems, tickets, code review at work, or meetings there. Routed by cwd first; client code never leaves the summary step.",
+      "cwdHints": [],
+      "enabled": true
+    },
+    {
+      "slug": "ai-concierge",
+      "name": "AI concierge",
+      "description": "The AI concierge practice: business plan, podcast playbook, prospect conversations, BWAI transcripts, service packaging and pricing for AI consulting clients.",
+      "cwdHints": [
+        "~/claude/command-center/research/ai-concierge",
+        "~/claude-accessible/dev/bwai-transcripts"
+      ],
+      "enabled": true
+    }
+  ]
+}
