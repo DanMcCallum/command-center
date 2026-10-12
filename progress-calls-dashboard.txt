@@ -64,6 +64,8 @@
 - Link both ways (US-017): `recent_calls` rows carry `has_manual_note` (an EXISTS on `processed_events` for `{call_id}:manual_note`; the helper checks `sqlite_master` first because that table belongs to the outbox and a bare `db.connect` lacks it). The claim is written synchronously by `record_manual_note`, so the marker is true right after `POST /notes`, before delivery. `CallNoteForm` takes `onLogged` (the calls page and `CallPop` pass `refreshRecent`) and links "ID task N on contact 7" through `noteRecordHref(contact, property)` in `lib/calls-links.ts` (contact wins, then property). Test hooks: `call-note-record`, `calls-recent-note-logged`, recent rows `tr[data-call-id]`. The sync walk runs every 45 min, so record history for a new task is tested in Python by calling `stack.service.loops["sync-job"].__self__.run_once()` (`tests/test_e2e_runner.py`); in the browser, stand in for it by inserting `task_snapshots` + `task_links` rows in the scratch db.
 - Baselines after US-017: pytest 372 passed; `npm test` 86/88 (the two known `ebay-html.test.ts` failures).
 
+- Browser e2e (US-018): `workers/calls-e2e/run.sh` is the one-command check of the whole chain (about 55 s, 30 of them waiting for the ops page's 30 s strip refresh after the runner is killed). It refuses when 3001 or 8101 is busy, takes the throwaway token from `openssl rand -hex 32`, and gets real pids without `ss`: `( cd X; exec cmd ) &` makes `$!` the server, and `( cd dashboard; exec setsid npx next dev ... ) &` makes `$!` a process group id (the background subshell of a non-interactive script is not a group leader, so setsid does not fork), killed with `kill -- -$pid`. `disown` the Python pid so the SIGKILL from `e2e.mjs` prints no "Killed" job notice. The data check fails on any `dashboard/data/*.json` change except `worker-state.json` and `front-suggestions.json`, which only fail when the dev log shows an `/api/fronts` or `/api/worker` request. To add a step, append a `step(name, async page => detail)` in `e2e.mjs`; a failure screenshots to `/tmp/calls-e2e-fail-<run>.png` and skips the rest.
+
 ## Iteration 0 (prep session, 2026-10-12) - US-001: Inventory the HTML dashboard
 - Read `app/dashboard.py`, `app/webhook_receiver.py`, `app/service.py`, `app/live_pipeline.py`, `app/call_lookup.py`, `app/outbox.py`, `app/agents.py`, `scripts/run_receiver_dev.py`, `design_patterns.md`, `DEPLOY.md`, the nginx configs, the test fakes, and the command-center auth, env, nav, fronts route and page patterns.
 - Wrote `specs/calls-dashboard-inventory.md` (route table, ops strip thresholds, pop payload kinds, write choke points, dev/test surface) and `specs/calls-dashboard.md` (PRD, 20 stories, US-001 checked).
@@ -221,3 +223,22 @@
 - Verified: `pytest -q` -> `372 passed`; `ruff check app scripts tests` -> `All checks passed!`; `npx tsc --noEmit` -> exit 0; `npm test` -> `# tests 88 # pass 86 # fail 2` (the two known `ebay-html.test.ts` failures). Runner killed with -9 and next by process group (pids from `ss -ltnp`), ports 3001 and 8101 free, token 0 times in both logs, no `workers/logs/*e2e*` files, `dashboard/data/*.json` checksums identical, temp dirs deleted.
 - Questions for Daniel reviewed: all three entries are operator steps or an operator decision (restart, tunnel number, graceful-shutdown OK). The restart now also brings `has_manual_note` to production.
 - Next story: US-018.
+
+## Iteration 18 (2026-10-12) - US-018: Automated browser e2e script
+- command center: new `workers/calls-e2e/run.sh` (port refusal, temp dir, throwaway token, starts `scripts/run_e2e_dev.py 8101 <tmp>/e2e.db <tmp>/id-writes.jsonl` and `next dev -p 3001` with `DASHBOARD_URL`, `CALLS_API_URL`, `CALLS_API_TOKEN`, waits for `/healthz` (200 or 503) and `/api/calls/recent` 200, warms the six pages, runs `e2e.mjs`, greps both logs for the token, stops exactly its own pids, checks the `dashboard/data/*.json` checksums, deletes the temp dir and any new `workers/logs/*e2e*` files from an EXIT trap) and `workers/calls-e2e/e2e.mjs` (Playwright headless Chromium on `http://localhost:3001`, nine steps, PASS/FAIL per step, SKIP after the first failure, exit 1 on failure). No Python change.
+- Clean run on this box (`workers/calls-e2e/run.sh`, real 0m54.9s):
+  - `PASS python runner healthy on 8101 (healthz 200)`, `PASS next dev healthy on 3001 (/api/calls/recent 200)`
+  - `PASS load /calls: strip green, stream open (ok)`
+  - `PASS ringing from +15305550123 pops matched within 5 s (136 ms)`
+  - `PASS note on the pop: exactly one create_task with the note, page shows the fake task id within 15 s ("ID task 9001 on contact 7" after 4459 ms, 1 create_task)`
+  - `PASS search "Jane" and open the contact record (contact 7 record page)`
+  - `PASS attribute a miss from +15305550199 to "Test Meadow": one create_contact (contact 8, property 5692)`
+  - `PASS dial for property 5692 records an intent (intent 1)`
+  - `PASS /calls/ops: strip green (dead letters=ok, outbox queue=ok, event backlog=ok, last sync=ok)`
+  - `PASS stop the Python runner: strip shows unreachable within 35 s (30010 ms: call service unreachable)`
+  - `PASS no page errors`, `PASS token absent from python.log`, `PASS token absent from next.log`, `PASS stopped the pids it started; ports 3001 and 8101 free`, `PASS dashboard/data/*.json untouched by this run`, `E2E PASS`
+  - A second run (after adding `disown`) passed the same way (pop 72 ms, task after 4409 ms, unreachable after 30037 ms) with no job notice.
+- Refusal: with listeners on both ports `refusing to run: port(s) 3001 8101 already in use` (exit 2); on 3001 only `refusing to run: port(s) 3001 already in use` (exit 2).
+- After the runs: no `/tmp/calls-e2e.*` dirs, no `workers/logs/*e2e*` files, no `next dev -p 3001` or `run_e2e_dev` processes. `npx tsc --noEmit` -> exit 0; `npm test` -> `# tests 88 # pass 86 # fail 2` (the two known `ebay-html.test.ts` failures).
+- The unreachable step takes about 30 s by design: `/calls/ops` has no stream, so the strip learns of the outage only on its 30 s refresh, leaving 5 s of margin under the PRD's 35 s.
+- Next story: US-019.
