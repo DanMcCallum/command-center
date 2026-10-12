@@ -25,3 +25,10 @@
 - `workers/fronts/summarize-session.sh`: skip rules (< 3 turns, cwd under /tmp), haiku tool-less structured call, memory file `fronts/memory/<date>-<HHMM>-<sid8>.md` with frontmatter `front: unrouted`.
 - `workers/fronts/fronts.test.sh` (16 checks, stub claude picks its answer from the schema it is handed) and synthetic fixtures under `workers/fronts/fixtures/`. Spot-checked the extractor on a real 2.1.263 transcript: 4 turns, text clean.
 - Learning: real transcripts carry `/clear` echoes and caveats as user entries (some with `isMeta: true`); without the filter a 1-turn session counts as 3.
+
+## Iteration 1 - US-005: lane routing
+- `dashboard/lib/front-router.ts`: `matchCwd` (longest enabled hint wins, `~` expanded), `buildCriteria` (registry descriptions plus `none`), `combine` (cwd bias +0.25, `none` dropped, renormalized), `routeSession` (Jev Choice when `TYPESAFE_API_KEY` is set, else `claude -p --model haiku --json-schema` spawned with the prompt on stdin, else cwd only, else none). Unit tests with injected deps in `front-router.test.ts`.
+- `POST /api/fronts/route` (bearer-guarded). `workers/fronts/route-session.sh` applies the thresholds (top >= 0.6, second > 0.3), rewrites the memory file's `front:` line, and posts a "Which front was this session about?" question when unrouted.
+- Stubs moved to `workers/fronts/fixtures/stub-claude.sh` and `stub-curl.sh`; the harness copies them into its temp bin. 25 offline checks pass.
+- Live check on the 3001 dev server: `TYPESAFE_API_KEY` is not set on this box, so production routes through haiku (method `claude`); a Landmodo-fix summary scored land-sales 0.94 and an eBay cancel-bid summary scored buyer-followup 0.72 even with the cwd bias pointing at land-sales.
+- Learning: `${VAR:-{"json"}}` breaks on the first `}`; put JSON defaults in a variable first. `jq -n` pretty-prints, so grep for `"kind": ?"question"`.
