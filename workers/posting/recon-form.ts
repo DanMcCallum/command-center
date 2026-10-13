@@ -245,50 +245,45 @@ async function main(): Promise<void> {
     await page.goto(url, { waitUntil: 'domcontentloaded' })
     await settle(page)
 
-    // A login screen is either the configured login path or any page showing
-    // a password field (single-page apps sign in at their root URL).
-    const onLoginScreen = async (): Promise<boolean> =>
-      new URL(page.url()).pathname.includes(LOGIN_PATH) ||
-      (await page.locator('input[type="password"]:visible').count().catch(() => 0)) > 0
-    if (wantLogin && !haveSession) {
-      // Wait for the operator to sign in. Done when the login screen goes away
-      // (if we started on one) or when the operator presses Enter here, which
-      // covers sites whose sign-in is a modal or lives at an unknown path.
-      const startedOnLogin = await onLoginScreen()
-      console.log(
-        startedOnLogin
-          ? 'On a login screen. Sign in in the browser window, or press Enter here once signed in (10 minutes)...'
-          : 'Not on a login screen. Sign in in the browser window, then press Enter here to save the session (10 minutes)...'
+    // A login screen is the configured login path or any page showing a
+    // password field, unless the platform's own logged-in marker
+    // (login_success.logged_in_selector) is present: some sites keep a
+    // logged-in user parked on the sign-in URL (Landmodo, Landhub).
+    const loggedInSelector = platform.login_success?.logged_in_selector
+    const onLoginScreen = async (): Promise<boolean> => {
+      if (loggedInSelector && (await page.locator(loggedInSelector).count().catch(() => 0)) > 0) return false
+      return (
+        new URL(page.url()).pathname.includes(LOGIN_PATH) ||
+        (await page.locator('input[type="password"]:visible').count().catch(() => 0)) > 0
       )
-      const enterPressed = waitForEnter()
-      const deadline = Date.now() + 10 * 60_000
-      let done = false
-      while (Date.now() < deadline && !done) {
-        if (enterPressed.pressed) done = true
-        else if (startedOnLogin && !(await onLoginScreen())) done = true
-        else await page.waitForTimeout(1000)
+    }
+    if (wantLogin) {
+      const startedOnLogin = await onLoginScreen()
+      if (startedOnLogin || !haveSession) {
+        // Done when the login screen goes away (if we started on one) or when
+        // the operator presses Enter here, whichever comes first.
+        console.log(
+          startedOnLogin
+            ? 'On a login screen. Sign in in the browser window, then press Enter here if the page does not change on its own (10 minutes)...'
+            : 'Not on a login screen. Sign in in the browser window, then press Enter here to save the session (10 minutes)...'
+        )
+        const enterPressed = waitForEnter()
+        const deadline = Date.now() + 10 * 60_000
+        let done = false
+        while (Date.now() < deadline && !done) {
+          if (enterPressed.pressed) done = true
+          else if (startedOnLogin && !(await onLoginScreen())) done = true
+          else await page.waitForTimeout(1000)
+        }
+        enterPressed.stop()
+        if (!done) throw new Error('login timed out')
+        await page.waitForTimeout(2000)
+        await context.storageState({ path: authPath })
+        fs.chmodSync(authPath, 0o600)
+        console.log(`Session saved to ${authPath}`)
+        await page.goto(url, { waitUntil: 'domcontentloaded' })
+        await settle(page)
       }
-      enterPressed.stop()
-      if (!done) throw new Error('login timed out')
-      await page.waitForTimeout(2000)
-      await context.storageState({ path: authPath })
-      fs.chmodSync(authPath, 0o600)
-      console.log(`Session saved to ${authPath}`)
-      await page.goto(url, { waitUntil: 'domcontentloaded' })
-      await settle(page)
-    } else if (wantLogin && (await onLoginScreen())) {
-      console.log(`On a login screen. Sign in in the browser window (10 minutes)...`)
-      const deadline = Date.now() + 10 * 60_000
-      while (Date.now() < deadline && (await onLoginScreen())) {
-        await page.waitForTimeout(1000)
-      }
-      if (await onLoginScreen()) throw new Error('login timed out')
-      await page.waitForTimeout(2000)
-      await context.storageState({ path: authPath })
-      fs.chmodSync(authPath, 0o600)
-      console.log(`Session saved to ${authPath}`)
-      await page.goto(url, { waitUntil: 'domcontentloaded' })
-      await settle(page)
     }
     console.log(`URL:   ${page.url()}`)
     console.log(`TITLE: ${await page.title()}`)
