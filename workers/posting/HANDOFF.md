@@ -416,9 +416,74 @@ Street, `city`, `zip`, `access`, `utilities`/`utilities_notes`, `zoning`,
 `land_century_categories`, `land_century_zoning`, `land_century_road_access`,
 `land_century_utilities`, `land_century_deed_type`, `land_century_max_photos`.
 
+## Land-listings.com: poster written 2026-10-05, logged-in form NOT yet seen
+
+`post-land_listings.ts`, enabled in `config/posting-platforms.json`. Mapped
+from everything the site shows logged out, because no session for it exists
+on the server and the local Chrome was logged out:
+
+- Laravel + Bootstrap + jQuery + SweetAlert2 v11. Login is a plain POST form
+  at `/login` (`#email`, `#password`). Account home `/dashboard`; "Sell
+  Land" for a member is `/add-a-listing` (the guest modal's
+  `data-sell-land-url`). Both 302 to `/login` logged out, and every other
+  guess (`/listings/create`, `/my-listings`, `/dashboard/listings`, ...)
+  is a 404, so those two are the routes. Public listing pages are
+  `/listing/<id>` (og:title "Hartsel | CO | $210,000 | 42.43 Acres |
+  <title>"); a seller's public inventory is `/user-listings/<uid>`.
+- Login signal: `redirect_off: /login` plus a positive
+  `logged_in_selector` for the dashboard sidebar (`#dashboard-menu`, from
+  the public stylesheet) or Laravel's POST logout form.
+- The record's fields come from the site's own API documentation
+  (`/api-documentation`, Deluxe-only API at `api.land-listings.com/v1`,
+  same columns as the web form in a Laravel app): title 255, description
+  50,000 plain text, price, acres (two decimals), owner_financing,
+  general_location 255, address, city, state (two-letter), county (must be
+  one of the site's canonical names: public `GET /api/counties/<ST>` returns
+  `{"data":[{"county":"Adams"},...]}`, verified for CO), postal_code,
+  has_residence, mls_number, latitude/longitude, map_zoom, directions,
+  custom_map_url, video_url. Photos JPEG/PNG/GIF, 10,485,760 bytes hard cap.
+- Membership gates publishing (premium-options page): Free Account saves
+  Unlisted only, 1 photo; Premium Standard $49.95/mo publishes, 20 photos;
+  Premium Deluxe $149.95/mo, 100 photos, API eligibility. The poster reads
+  the membership text off the dashboard, sets the photo cap from it, and
+  refuses a real publish on a Free account before touching the form.
+- Flow: dashboard (login check, membership, listing cards parsed from every
+  `/listing/<id>` link; falls back to the seller page), match by title then
+  price + acres (Active match is recorded, Sold is an error, an Unlisted
+  match with an edit link is re-filled), `/add-a-listing`, fields by
+  name/id then label text (`LANDLISTINGS_SELECTORS.fields`), description
+  into a textarea or whichever editor is there (Quill, Summernote, CKEditor,
+  TinyMCE frame, contenteditable), photos on the form if it has a file
+  input (else on the saved listing's page), submit, SweetAlert confirm
+  answered once, Bootstrap validation errors thrown, id from the URL or
+  from the dashboard diff, then `/listing/<id>` read back (HTTP status +
+  title) as the live check. Dry run fills and screenshots without
+  submitting.
+
+**First run checklist (needs Dan's login):**
+
+1. Does Dan have an account, and on which membership? Without Premium
+   Standard nothing can go Active.
+2. On the laptop: `npx tsx recon-form.ts land_listings --login` to capture
+   the session and dump the real `/add-a-listing` fields and buttons into
+   `.agent-cache/recon/`; then correct `LANDLISTINGS_SELECTORS` (field
+   names, the description editor, the file input, the submit label, any
+   status control, the dashboard card layout and its edit link).
+3. `npm run post -- land_listings task-1790275652160-rlxk9l --dry-run
+   --headed --keep-open` and read the "filled ... no control found for ..."
+   log line.
+4. Publish from the dashboard with the agent running.
+
+Metadata the poster reads (all optional unless noted): `price_usd`,
+`acreage`, `location` (required), `address` or `location_description`,
+`city`, `zip`/`postal_code`, `general_location`, `directions` (else
+`access_notes`), `mls_number`, `latitude`/`longitude`, `video_url`,
+`must_include` (financing terms, for the owner-financing checkbox),
+`land_listings_headline`, `land_listings_max_photos`, `primaryPhoto`.
+
 ## Remaining platforms on this task
 
-landflip, land_listings, landhub have ad copy under
+landflip and landhub have ad copy under
 `workers/workspace/outputs/task-1790275652160-rlxk9l/` but no poster. Each
 needs the same recon-first approach. Add the key to `POSTERS` in `post.ts`.
 
