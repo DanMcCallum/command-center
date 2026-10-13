@@ -65,9 +65,9 @@
     "landhub": {
       "display_name": "Landhub.com",
       "enabled": false,
-      "_doc": "Next.js site. Sign-in is a plain email/password form at /auth/signin (next-auth); the member area is client-rendered under /user/ (dashboard, add-property, properties) and the pages are empty shells until logged in. A logged-in visitor stays parked on /auth/signin with only a Logout button, so the session signal is that button, not leaving the URL. Photos go through img.landhub.com (add-property-image-video-file). Account is on the Partner plan ($89/mo, 50 listings) as of 2026-10-13. Routes found 2026-10-13 from the site's JS; the add form itself is still to be dumped.",
+      "_doc": "Next.js site. Sign-in is a plain email/password form at /auth/signin (next-auth); the member area is client-rendered under /user/ (dashboard; add-property is a wizard starting at /user/add-property/basic-details; properties) and the pages are empty shells until logged in. A logged-in visitor stays parked on /auth/signin with only a Logout button, so the session signal is that button, not leaving the URL. Photos go through img.landhub.com (add-property-image-video-file). Account is on the Partner plan ($89/mo, 50 listings) as of 2026-10-13. Routes found 2026-10-13 from the site's JS; the add form itself is still to be dumped.",
       "login_url": "https://www.landhub.com/auth/signin",
-      "new_listing_url": "https://www.landhub.com/user/add-property",
+      "new_listing_url": "https://www.landhub.com/user/add-property/basic-details",
       "login_success": {
         "logged_in_selector": "button:has-text(\"Logout\"), a:has-text(\"Logout\"), button:has-text(\"Log out\"), a:has-text(\"Log out\")"
       }
