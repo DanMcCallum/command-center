@@ -846,16 +846,28 @@ export function hasRestrictions(task: PosterTask, adCopy: AdCopy): boolean {
   return /\b(hoa|poa|covenant|deed restriction|restrictions)\b/i.test(text)
 }
 
-/** Utility checkbox ids from metadata.utilities (explicit list) or metadata.landflip_utilities. */
+/**
+ * Utility checkbox ids from metadata.landflip_utilities (checkbox ids such as
+ * "electric", "water", "septic" are taken as they are; other words are
+ * matched) or, failing that, from metadata.utilities (descriptive words only).
+ */
 export function utilitiesForLandflip(task: PosterTask): string[] {
   const m = task.metadata ?? {}
   const explicit = m['landflip_utilities']
-  const list = Array.isArray(explicit) ? explicit : Array.isArray(m['utilities']) ? m['utilities'] : []
-  const words = list.filter((x): x is string => typeof x === 'string').join(' ; ')
+  const list = (Array.isArray(explicit) ? explicit : Array.isArray(m['utilities']) ? m['utilities'] : []).filter(
+    (x): x is string => typeof x === 'string'
+  )
   const ids = new Set<string>()
-  for (const u of UTILITY_CHECKBOXES) if (u.match.test(words)) ids.add(u.id)
-  // "well" also matches "well-water" only; make sure plain "water" does not tick the well box and vice versa.
-  if (ids.has('well-water') && !/\b(water service|community water|city water|municipal water|water system|public water)\b/i.test(words)) ids.delete('water')
+  const words: string[] = []
+  for (const item of list) {
+    const key = item.trim().toLowerCase().replace(/[\s_]+/g, '-')
+    if (UTILITY_CHECKBOXES.some((u) => u.id === key)) ids.add(key)
+    else words.push(item)
+  }
+  const text = words.join(' ; ')
+  for (const u of UTILITY_CHECKBOXES) if (u.match.test(text)) ids.add(u.id)
+  // Plain "well" must not tick Water Service, and "water service" must not tick Well Water.
+  if (ids.has('well-water') && !/\b(water service|community water|city water|municipal water|water system|public water)\b/i.test(text) && !list.some((x) => x.trim().toLowerCase() === 'water')) ids.delete('water')
   return [...ids]
 }
 

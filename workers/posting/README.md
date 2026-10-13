@@ -43,7 +43,8 @@ fills the platform's new-listing form, uploads any images in
 
 Implemented platforms: `landmodo` (`post-landmodo.ts`), `land_com`
 (`post-land_com.ts`), `parcelview` (`post-parcelview.ts`), `land_century`
-(`post-land_century.ts`), `land_listings` (`post-land_listings.ts`).
+(`post-land_century.ts`), `land_listings` (`post-land_listings.ts`), `landflip`
+(`post-landflip.ts`).
 
 Form selectors live in one `SELECTORS` block per platform script
 (e.g. `post-landmodo.ts`) — when a site redesign breaks posting, that block is

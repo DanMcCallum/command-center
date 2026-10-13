@@ -148,6 +148,8 @@ test('utilitiesForLandflip maps the explicit utilities list onto checkbox ids', 
   assert.deepEqual(utilitiesForLandflip(task({ utilities: ['Well water'] })), ['well-water'])
   assert.deepEqual(utilitiesForLandflip(task({ utilities: ['community water system'] })), ['water'])
   assert.deepEqual(utilitiesForLandflip(task({ landflip_utilities: ['power', 'cell'], utilities: ['sewer'] })).sort(), ['cell-service', 'electric'])
+  assert.deepEqual(utilitiesForLandflip(task({ landflip_utilities: ['electric', 'water'] })).sort(), ['electric', 'water'])
+  assert.deepEqual(utilitiesForLandflip(task({ landflip_utilities: ['Well Water', 'natural gas'] })).sort(), ['natural-gas', 'well-water'])
   assert.deepEqual(utilitiesForLandflip(task({})), [])
 })
 

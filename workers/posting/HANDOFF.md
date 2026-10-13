@@ -1,4 +1,4 @@
-# Handoff: marketplace posting (Landmodo, Land.com, ParcelView and Land Century verified live)
+# Handoff: marketplace posting (Landmodo, Land.com, ParcelView, Land Century and Landflip verified live)
 
 Written 2026-10-03 at the end of a long session. Read this before touching
 `workers/posting`. The repo's `AGENTS.md` has the durable rules; this file is
@@ -481,11 +481,49 @@ Metadata the poster reads (all optional unless noted): `price_usd`,
 `must_include` (financing terms, for the owner-financing checkbox),
 `land_listings_headline`, `land_listings_max_photos`, `primaryPhoto`.
 
+## Landflip: DONE and verified live 2026-10-13 (listing 426576)
+
+Public URL https://www.landflip.com/land/426576 (also mirrored as
+https://www.lotflip.com/lot/426576). Mapped 2026-10-12 from recon dumps of
+`my.landflip.com` (`.agent-cache/recon/my_landflip_com_*`) and the site's
+`/js/app.min.js`; details in the `post-landflip.ts` header and the Landflip
+bullet in `AGENTS.md`. Facts worth keeping in mind:
+
+- The seller area is MY LANDFLIP at `https://my.landflip.com` (jQuery +
+  Foundation 5, server-rendered). `www.landflip.com` is behind Cloudflare and
+  answers a headless browser with a 403, so the poster never opens the public
+  page; the URL is built from the id. Check the live page in a normal browser.
+- Entry plan: 1 listing, 10 photos per listing. `/listings` shows "You are at
+  your listing plan limit" even with 0 listings (3 deleted ones that can only
+  be restored), and the Add form still creates; so the poster ignores that
+  notice and reads the site's answer on Continue instead.
+- Title: 35 chars, `/^[a-zA-Z0-9-,.+/&$' ]{10,35}$/`. The site also
+  title-cases words it considers ALL CAPS ("CO" -> "Co", "APN" -> "Apn",
+  "CORE" -> "Core"; "HOA" survived), so keep state codes out of the headline
+  (`metadata.landflip_headline`) and expect small rewrites in the body.
+- City and zip are required (`metadata.city`, `metadata.zip`); the county
+  select loads by ajax after the state; terrain/zoning/access are mapped from
+  task words with `metadata.landflip_terrain` / `landflip_zoning` /
+  `landflip_access` overrides; utilities from `metadata.landflip_utilities`
+  (checkbox ids: electric, telephone, water, well-water, natural-gas, sewer,
+  septic, cable-sat, cell-service, broadband).
+- Photos: `#file` on `/listing-photos/<id>`; choosing a file submits by ajax
+  and the page reloads; the poster sends one file at a time and counts
+  `#sortable .photo-container`. 1.5 MB JPGs went through unchanged.
+- Map: `/listing-map/<id>` has `#latitude`/`#longitude` (12 chars max) and
+  `#show-map`; the site stores 5 decimals. Publish is `#visible-btn` (Turn On,
+  ajax `action=turnon`), verified by the card's Online tag in the grid.
+- A rerun on an Online listing records it and changes nothing, so a field
+  fix after publish (e.g. a utility box) is a hand edit on
+  `/listing-edit/<id>`.
+
 ## Remaining platforms on this task
 
-landflip and landhub have ad copy under
-`workers/workspace/outputs/task-1790275652160-rlxk9l/` but no poster. Each
-needs the same recon-first approach. Add the key to `POSTERS` in `post.ts`.
+landhub has ad copy under
+`workers/workspace/outputs/task-1790275652160-rlxk9l/` but no poster. Same
+recon-first approach: `npx tsx recon-form.ts landhub <url> --headed --login`
+on the laptop (the login wait now also ends on Enter in the terminal), dumps
+scp'd back, then add the key to `POSTERS` in `post.ts`.
 
 ## Things to never do
 
