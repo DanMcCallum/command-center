@@ -109,6 +109,7 @@ export const LANDFLIP_SELECTORS = {
   title: '#title',
   acreage: '#acreage',
   price: '#price',
+  acrePrice: '#acre-price',
   country: '#country',
   state: '#state',
   county: '#county',
@@ -355,6 +356,7 @@ async function fillListingForm(page: Page, v: FormValues): Promise<void> {
   await fillText(page, LANDFLIP_SELECTORS.title, v.title, 'title')
   await fillText(page, LANDFLIP_SELECTORS.acreage, String(v.acreage), 'acreage')
   await fillText(page, LANDFLIP_SELECTORS.price, String(Math.round(v.priceUsd)), 'price')
+  if (v.acreage > 0) await fillText(page, LANDFLIP_SELECTORS.acrePrice, String(Math.round(v.priceUsd / v.acreage)), 'per acre price')
   await selectOption(page, LANDFLIP_SELECTORS.country, 'United States', 'country', log)
   await selectOption(page, LANDFLIP_SELECTORS.state, v.stateName, 'state', log)
   await selectCounty(page, v.county, log)
