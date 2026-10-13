@@ -2,6 +2,9 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import {
   accessForLandflip,
+  coordinatesFromTask,
+  formatCoordinate,
+  sameCoordinate,
   descriptionForLandflip,
   findCard,
   hasRestrictions,
@@ -152,4 +155,21 @@ test('parsePhotoCap and publicListingUrl', () => {
   assert.equal(parsePhotoCap('Your current plan has a 10 photo limit per listing. You can upload 10 more'), 10)
   assert.equal(parsePhotoCap('nothing here'), null)
   assert.equal(publicListingUrl('426576'), 'https://www.landflip.com/land/426576')
+})
+
+test('coordinatesFromTask needs finite numbers inside range; 0,0 counts as missing', () => {
+  assert.deepEqual(coordinatesFromTask(task({ latitude: 39.146135, longitude: -105.921237 })), { latitude: 39.146135, longitude: -105.921237 })
+  assert.equal(coordinatesFromTask(task({ latitude: '39.1', longitude: -105.9 })), null)
+  assert.equal(coordinatesFromTask(task({ latitude: 0, longitude: 0 })), null)
+  assert.equal(coordinatesFromTask(task({})), null)
+})
+
+test('formatCoordinate fits the 12-char inputs and sameCoordinate tolerates rounding', () => {
+  assert.equal(formatCoordinate(39.146135), '39.14613500')
+  assert.equal(formatCoordinate(-105.921237), '-105.9212370')
+  assert.ok(formatCoordinate(-105.921237).length <= 12)
+  assert.ok(formatCoordinate(-179.12345678).length <= 12)
+  assert.equal(sameCoordinate('39.14613500', 39.146135), true)
+  assert.equal(sameCoordinate('39.15', 39.146135), false)
+  assert.equal(sameCoordinate('', 39.1), false)
 })

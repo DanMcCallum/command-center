@@ -135,6 +135,14 @@ export const LANDFLIP_SELECTORS = {
   photoLimitText: 'text=/photo limit per listing/i',
   photoDropError: '#frmDrop.is-error',
 
+  // --- Map page (/listing-map/<id>): plain POST form once Abide validates ---
+  mapUrl: (id: string) => `${SITE}/listing-map/${id}`,
+  mapForm: '#map-edit',
+  showMap: '#show-map',
+  latitude: '#latitude',
+  longitude: '#longitude',
+  mapSaveButton: '#map-save-btn',
+
   // --- Status strip (edit / photos / map pages) ---
   editStatus: '#edit-status',
   visible: '#visible',
@@ -266,7 +274,10 @@ export async function postToLandflip(
   // 2. Photos.
   await uploadPhotos(page, listingId, choosePhotos(listPhotos(opts.outputDir), stringMeta(task, 'primaryPhoto')), log)
 
-  // 3. Read the edit page back to prove the text landed.
+  // 3. Map pin from the task's coordinates (the site geocodes the city otherwise).
+  await setMapPin(page, listingId, coordinatesFromTask(task), dialogs, log)
+
+  // 4. Read the edit page back to prove the text landed.
   await page.goto(LANDFLIP_SELECTORS.editUrl(listingId), { waitUntil: 'domcontentloaded' })
   await page.locator(LANDFLIP_SELECTORS.editForm).first().waitFor({ state: 'attached', timeout: 45_000 })
   await settle(page)
@@ -288,7 +299,7 @@ export async function postToLandflip(
     return { listingUrl: null, screenshotPath }
   }
 
-  // 4. Turn On.
+  // 5. Turn On.
   if (!/online/i.test(visibleNow)) {
     const btn = page.locator(LANDFLIP_SELECTORS.visibleButton).first()
     if ((await btn.count()) === 0) {
@@ -460,6 +471,49 @@ async function uploadPhotos(page: Page, listingId: string, photos: string[], log
   log(`landflip: ${seen} photo(s) on the listing`)
 }
 
+/**
+ * /listing-map/<id>: on load the site drops the marker at the geocoded city
+ * and writes that into #latitude/#longitude. Overwrite with the parcel's own
+ * coordinates, turn the map on, Save (a normal POST after Abide validation),
+ * then read the fields back. Skipped, with a note, when the task has none.
+ */
+async function setMapPin(
+  page: Page,
+  listingId: string,
+  coords: { latitude: number; longitude: number } | null,
+  dialogs: string[],
+  log: (m: string) => void
+): Promise<void> {
+  if (!coords) {
+    log('landflip: NOTE no metadata.latitude/longitude on the task; the map pin stays where the site geocoded the city')
+    return
+  }
+  await page.goto(LANDFLIP_SELECTORS.mapUrl(listingId), { waitUntil: 'domcontentloaded' })
+  const form = page.locator(LANDFLIP_SELECTORS.mapForm).first()
+  if ((await form.count()) === 0) {
+    log(`landflip: NOTE no map form on ${page.url()} (tried: ${LANDFLIP_SELECTORS.mapForm}); map pin not set`)
+    return
+  }
+  // The page's own geocode callback fills the boxes a moment after load; let it finish first.
+  await page.waitForTimeout(3000)
+  const lat = formatCoordinate(coords.latitude)
+  const lon = formatCoordinate(coords.longitude)
+  await selectOption(page, LANDFLIP_SELECTORS.showMap, 'Yes', 'show listing on maps', log, true)
+  await fillText(page, LANDFLIP_SELECTORS.latitude, lat, 'latitude')
+  await fillText(page, LANDFLIP_SELECTORS.longitude, lon, 'longitude')
+  await submitForm(page, LANDFLIP_SELECTORS.mapSaveButton, 'map Save', listingId, dialogs)
+  await page.goto(LANDFLIP_SELECTORS.mapUrl(listingId), { waitUntil: 'domcontentloaded' })
+  await settle(page)
+  const latNow = await page.locator(LANDFLIP_SELECTORS.latitude).first().inputValue().catch(() => '')
+  const lonNow = await page.locator(LANDFLIP_SELECTORS.longitude).first().inputValue().catch(() => '')
+  const showNow = await page.locator(LANDFLIP_SELECTORS.showMap).first().inputValue().catch(() => '')
+  if (!sameCoordinate(latNow, coords.latitude) || !sameCoordinate(lonNow, coords.longitude)) {
+    log(`landflip: NOTE the map page reads ${latNow}, ${lonNow} after saving (sent ${lat}, ${lon}); set the pin by hand at ${LANDFLIP_SELECTORS.mapUrl(listingId)}`)
+    return
+  }
+  log(`landflip: map pin saved at ${latNow}, ${lonNow} (show on maps: ${showNow === '1' ? 'yes' : 'no'})`)
+}
+
 async function finish(page: Page, listingId: string, outputDir: string, log: (m: string) => void): Promise<PostResult> {
   // Prove it from the grid: the card's Online tag must be showing.
   await page.goto(LANDFLIP_SELECTORS.listingsUrl, { waitUntil: 'domcontentloaded' })
@@ -552,21 +606,23 @@ function watchDialogs(page: Page, log: (m: string) => void): string[] {
 // --- pure helpers (unit-tested) -------------------------------------------
 
 export async function readListingCards(page: Page): Promise<ListingCard[]> {
+  // No named inner functions here: tsx injects a `__name` helper into them
+  // that does not exist inside the page (same quirk as post-parcelview.ts).
   const raw = await page.locator(LANDFLIP_SELECTORS.card).evaluateAll((els) =>
     els.map((el) => {
-      const hidden = (sel: string) => {
-        const t = el.querySelector(sel) as HTMLElement | null
-        return !t || t.classList.contains('hide')
-      }
+      const shown = ['.tag.online', '.tag.available', '.tag.uc', '.tag.sold'].map((sel) => {
+        const t = el.querySelector(sel)
+        return !!t && !t.classList.contains('hide')
+      })
       return {
         id: el.id,
         title: (el.querySelector('.list-info h4 a') as HTMLElement | null)?.innerText ?? '',
         priceAc: (el.querySelector('.tag.price-ac') as HTMLElement | null)?.innerText ?? '',
         where: (el.querySelector('.list-info p') as HTMLElement | null)?.innerText ?? '',
-        online: !hidden('.tag.online'),
-        available: !hidden('.tag.available'),
-        uc: !hidden('.tag.uc'),
-        sold: !hidden('.tag.sold'),
+        online: shown[0],
+        available: shown[1],
+        uc: shown[2],
+        sold: shown[3],
       }
     })
   )
@@ -627,6 +683,29 @@ export function publicListingUrl(listingId: string): string {
 export function parsePhotoCap(text: string): number | null {
   const m = text.match(/plan has a (\d+) photo limit/i)
   return m ? Number(m[1]) : null
+}
+
+export function coordinatesFromTask(task: PosterTask): { latitude: number; longitude: number } | null {
+  const m = task.metadata ?? {}
+  const lat = m['latitude']
+  const lon = m['longitude']
+  if (typeof lat !== 'number' || typeof lon !== 'number' || !Number.isFinite(lat) || !Number.isFinite(lon)) return null
+  if (Math.abs(lat) > 90 || Math.abs(lon) > 180 || (lat === 0 && lon === 0)) return null
+  return { latitude: lat, longitude: lon }
+}
+
+/** The map inputs take 12 characters: as many decimals as fit, 8 at most. */
+export function formatCoordinate(n: number): string {
+  for (let d = 8; d >= 4; d--) {
+    const s = n.toFixed(d)
+    if (s.length <= 12) return s
+  }
+  return n.toFixed(4)
+}
+
+export function sameCoordinate(field: string, n: number): boolean {
+  const v = Number(field)
+  return Number.isFinite(v) && Math.abs(v - n) < 0.00005
 }
 
 export function stateNameFor(state: string): string {
