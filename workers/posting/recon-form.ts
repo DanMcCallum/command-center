@@ -8,9 +8,12 @@
  *   url       page to inspect; defaults to the platform's new_listing_url
  *   --headed  show the browser window
  *   --login   wait (headed) for the operator to sign in, then save the session
- *             to auth/<platform>.json. Done when the login screen goes away or
- *             when the operator presses Enter in the terminal, so it works for
- *             sites whose sign-in is a modal or lives at an unknown path.
+ *             to auth/<platform>.json. Done when the login screen has been gone
+ *             for 4 seconds straight, or when the operator presses Enter in
+ *             the terminal, so it works for sites whose sign-in is a modal or
+ *             lives at an unknown path.
+ *   --wait-enter  with --login: ignore the page entirely and finish only on
+ *             Enter (for forms that re-render while you type).
  *   Steps, applied in the order given, each followed by a dump of the screen:
  *   --click=<text>            click the button/link with this visible text
  *   --clicksel=<selector>     click the first element matching a Playwright
@@ -63,6 +66,7 @@ if (!platformKey) {
 const platform = loadPlatformConfig(platformKey)
 const url = positional[1] ?? platform.new_listing_url
 const wantLogin = flags.has('--login')
+const waitEnterOnly = flags.has('--wait-enter')
 const headed = flags.has('--headed') || wantLogin
 const OUT_DIR = path.resolve(__dirname, '.agent-cache/recon')
 const LOGIN_PATH = platform.login_success?.redirect_off ?? '/login'
@@ -264,19 +268,32 @@ async function main(): Promise<void> {
         // the operator presses Enter here, whichever comes first.
         console.log(
           startedOnLogin
-            ? 'On a login screen. Sign in in the browser window, then press Enter here if the page does not change on its own (10 minutes)...'
+            ? `On a login screen. Sign in in the browser window${waitEnterOnly ? ', then press Enter here' : ', then press Enter here if the page does not change on its own'} (10 minutes)...`
             : 'Not on a login screen. Sign in in the browser window, then press Enter here to save the session (10 minutes)...'
         )
         const enterPressed = waitForEnter()
         const deadline = Date.now() + 10 * 60_000
         let done = false
+        let reason = ''
+        let gone = 0 // consecutive polls with no login screen; React forms flicker while you type
         while (Date.now() < deadline && !done) {
-          if (enterPressed.pressed) done = true
-          else if (startedOnLogin && !(await onLoginScreen())) done = true
-          else await page.waitForTimeout(1000)
+          if (enterPressed.pressed) {
+            done = true
+            reason = 'Enter pressed'
+          } else if (!waitEnterOnly && startedOnLogin && !(await onLoginScreen())) {
+            gone++
+            if (gone >= 4) {
+              done = true
+              reason = 'login screen gone for 4 s'
+            } else await page.waitForTimeout(1000)
+          } else {
+            gone = 0
+            await page.waitForTimeout(1000)
+          }
         }
         enterPressed.stop()
         if (!done) throw new Error('login timed out')
+        console.log(`Signed in (${reason}); saving the session...`)
         await page.waitForTimeout(2000)
         await context.storageState({ path: authPath })
         fs.chmodSync(authPath, 0o600)
