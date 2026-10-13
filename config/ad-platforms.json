@@ -21,6 +21,12 @@
       "description_rules": "plain text; the site forbids ALL CAPS, HTML, phone numbers, email and web addresses in the description",
       "buyer_profile": "Land-only marketplace with a mix of investors, flippers, and retail recreational/rural buyers. Land-savvy audience — acronyms like BLM, HOA, and OS read fine. Wants acreage, access, utilities, zoning, and a clear value/comp angle."
     },
+    "facebook_marketplace": {
+      "display_name": "Facebook Marketplace",
+      "headline_max": 100,
+      "description_max": 2000,
+      "buyer_profile": "Mainstream marketplace, posted by hand as an Item for sale (category Other), so the title must say it is land and where ('1 Acre of Land near Fairplay CO') or the buyer thinks it is an object. Audience: local and regional retail buyers scrolling on a phone, not land-savvy: no BLM, HOA, APN, OS acronyms without the plain words next to them. The feed shows the title, the price and the first photo; the first line of the description is what a tapped-through buyer reads first, so lead with the standout and the plain offer. Structure for a phone screen: short paragraphs, one fact per line in a list, and a clear 'message me and I will send the parcel record and coordinates' close. Marketplace shows the listing near the location you set, so the description names the nearest town and the drive from the big city. Caps are best-effort (100-char title from seller guides, description cap unknown; 2000 keeps it readable on a phone)."
+    },
     "land_com": {
       "display_name": "Land.com",
       "headline_max": 75,

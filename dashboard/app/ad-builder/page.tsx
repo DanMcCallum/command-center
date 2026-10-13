@@ -16,6 +16,7 @@ const PLATFORMS: { key: string; label: string; defaultChecked?: boolean }[] = [
   { key: 'parcelview', label: 'ParcelView' },
   { key: 'land_listings', label: 'Land-listings.com' },
   { key: 'landhub', label: 'Landhub.com' },
+  { key: 'facebook_marketplace', label: 'Facebook Marketplace (post by hand)' },
   { key: 'ebay', label: 'eBay (long-form listing)', defaultChecked: false },
 ];
 

@@ -24,6 +24,10 @@ export interface PostingPlatformConfig {
   login_url: string;
   new_listing_url: string;
   login_success?: LoginSuccessSignal;
+  /** No poster on purpose: the dashboard shows a post-by-hand card instead. */
+  manual?: boolean;
+  manual_photo_cap?: number;
+  manual_steps?: string[];
 }
 
 export async function GET() {

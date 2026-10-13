@@ -71,6 +71,22 @@
         "redirect_off": "/login"
       }
     },
+    "facebook_marketplace": {
+      "display_name": "Facebook Marketplace",
+      "enabled": false,
+      "manual": true,
+      "_doc": "No poster on purpose: Marketplace has no listing API for an individual seller, Meta's terms forbid automated posting, and a Playwright session on the operator's own account risks a Marketplace ban or account checkpoint. The dashboard shows a post-by-hand card (ManualPublishCard) with the generated copy, the photos in order, the create-form link, and a box to record the live URL as a posting. Listing form seen 2026-10-12: Item for sale, 10 photos + 1 video, title, price, category (use Other), condition, description, More details, location (defaults to the account's city; set it to the property's town). Title cap 100 chars is from seller guides, not Meta; description cap unknown.",
+      "login_url": "https://www.facebook.com/",
+      "new_listing_url": "https://www.facebook.com/marketplace/create/item",
+      "manual_photo_cap": 10,
+      "manual_steps": [
+        "Open the create form (Item for sale). Drag the photos below onto it in order; the first one is the cover.",
+        "Paste the title and the price (digits only). Category: Other. Condition: pick any; it is required for items.",
+        "Paste the description.",
+        "Change the location from your home town to the property's town so local buyers see it, then Next and Publish.",
+        "Open the published listing, copy its URL from the address bar, and record it below."
+      ]
+    },
     "ebay": {
       "display_name": "eBay",
       "enabled": false,

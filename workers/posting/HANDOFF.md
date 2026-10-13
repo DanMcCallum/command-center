@@ -517,6 +517,15 @@ bullet in `AGENTS.md`. Facts worth keeping in mind:
   fix after publish (e.g. a utility box) is a hand edit on
   `/listing-edit/<id>`.
 
+## Facebook Marketplace: post by hand (2026-10-13)
+
+Deliberately no poster (see the AGENTS.md bullet). The dashboard's "Post by
+hand" card (`ManualPublishCard.tsx`) carries the copy, the first 10 photos in
+order, the create-form link and a box that records the live URL as a posting.
+The Fairplay task has a hand-drafted `facebook_marketplace.md` (reviewed with
+the DREAMS skill in-session, not judge-gated). Production on 3000 needs a
+rebuild and restart before the card shows there (operator step).
+
 ## Remaining platforms on this task
 
 landhub has ad copy under

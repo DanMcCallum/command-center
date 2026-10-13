@@ -9,6 +9,7 @@ import EbayListingModal from './EbayListingModal';
 import FileEditorModal from './FileEditorModal';
 import PostingChips from './PostingChips';
 import PublishButtons from './PublishButtons';
+import ManualPublishCard from './ManualPublishCard';
 import PriorityIndicator from './PriorityIndicator';
 import SaveToKbModal from './SaveToKbModal';
 import StatusBadge from './StatusBadge';
@@ -281,6 +282,9 @@ export default function TaskCard({ task, parentTitle, onChange }: Props) {
 
           {isAdBuilderTask && (
             <PublishButtons task={task} onChange={onChange} />
+          )}
+          {isAdBuilderTask && (
+            <ManualPublishCard task={task} onChange={onChange} />
           )}
 
           <div className="flex items-center gap-2 pt-2">
