@@ -526,13 +526,23 @@ The Fairplay task has a hand-drafted `facebook_marketplace.md` (reviewed with
 the DREAMS skill in-session, not judge-gated). Production on 3000 needs a
 rebuild and restart before the card shows there (operator step).
 
+## Landhub: post by hand (2026-10-13)
+
+Sign-in at `/auth/signin` is guarded by an invisible Google reCAPTCHA that
+fails for the automated browser (`/api/auth/error?error=Google%20ReCaptcha%20Failure`),
+so there is no poster and no session import; the platform is `manual: true`
+and the task page shows the post-by-hand card. Routes found from the site's
+JS: `/user/dashboard`, `/user/add-property/basic-details` (wizard),
+`/user/properties`; photos via `img.landhub.com`. Partner plan, 50 listings.
+The sanctioned automation route, if Landhub offers it to a Partner member,
+is a listing feed (the sell page advertises automated listing uploads);
+ask their support what they accept before building anything.
+
 ## Remaining platforms on this task
 
-landhub has ad copy under
-`workers/workspace/outputs/task-1790275652160-rlxk9l/` but no poster. Same
-recon-first approach: `npx tsx recon-form.ts landhub <url> --headed --login`
-on the laptop (the login wait now also ends on Enter in the terminal), dumps
-scp'd back, then add the key to `POSTERS` in `post.ts`.
+None without a poster. Every platform on the Fairplay task is either posted
+by the agent (Landmodo, Land.com, ParcelView, Land Century, Landflip) or
+posted by hand through the card (Facebook Marketplace, Landhub).
 
 ## Things to never do
 

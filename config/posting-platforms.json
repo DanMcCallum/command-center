@@ -65,11 +65,18 @@
     "landhub": {
       "display_name": "Landhub.com",
       "enabled": false,
-      "_doc": "Next.js site. Sign-in is a plain email/password form at /auth/signin (next-auth); the member area is client-rendered under /user/ (dashboard; add-property is a wizard starting at /user/add-property/basic-details; properties) and the pages are empty shells until logged in. A logged-in visitor stays parked on /auth/signin with only a Logout button, so the session signal is that button, not leaving the URL. Photos go through img.landhub.com (add-property-image-video-file). Account is on the Partner plan ($89/mo, 50 listings) as of 2026-10-13. Routes found 2026-10-13 from the site's JS; the add form itself is still to be dumped.",
+      "manual": true,
+      "_doc": "Post by hand. The sign-in at /auth/signin is guarded by an invisible Google reCAPTCHA that fails for an automated browser (next-auth answers /api/auth/error?error=Google%20ReCaptcha%20Failure, seen 2026-10-13), and we do not build around that or import a browser session to skip it. The member area is a Next.js app under /user/ (dashboard, add-property wizard starting at /user/add-property/basic-details, properties); photos go through img.landhub.com. Account: Partner plan ($89/mo, 50 listings). The site advertises automated listing uploads for members (feed partners such as RealStack and Land Broker MLS); if Landhub accepts a listing feed from us, that is the sanctioned automation route.",
       "login_url": "https://www.landhub.com/auth/signin",
       "new_listing_url": "https://www.landhub.com/user/add-property/basic-details",
+      "manual_photo_cap": null,
+      "manual_steps": [
+        "Sign in at landhub.com in your normal browser, then open the add-property wizard (link below). Fill the basic details from the title, price and description here.",
+        "Work through the wizard's later steps (location, photos, pricing); upload the photos in the order shown below, first one as the cover.",
+        "Publish, open the live listing, copy its URL from the address bar, and record it below."
+      ],
       "login_success": {
-        "logged_in_selector": "button:has-text(\"Logout\"), a:has-text(\"Logout\"), button:has-text(\"Log out\"), a:has-text(\"Log out\")"
+        "logged_in_selector": "button:has-text(\"Logout\"), a:has-text(\"Logout\")"
       }
     },
     "facebook_marketplace": {
