@@ -526,6 +526,15 @@ The Fairplay task has a hand-drafted `facebook_marketplace.md` (reviewed with
 the DREAMS skill in-session, not judge-gated). Production on 3000 needs a
 rebuild and restart before the card shows there (operator step).
 
+Boosting the listing is out (2026-10-12): Meta rejected the boost of item
+1549144040235349 under Discriminatory Practices ("promotes financial products
+and services") because of the financing terms, and a boost cannot declare a
+Special Ad Category. The file now carries `## BOOST HEADLINE` and
+`## BOOST DESCRIPTION` (cash price only, no financing words) for an Ads Manager
+Page ad declared Housing; the rule is `paid_variant` in `config/ad-platforms.json`
+and `paid_promotion` in `config/posting-platforms.json`. The card still reads
+only the organic sections.
+
 ## Landhub: post by hand (2026-10-13)
 
 Sign-in at `/auth/signin` is guarded by an invisible Google reCAPTCHA that

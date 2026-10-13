@@ -93,7 +93,8 @@
         "Paste the description.",
         "Change the location from your home town to the property's town so local buyers see it, then Next and Publish.",
         "Open the published listing, copy its URL from the address bar, and record it below."
-      ]
+      ],
+      "paid_promotion": "Do not use the Marketplace Boost button on a land listing: the boost is reviewed as an ad, cannot declare a Special Ad Category, and the 2026-10-12 boost of item 1549144040235349 was rejected under Discriminatory Practices (financial products and services) because of the financing terms. To pay for reach, create a Page ad in Ads Manager that links to the listing, declare the Housing special ad category, and paste the BOOST HEADLINE / BOOST DESCRIPTION sections from facebook_marketplace.md (cash price only, no financing words). Rejections and reviews are tracked at https://www.facebook.com/business-support-home/ (Account Overview, View assets)."
     },
     "ebay": {
       "display_name": "eBay",
