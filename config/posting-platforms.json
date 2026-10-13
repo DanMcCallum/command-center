@@ -65,10 +65,11 @@
     "landhub": {
       "display_name": "Landhub.com",
       "enabled": false,
-      "login_url": "https://www.landhub.com/login",
-      "new_listing_url": "https://www.landhub.com/sell-land",
+      "_doc": "Next.js site. Sign-in is a plain email/password form at /auth/signin (next-auth); the member area is client-rendered under /user/ (dashboard, add-property, properties) and the pages are empty shells until logged in. Photos go through img.landhub.com (add-property-image-video-file). Account is on the Partner plan ($89/mo, 50 listings) as of 2026-10-13. Routes found 2026-10-13 from the site's JS; the add form itself is still to be dumped.",
+      "login_url": "https://www.landhub.com/auth/signin",
+      "new_listing_url": "https://www.landhub.com/user/add-property",
       "login_success": {
-        "redirect_off": "/login"
+        "redirect_off": "/auth/signin"
       }
     },
     "facebook_marketplace": {
