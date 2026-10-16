@@ -27,6 +27,7 @@ back to the **project-root** `.env.local` (not `dashboard/.env.local`).
 | `DASHBOARD_URL` | yes | Base URL of the dashboard server, no trailing slash |
 | `AGENT_TOKEN` | yes | Must match the `AGENT_TOKEN` in the server's `.env.local` |
 | `AGENT_POLL_SECONDS` | no | Poll interval, default `15` |
+| `POSTER_EXTENSIONS` | no | Extensions to load into the login window, e.g. `proton-pass` (see below) |
 
 Example `.env.local` at the repo root on your machine:
 
@@ -62,6 +63,36 @@ npm run agent
 You should see `agent started — polling <url> every 15s`, then a job count on
 every poll. One job runs at a time (never two browsers). `Ctrl-C` exits
 cleanly; press it twice to force-quit.
+
+## Password manager in the login window
+
+The login popup is Playwright's own Chromium with a throwaway profile, so by
+default none of your Chrome extensions are in it. Set `POSTER_EXTENSIONS` to
+load some:
+
+```bash
+POSTER_EXTENSIONS=proton-pass
+```
+
+Accepted entries, comma separated: the alias `proton-pass`, a Chrome Web
+Store extension id, or the path of an unpacked extension directory. An id is
+found in your own Chrome/Chromium/Brave profiles (`Extensions/<id>/<version>`),
+so install Proton Pass in your normal browser first; the newest version is
+copied to `.agent-cache/extensions/` without the `_metadata` folder Chrome
+rejects in unpacked extensions. A bad entry stops the agent at startup.
+
+With extensions set, the login window runs in a persistent profile at
+`.agent-cache/profile/` (Chromium loads extensions nowhere else). The first
+time, Proton Pass opens its own tab asking you to sign in to Proton; do that
+once and the profile keeps it. On its first run the profile is seeded from the
+saved `auth/*.json` sessions, so you are not asked to log in to every
+marketplace again. Each captured login is still written to
+`auth/<platform>.json` for the headless `npm run post` runs. Delete
+`.agent-cache/profile/` to start the profile over (then sign in to Proton Pass
+again).
+
+`npm run post -- <platform> <task> --login` honours the same variable from
+the environment.
 
 ## Where sessions live
 

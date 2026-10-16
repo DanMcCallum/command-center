@@ -11,6 +11,7 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import type { Page } from 'playwright'
 import { authenticate } from './agent-auth'
+import { POSTER_PROFILE_DIR, resolveExtensionDirs } from './extensions'
 import { parseAdOutput } from './parse-ad-output'
 import { POSTERS } from './post'
 import { AUTH_DIR, CONFIG_PATH, loadPlatformConfig, PROJECT_ROOT } from './post-common'
@@ -20,6 +21,8 @@ interface AgentConfig {
   dashboardUrl: string
   agentToken: string
   pollSeconds: number
+  /** Unpacked extension dirs for the login window (POSTER_EXTENSIONS), resolved at startup. */
+  extensionDirs: string[]
 }
 
 interface PublishJob {
@@ -72,10 +75,22 @@ function loadConfig(): AgentConfig {
     console.error(`agent: AGENT_POLL_SECONDS must be a positive number (got "${rawPoll}")`)
     process.exit(1)
   }
+  // POSTER_EXTENSIONS (e.g. "proton-pass"): resolve now so a bad entry stops
+  // the agent at startup, not on the first job's login window.
+  let extensionDirs: string[]
+  try {
+    extensionDirs = resolveExtensionDirs(readProjectEnvVar('POSTER_EXTENSIONS'), {
+      log: (m) => console.log(`agent: ${m}`),
+    })
+  } catch (err) {
+    console.error(`agent: ${err instanceof Error ? err.message : String(err)}`)
+    process.exit(1)
+  }
   return {
     dashboardUrl: dashboardUrl!.replace(/\/+$/, ''),
     agentToken: agentToken!,
     pollSeconds,
+    extensionDirs,
   }
 }
 
@@ -471,6 +486,8 @@ async function processJob(config: AgentConfig, job: PublishJob): Promise<void> {
     log,
     shouldAbort: () => shuttingDown,
     onAwaitingAuth: () => reportPosting(config, job, { status: 'awaiting_auth' }),
+    extensionDirs: config.extensionDirs,
+    profileDir: POSTER_PROFILE_DIR,
   })
 
   if (auth.outcome !== 'ready') {
@@ -534,6 +551,9 @@ async function processJob(config: AgentConfig, job: PublishJob): Promise<void> {
 async function main(): Promise<void> {
   const config = loadConfig()
   log(`agent started — polling ${config.dashboardUrl} every ${config.pollSeconds}s`)
+  if (config.extensionDirs.length > 0) {
+    log(`login window loads ${config.extensionDirs.length} extension(s) in the persistent profile at ${POSTER_PROFILE_DIR}`)
+  }
   await reportSessions(config, 'startup')
 
   while (!shuttingDown) {

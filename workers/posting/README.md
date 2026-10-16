@@ -17,7 +17,9 @@ stored. Sessions are captured by the local poster agent (`npm run agent`, see
 `AGENT.md`): when a publish job needs auth, a headed Chromium window opens on
 the platform's login page, you log in by hand, and the session is saved to
 `workers/posting/auth/<platform>.json` (repeat happens automatically whenever
-a session expires). Delete a platform's file to force a fresh login.
+a session expires). Delete a platform's file to force a fresh login. Set
+`POSTER_EXTENSIONS=proton-pass` to have Proton Pass in that login window
+(`AGENT.md`, "Password manager in the login window").
 
 **`auth/*.json` files are secrets** — they grant marketplace account access.
 The directory is gitignored; never expose it via the dashboard files API or

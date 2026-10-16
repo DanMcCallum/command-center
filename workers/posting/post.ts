@@ -26,6 +26,7 @@ import * as path from 'node:path'
 import { chromium } from 'playwright'
 import type { Browser, Page } from 'playwright'
 import { authenticate } from './agent-auth'
+import { POSTER_PROFILE_DIR, resolveExtensionDirs } from './extensions'
 import { parseAdOutput } from './parse-ad-output'
 import {
   AdCopy,
@@ -124,6 +125,10 @@ async function main(): Promise<void> {
       platformKey,
       platform,
       log,
+      // Same POSTER_EXTENSIONS handling as the agent (password manager in the
+      // login window); the CLI reads only the environment.
+      extensionDirs: resolveExtensionDirs(process.env.POSTER_EXTENSIONS, { log }),
+      profileDir: POSTER_PROFILE_DIR,
       // Diagnostics for the login itself: status and top-level KEY NAMES of
       // the site's auth responses (never values), so a session that comes
       // back without a token can be traced to the response that minted it.

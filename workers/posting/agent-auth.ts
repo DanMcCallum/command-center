@@ -28,6 +28,7 @@ import { chromium } from 'playwright'
 import type { Browser, BrowserContext, Page } from 'playwright'
 import { detectLogin } from './capture/detect'
 import type { RedirectTracker, SessionSnapshot } from './capture/detect'
+import { extensionLaunchArgs } from './extensions'
 import { AUTH_DIR } from './post-common'
 import type { LoginSuccessSignal, PlatformConfig } from './post-common'
 
@@ -48,6 +49,13 @@ export interface AuthenticateOptions {
   pollIntervalMs?: number
   /** Where auth/<platform>.json lives; tests point this at a temp dir. */
   authDir?: string
+  /**
+   * Unpacked extension dirs to load into the login window (see extensions.ts).
+   * Non-empty switches the launch to a persistent Chromium profile at
+   * profileDir, because Chromium loads extensions nowhere else.
+   */
+  extensionDirs?: string[]
+  profileDir?: string
   /** Test-only hook: receives the page when the login wait begins. */
   _onLoginWait?: (page: Page) => void
 }
@@ -113,7 +121,8 @@ function firstLine(err: unknown): string {
 export async function authenticate(opts: AuthenticateOptions): Promise<AuthResult> {
   const log = opts.log ?? ((m: string) => console.log(m))
   const authDir = opts.authDir ?? AUTH_DIR
-  const authPath = path.join(authDir, `${opts.platformKey}.json`)
+  const platformKey = opts.platformKey
+  const authPath = path.join(authDir, `${platformKey}.json`)
   const loginTimeoutMs = opts.loginTimeoutMs ?? DEFAULT_LOGIN_TIMEOUT_MS
   const pollIntervalMs = opts.pollIntervalMs ?? DEFAULT_POLL_INTERVAL_MS
 
@@ -122,13 +131,52 @@ export async function authenticate(opts: AuthenticateOptions): Promise<AuthResul
   // process on Ctrl-C, which would kill the agent before it can report the
   // job failed and close the browser itself (the agent's signal handlers own
   // shutdown).
-  const browser = await chromium.launch({
-    headless: false,
-    handleSIGINT: false,
-    handleSIGTERM: false,
-  })
+  const launchOptions = { headless: false, handleSIGINT: false, handleSIGTERM: false }
+  const extensionDirs = opts.extensionDirs ?? []
+  let browser: Browser
+  let context: BrowserContext
+  if (extensionDirs.length > 0) {
+    // Extensions (a password manager in the login popup) only load into a
+    // persistent profile, so this path keeps one under .agent-cache/profile.
+    // The profile carries its own cookies between runs; auth/<platform>.json
+    // stays the hand-off to the headless posting runs and is still written
+    // on every captured login.
+    if (!opts.profileDir) throw new Error('authenticate: extensionDirs needs profileDir')
+    const freshProfile = !fs.existsSync(opts.profileDir)
+    context = await chromium.launchPersistentContext(opts.profileDir, {
+      ...launchOptions,
+      args: extensionLaunchArgs(extensionDirs),
+    })
+    const owner = context.browser()
+    if (owner === null) {
+      await context.close().catch(() => {})
+      return { outcome: 'error', message: 'persistent browser context has no owning browser' }
+    }
+    browser = owner
+    // First run of the profile: seed it from the saved session so the
+    // operator is not asked to log in to every platform again.
+    if (freshProfile && fs.existsSync(authPath)) {
+      try {
+        await seedContextFromStorageState(context, authPath)
+      } catch {
+        log(`${platformKey}: saved session at ${authPath} is unreadable, starting fresh`)
+      }
+    }
+  } else {
+    browser = await chromium.launch(launchOptions)
+    if (fs.existsSync(authPath)) {
+      try {
+        context = await browser.newContext({ storageState: authPath })
+      } catch {
+        log(`${platformKey}: saved session at ${authPath} is unreadable, starting fresh`)
+        context = await browser.newContext()
+      }
+    } else {
+      context = await browser.newContext()
+    }
+  }
   try {
-    const result = await runAuthFlow(browser, authPath, loginTimeoutMs, pollIntervalMs, log, opts)
+    const result = await runAuthFlow(browser, context, authPath, loginTimeoutMs, pollIntervalMs, log, opts)
     if (result.outcome !== 'ready') await browser.close().catch(() => {})
     return result
   } catch (err) {
@@ -139,8 +187,33 @@ export async function authenticate(opts: AuthenticateOptions): Promise<AuthResul
   }
 }
 
+/**
+ * Load a Playwright storageState file into a context that cannot take the
+ * storageState launch option (persistent contexts). Cookies go in directly;
+ * localStorage entries are replayed per origin by an init script, and only
+ * where the key is not already set, so the profile's own newer state wins.
+ * Values stay inside the browser; nothing is logged.
+ */
+async function seedContextFromStorageState(context: BrowserContext, authPath: string): Promise<void> {
+  const state = JSON.parse(fs.readFileSync(authPath, 'utf-8')) as {
+    cookies?: Parameters<BrowserContext['addCookies']>[0]
+    origins?: Array<{ origin: string; localStorage: Array<{ name: string; value: string }> }>
+  }
+  if (state.cookies?.length) await context.addCookies(state.cookies)
+  const origins = (state.origins ?? []).filter((o) => o.localStorage.length > 0)
+  if (origins.length === 0) return
+  await context.addInitScript((seeded: typeof origins) => {
+    const mine = seeded.find((o) => o.origin === window.location.origin)
+    if (!mine) return
+    for (const { name, value } of mine.localStorage) {
+      if (window.localStorage.getItem(name) === null) window.localStorage.setItem(name, value)
+    }
+  }, origins)
+}
+
 async function runAuthFlow(
   browser: Browser,
+  context: BrowserContext,
   authPath: string,
   loginTimeoutMs: number,
   pollIntervalMs: number,
@@ -150,18 +223,9 @@ async function runAuthFlow(
   const { platformKey, platform } = opts
   const signal = platform.login_success
 
-  let context: BrowserContext
-  if (fs.existsSync(authPath)) {
-    try {
-      context = await browser.newContext({ storageState: authPath })
-    } catch {
-      log(`${platformKey}: saved session at ${authPath} is unreadable — starting fresh`)
-      context = await browser.newContext()
-    }
-  } else {
-    context = await browser.newContext()
-  }
-  const page = await context.newPage()
+  // A persistent context opens with a blank tab already; reuse it rather
+  // than leaving an empty window behind.
+  const page = context.pages()[0] ?? (await context.newPage())
   const tracker: RedirectTracker = { sawLoginPage: false }
 
   const blocked: AuthResult = {
@@ -181,7 +245,14 @@ async function runAuthFlow(
   const probeVerdict = probeSnap === null ? 'not_logged_in' : detectLogin(signal, probeSnap, tracker)
   if (probeVerdict === 'blocked') return blocked
   if (probeVerdict === 'logged_in') {
-    log(`${platformKey}: saved session is valid — skipping login`)
+    log(`${platformKey}: saved session is valid, skipping login`)
+    if (!fs.existsSync(authPath)) {
+      // A persistent profile can be logged in with no auth file (the file was
+      // deleted, or the login happened in an earlier run that never finished
+      // posting). The headless `npm run post` needs the file, so write it.
+      await saveStorageState(context, authPath)
+      log(`${platformKey}: session saved to ${authPath}`)
+    }
     return { outcome: 'ready', browser, context, page, usedHeadedLogin: false }
   }
 
@@ -226,6 +297,13 @@ async function runAuthFlow(
   }
 }
 
+/** Write the context's storageState to auth/<platform>.json, chmod 600. */
+async function saveStorageState(context: BrowserContext, authPath: string): Promise<void> {
+  fs.mkdirSync(path.dirname(authPath), { recursive: true })
+  await context.storageState({ path: authPath })
+  fs.chmodSync(authPath, 0o600)
+}
+
 /** Login detected: persist the session locally (chmod 600) and hand the browser over. */
 async function finishLogin(
   browser: Browser,
@@ -235,9 +313,7 @@ async function finishLogin(
   platformKey: string,
   log: (message: string) => void
 ): Promise<AuthResult> {
-  fs.mkdirSync(path.dirname(authPath), { recursive: true })
-  await context.storageState({ path: authPath })
-  fs.chmodSync(authPath, 0o600)
+  await saveStorageState(context, authPath)
   const cookies = await context.cookies()
   log(`${platformKey}: login captured — session saved to ${authPath}`)
   log(`${platformKey}: session cookies (names only): ${describeCookies(cookies)}`)
