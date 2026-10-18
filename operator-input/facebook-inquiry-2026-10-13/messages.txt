@@ -38,6 +38,26 @@ Once you're in onX, the parcel layer should show the lot lines for R0037546 so y
 
 Two things that will make the trip easier: let me know which day you're planning to go and I'll send the county parcel record and the HOA fee schedule ahead of time so you have them in hand. And if you want a second set of eyes on anything while you're up there, send me a photo or a question and I'll get right back to you.
 
+--- FOLLOW-UP 2026-10-18 (five days of silence after the pin; pick one, not sent) ---
+
+VERSION A: give before you ask (recommended). Sends the fee schedule now instead of waiting for his walk date, so the message carries something useful, then asks one question.
+
+Hey Justin, Daniel here on the Redhill Forest acre. I said I'd send the HOA fee schedule once you had a walk day, but no reason to wait, so here it is. The water tap is $7,500 on it, with the full breakdown on page one. Did you get a chance to pull it up in onX yet? If you tell me the day you're heading up I'll send the county parcel record too, and I'm around that day if you want to text me a photo from the lot.
+
+VERSION B: season nudge. Uses the Oct 31 camping cutoff and coming snow as the reason to go soon.
+
+Hey Justin, Daniel again on the acre near Fairplay. Did you make it up to walk it? Roads in Redhill are plowed year-round, but the camping window closes Oct 31 and the ridge starts holding snow in November, so the next two weekends are the easy ones to see it bare. Happy to send the parcel record and the HOA fee schedule whenever you're ready.
+
+VERSION C: shortest, easy out.
+
+Hey Justin, still planning to walk the Redhill lot? No pressure either way, just let me know if you'd like the parcel record and fee schedule, or if the timing isn't right.
+
+Notes:
+- Version A attaches operator-input/facebook-inquiry-2026-10-13/redhill-forest-fee-schedule-2024.pdf in Messenger. Rename it before sending if the filename looks odd to a buyer.
+- The USAF question (was the $1,650 paid on Lot 366) is still open. If KC & Associates answers before this goes out, add one line: "One more thing I promised to check: the one-time $1,650 availability fee is [paid / not yet paid] on this lot."
+- If he replies with a day, send the "when he names a day" message below with the parcel record.
+- If silent after this, one final text around 2026-10-25, then let it go.
+
 --- NEXT: nudge if no walk date by 2026-10-21 (not sent) ---
 
 Hey Justin, Daniel again on the Redhill Forest acre. Did you pick a day to walk it? Roads up there are plowed year-round, but the camping window closes Oct 31, so if you want to see it before snow sits on it, the next couple of weekends are the ones. Happy to send the parcel record and fee schedule whenever you're ready.

@@ -21,7 +21,7 @@ Compiled 2026-10-18 from the operator's claude.ai chat (share link below), the R
 
 - 2026-10-13 (about): Justin asks the tap fee. Daniel has the claude.ai app research it and draft a reply. Reply sent with the fee breakdown (text in `messages.txt`).
 - 2026-10-14 (about): Justin thanks him and asks for the pin to map it in onX and walk it soon. Daniel sends the coordinates, Google Maps pin, ParcelView 3D link, and asks which day he plans to walk it (text in `messages.txt`).
-- 2026-10-18: no walk date recorded yet. Logged here.
+- 2026-10-18: no walk date recorded yet. Logged here, and three follow-up drafts added to `messages.txt` (Version A recommended: send the fee schedule now, ask for the walk day).
 
 ## Tap fee, from the HOA's own documents (read 2026-10-18)
 
@@ -48,7 +48,7 @@ Every listing for Timber Park says dues "about $1,250 a year per recent listings
 
 ## Still open
 
-- Justin has not given a walk date. If nothing by 2026-10-21, send the nudge in `messages.txt`.
+- Justin has not given a walk date. Send one of the 2026-10-18 follow-ups in `messages.txt`, then record which one here. If silent after that, one final text around 2026-10-25, then drop.
 - Look up whether the USAF was paid on Lot 366 (ask KC & Associates, or the HOA owner portal) and tell Justin either way, since the reply promised it.
 - When he names a day, send the county parcel record and the fee schedule PDF ahead of it, as promised.
 - Facebook Marketplace is post-by-hand; nothing here touches the listing.
