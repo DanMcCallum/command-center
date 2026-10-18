@@ -19,9 +19,18 @@ Compiled 2026-10-18 from the operator's claude.ai chat (share link below), the R
 
 ## Timeline
 
-- 2026-10-13 (about): Justin asks the tap fee. Daniel has the claude.ai app research it and draft a reply. Reply sent with the fee breakdown (text in `messages.txt`).
-- 2026-10-14 (about): Justin thanks him and asks for the pin to map it in onX and walk it soon. Daniel sends the coordinates, Google Maps pin, ParcelView 3D link, and asks which day he plans to walk it (text in `messages.txt`).
-- 2026-10-18: no walk date recorded yet. Logged here, and three follow-up drafts added to `messages.txt` (Version A recommended: send the fee schedule now, ask for the walk day).
+Daniel pasted the full Messenger thread on 2026-10-18 (Sunday). It matches the drafts in `messages.txt` word for word. Messenger shows timestamps only on the second exchange: "Wed 10:24 AM" on Justin's pin request and "Wed 11:16 AM" on the reply, so that is 2026-10-14. The first exchange carries no timestamp in the paste; the claude.ai share puts it a day earlier, so about 2026-10-13, the day the listing went up.
+
+- About 2026-10-13: Justin asks the tap fee. Reply sent with the fee breakdown. Messenger attached a link preview for redhillforesthoa.com.
+- 2026-10-14, 10:24 AM: Justin, "Awesome thank you! Would love the pin to map it on onx and walk it soon."
+- 2026-10-14, 11:16 AM: reply with coordinates, Google Maps pin, ParcelView 3D link, the onX parcel-layer tip, and two asks: which day he plans to go, and send a photo from the lot. Messenger attached a Google Maps preview.
+- 2026-10-18: no reply in four days. Three follow-up drafts in `messages.txt`.
+
+## Conversation summary
+
+Two exchanges, both opened by Justin and both answered within the hour. He asked one practical question (tap fee), got a full answer, said thanks, and asked for the pin to map in onX and "walk it soon". He got the pin and a question back (which day), and went quiet. Read: a real buyer doing homework, short messages, no objection raised, no price talk yet. The last message from our side was long and asked two things, so the next one should be short, give something, and ask one thing. He may have walked it over the weekend of 10/17 and 10/18, so ask about that first.
+
+Promises outstanding on our side: check whether the $1,650 USAF was paid on Lot 366; send the county parcel record and the HOA fee schedule once he names a day.
 
 ## Tap fee, from the HOA's own documents (read 2026-10-18)
 

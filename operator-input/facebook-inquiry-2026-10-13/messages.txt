@@ -1,4 +1,4 @@
-Facebook Messenger thread with Justin Eric on the Timber Park listing (Marketplace item 1549144040235349). Texts recovered 2026-10-18 from the operator's claude.ai share; assumed sent as drafted unless Daniel says otherwise.
+Facebook Messenger thread with Justin Eric on the Timber Park listing (Marketplace item 1549144040235349). Texts recovered 2026-10-18 from the operator's claude.ai share and confirmed against the full Messenger thread Daniel pasted the same day. Messenger timestamps: Justin's pin request Wed 2026-10-14 10:24 AM, the pin reply 11:16 AM. The tap fee exchange shows no timestamp in the paste, about 2026-10-13.
 
 --- JUSTIN, about 2026-10-13 ---
 
@@ -40,7 +40,11 @@ Two things that will make the trip easier: let me know which day you're planning
 
 --- FOLLOW-UP 2026-10-18 (five days of silence after the pin; pick one, not sent) ---
 
-VERSION A: give before you ask (recommended). Sends the fee schedule now instead of waiting for his walk date, so the message carries something useful, then asks one question.
+VERSION A: give before you ask (recommended after reading the full thread 2026-10-18). Short, since the last message from our side was long with two asks. Sends the fee schedule now, asks one thing: did he get up there this weekend.
+
+Hey Justin, Daniel on the Redhill Forest acre. Did you get up there this weekend? Either way, here's the HOA fee schedule I mentioned so you have it in hand, the $7,500 tap is on page one. When you know your day I'll send the county parcel record too.
+
+VERSION A, longer form (the first cut, kept for reference):
 
 Hey Justin, Daniel here on the Redhill Forest acre. I said I'd send the HOA fee schedule once you had a walk day, but no reason to wait, so here it is. The water tap is $7,500 on it, with the full breakdown on page one. Did you get a chance to pull it up in onX yet? If you tell me the day you're heading up I'll send the county parcel record too, and I'm around that day if you want to text me a photo from the lot.
 
