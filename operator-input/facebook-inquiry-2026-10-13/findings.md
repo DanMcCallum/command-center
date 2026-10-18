@@ -57,6 +57,9 @@ Every listing for Timber Park says dues "about $1,250 a year per recent listings
 
 ## Still open
 
+A one-time cloud routine (trig_011DFMkGhGjiREK1DH7sP4VW, https://claude.ai/code/routines/trig_011DFMkGhGjiREK1DH7sP4VW) fires Monday 2026-10-19 at 9:00 AM Mountain with a checklist of the items below, a call script for KC & Associates, and Messenger drafts for the USAF answer. It sends nothing itself. Disable it on its routine page if everything is done before then.
+
+
 - Follow-up Version A sent 2026-10-18. If Justin is still silent, one final text around 2026-10-25, then drop.
 - Call KC & Associates (303-933-6279) and ask: was the $1,650 USAF paid on Lot 366; is the 2024 fee schedule still current; what are the HOA transfer fees on a sale (status letter, transfer or working-capital fee, who pays). Tell Justin the USAF answer either way, since the reply promised it. Record the transfer fee on the area sheet.
 - When he names a day, send the county parcel record and the fee schedule PDF ahead of it, as promised.
