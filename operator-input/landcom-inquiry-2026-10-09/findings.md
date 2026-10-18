@@ -28,5 +28,5 @@ Operator decision 2026-10-09: Tyler never replied to either message and never pa
 ## Still open
 
 - Cancel eBay order 110 (tybar-6248) in Seller Hub and note the cancel date here.
-- Short opener sent to Aitch 2026-10-11 (not Version 1; see the draft file). No reply as of 2026-10-18. Second touch (Version A, pin plus one question) sent 2026-10-18. If still silent, one final text around 2026-10-25, then drop.
+- Short opener sent to Aitch 2026-10-11 (not Version 1; see the draft file). No reply as of 2026-10-18. Second touch (Version A, pin plus one question) sent 2026-10-18. If still silent, one final text 2026-10-20 (cloud reminder trig_01VZYKDu7k9MsGpdhKfAgQkZ), then drop.
 - Once either buyer closes, update the Land.com listing and the other Poplar Flats / Homestead Corner postings.
