@@ -1,0 +1,52 @@
+Facebook Messenger thread with Justin Eric on the Timber Park listing (Marketplace item 1549144040235349). Texts recovered 2026-10-18 from the operator's claude.ai share; assumed sent as drafted unless Daniel says otherwise.
+
+--- JUSTIN, about 2026-10-13 ---
+
+Interested here - How much is the tap fee for water?
+
+--- SENT, about 2026-10-13 (drafted by the claude.ai app) ---
+
+Thanks for reaching out. Per the HOA's published 2024 fee schedule, the water tap fee is $7,500. That covers the connection to the community system, including the meter and pit enclosure.
+
+A couple of other items to budget for when you're ready to build:
+- Utility Service Availability Fee: $1,650 for Filing 3 (one-time, charged to every lot; I'm checking whether it's already been paid on this one)
+- Excavation for the pit and any road cut: roughly $10,000, which goes to a local excavator, not the HOA
+- A $10,000 refundable excavation bond
+- Once the tap is in, water is $70/month minimum for up to 3,000 gallons
+
+The HOA's own rule of thumb is $17,500+ to bring water to the lot, and they note that's still usually cheaper than drilling a well in this area. None of it is due until you build; you can camp on the lot May 1 to Oct 31 without a tap.
+
+The schedule is dated January 2024, so I'd confirm current numbers with the HOA directly at 303-933-6279 or redhillforesthoa.com/water before you commit.
+
+Happy to send the map pin and county parcel record if you'd like to walk it.
+
+--- JUSTIN, about 2026-10-14 ---
+
+Awesome thank you! Would love the pin to map it on onx and walk it soon.
+
+--- SENT, about 2026-10-14 (Daniel's draft, cleaned up by the claude.ai app) ---
+
+Great, here's everything you need to find it.
+
+Coordinates (paste these into the onX search bar): 39.14615, -105.92120
+
+Google Maps pin: https://www.google.com/maps/place/39%C2%B008'46.3%22N+105%C2%B055'16.1%22W/@39.14619,-105.9211309,17z/data=!3m1!4b1!4m4!3m3!8m2!3d39.14619!4d-105.9211309?entry=ttu&g_ep=EgoyMDI2MTAxMS4wIKXMDSoASAFQAw%3D%3D
+
+3D parcel view, good for getting a feel for the slope and tree cover before you drive up: https://parcelview.com/embed/f5bc2a597ade461e4c2ffd61fb8d1503/
+
+Once you're in onX, the parcel layer should show the lot lines for R0037546 so you can see exactly where you're standing relative to the corners.
+
+Two things that will make the trip easier: let me know which day you're planning to go and I'll send the county parcel record and the HOA fee schedule ahead of time so you have them in hand. And if you want a second set of eyes on anything while you're up there, send me a photo or a question and I'll get right back to you.
+
+--- NEXT: nudge if no walk date by 2026-10-21 (not sent) ---
+
+Hey Justin, Daniel again on the Redhill Forest acre. Did you pick a day to walk it? Roads up there are plowed year-round, but the camping window closes Oct 31, so if you want to see it before snow sits on it, the next couple of weekends are the ones. Happy to send the parcel record and fee schedule whenever you're ready.
+
+--- NEXT: when he names a day (not sent, attach the fee schedule PDF and the county parcel record) ---
+
+Here's the HOA fee schedule and the county parcel record for Lot 366 so you have the numbers with you. One note on the USAF: [paid / not paid on this lot, from KC & Associates]. Enjoy the walk, and send a photo if anything looks off and I'll check it against the plat.
+
+Notes:
+- The first reply promised to check whether the $1,650 USAF was paid on Lot 366. Close that loop before or with the next message.
+- onX's parcel layer needs the Hunt or Offroad tier. If he cannot see lot lines, point him to the LandGlide step in the ad.
+- Do not quote the $1,250 dues again; the unimproved rate on the 2024 schedule is $1,025.
