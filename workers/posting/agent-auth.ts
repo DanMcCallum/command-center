@@ -56,6 +56,11 @@ export interface AuthenticateOptions {
    */
   extensionDirs?: string[]
   profileDir?: string
+  /**
+   * Skip the saved-session probe and go straight to the headed login (the
+   * poster just proved the session dead; the agent deleted the auth file).
+   */
+  forceLogin?: boolean
   /** Test-only hook: receives the page when the login wait begins. */
   _onLoginWait?: (page: Page) => void
 }
@@ -84,7 +89,8 @@ function sleep(ms: number): Promise<void> {
 async function trySnapshot(
   context: BrowserContext,
   page: Page,
-  signal?: LoginSuccessSignal
+  signal?: LoginSuccessSignal,
+  seededStorage: Set<string> = new Set()
 ): Promise<SessionSnapshot | null> {
   try {
     const snap: SessionSnapshot = { cookies: await context.cookies(), url: page.url(), title: await page.title() }
@@ -92,9 +98,20 @@ async function trySnapshot(
       snap.hasLoggedInMarker = (await page.locator(signal.logged_in_selector).count()) > 0
     }
     if (signal?.local_storage_key !== undefined) {
-      // Presence only; the value (a session token) is never read into the agent.
+      // The key counts only when the site wrote it in this session. The agent
+      // seeds the saved value itself (storageState / the profile), so its mere
+      // presence proves nothing: on 2026-11-02 a dead Land Century session
+      // passed the probe on the seeded apiToken and the poster then bounced
+      // off /admin with no login window offered. The value is compared inside
+      // this function only and is never logged.
       snap.hasStorageMarker = await page
-        .evaluate((key) => window.localStorage.getItem(key) !== null, signal.local_storage_key)
+        .evaluate(
+          ({ key, seeded }) => {
+            const v = window.localStorage.getItem(key)
+            return v !== null && !seeded.includes(v)
+          },
+          { key: signal.local_storage_key, seeded: [...seededStorage] }
+        )
         .catch(() => false)
     }
     return snap
@@ -188,6 +205,27 @@ export async function authenticate(opts: AuthenticateOptions): Promise<AuthResul
 }
 
 /**
+ * Values the saved session holds for login_success.local_storage_key, so a
+ * snapshot can tell a seeded token from one the site just issued. Held in
+ * memory for the comparison only; never logged.
+ */
+function seededStorageValues(authPath: string, key: string | undefined): Set<string> {
+  const out = new Set<string>()
+  if (key === undefined || !fs.existsSync(authPath)) return out
+  try {
+    const state = JSON.parse(fs.readFileSync(authPath, 'utf-8')) as {
+      origins?: Array<{ localStorage?: Array<{ name: string; value: string }> }>
+    }
+    for (const origin of state.origins ?? []) {
+      for (const entry of origin.localStorage ?? []) if (entry.name === key) out.add(entry.value)
+    }
+  } catch {
+    // unreadable file: nothing is seeded from it either
+  }
+  return out
+}
+
+/**
  * Load a Playwright storageState file into a context that cannot take the
  * storageState launch option (persistent contexts). Cookies go in directly;
  * localStorage entries are replayed per origin by an init script, and only
@@ -222,6 +260,7 @@ async function runAuthFlow(
 ): Promise<AuthResult> {
   const { platformKey, platform } = opts
   const signal = platform.login_success
+  const seeded = seededStorageValues(authPath, signal?.local_storage_key)
 
   // A persistent context opens with a blank tab already; reuse it rather
   // than leaving an empty window behind.
@@ -237,12 +276,17 @@ async function runAuthFlow(
   // never confirm here (sawLoginPage is unearned by design — US-003), so this
   // fast-path fires mainly for platforms with a positive cookie signal; the
   // rest resolve in the login phase below without operator input.
-  await page.goto(platform.new_listing_url, {
-    waitUntil: 'domcontentloaded',
-    timeout: NAVIGATION_TIMEOUT_MS,
-  })
-  const probeSnap = await trySnapshot(context, page, signal)
-  const probeVerdict = probeSnap === null ? 'not_logged_in' : detectLogin(signal, probeSnap, tracker)
+  let probeVerdict: ReturnType<typeof detectLogin> = 'not_logged_in'
+  if (opts.forceLogin) {
+    log(`${platformKey}: the site rejected the saved session, asking for a fresh login`)
+  } else {
+    await page.goto(platform.new_listing_url, {
+      waitUntil: 'domcontentloaded',
+      timeout: NAVIGATION_TIMEOUT_MS,
+    })
+    const probeSnap = await trySnapshot(context, page, signal, seeded)
+    probeVerdict = probeSnap === null ? 'not_logged_in' : detectLogin(signal, probeSnap, tracker)
+  }
   if (probeVerdict === 'blocked') return blocked
   if (probeVerdict === 'logged_in') {
     log(`${platformKey}: saved session is valid, skipping login`)
@@ -261,7 +305,7 @@ async function runAuthFlow(
   await opts.onAwaitingAuth?.()
   await page.goto(platform.login_url, { waitUntil: 'domcontentloaded', timeout: NAVIGATION_TIMEOUT_MS })
 
-  const landing = await trySnapshot(context, page, signal)
+  const landing = await trySnapshot(context, page, signal, seeded)
   if (landing !== null) {
     const landingVerdict = detectLogin(signal, landing, tracker)
     if (landingVerdict === 'blocked') return blocked
@@ -289,7 +333,7 @@ async function runAuthFlow(
     }
     await sleep(pollIntervalMs)
     if (page.isClosed()) return { outcome: 'cancelled', message: 'login cancelled' }
-    const snap = await trySnapshot(context, page, signal)
+    const snap = await trySnapshot(context, page, signal, seeded)
     if (snap === null) continue
     const verdict = detectLogin(signal, snap, tracker)
     if (verdict === 'blocked') return blocked

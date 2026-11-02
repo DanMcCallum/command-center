@@ -4,8 +4,10 @@ import * as fs from 'node:fs'
 import * as os from 'node:os'
 import * as path from 'node:path'
 import {
+  isLoginExpiredError,
   listPhotos,
   loadPlatformConfig,
+  loginExpiredError,
   requireAuthState,
   requireListingFacts,
   requirePhotos,
@@ -135,4 +137,12 @@ test('resolveLocation still rejects an unsplittable location on the fallback pat
     if (prevToken === undefined) delete process.env.AGENT_TOKEN
     else process.env.AGENT_TOKEN = prevToken
   }
+})
+
+test('loginExpiredError carries the marker the agent uses to discard a dead session', () => {
+  const err = loginExpiredError('land_century', 'https://www.landcentury.com/')
+  assert.ok(isLoginExpiredError(err))
+  assert.match(err.message, /appears expired/)
+  assert.strictEqual(isLoginExpiredError(new Error('locator.click: Timeout 30000ms exceeded.')), false)
+  assert.strictEqual(isLoginExpiredError('not an error'), false)
 })

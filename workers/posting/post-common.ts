@@ -123,12 +123,21 @@ export function requireAuthState(platformKey: string): string {
   return authPath
 }
 
+/** Marker on loginExpiredError so the agent can discard the session and re-login. */
+export const LOGIN_EXPIRED_CODE = 'LOGIN_EXPIRED'
+
+export function isLoginExpiredError(err: unknown): boolean {
+  return err instanceof Error && (err as Error & { code?: string }).code === LOGIN_EXPIRED_CODE
+}
+
 /** Standard error for a session that exists but no longer works. */
 export function loginExpiredError(platformKey: string, currentUrl: string): Error {
-  return new Error(
+  const err = new Error(
     `Login for "${platformKey}" appears expired — landed on a login page (${currentUrl}). ` +
       `Publish with the poster agent running (npm run agent) to log in again`
-  )
+  ) as Error & { code?: string }
+  err.code = LOGIN_EXPIRED_CODE
+  return err
 }
 
 const PHOTO_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.webp', '.gif'])

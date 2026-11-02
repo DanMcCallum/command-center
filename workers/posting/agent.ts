@@ -14,7 +14,7 @@ import { authenticate } from './agent-auth'
 import { POSTER_PROFILE_DIR, resolveExtensionDirs } from './extensions'
 import { parseAdOutput } from './parse-ad-output'
 import { POSTERS } from './post'
-import { AUTH_DIR, CONFIG_PATH, loadPlatformConfig, PROJECT_ROOT } from './post-common'
+import { AUTH_DIR, CONFIG_PATH, isLoginExpiredError, loadPlatformConfig, PROJECT_ROOT } from './post-common'
 import type { AdCopy, PlatformConfig, PosterTask, PostResult } from './post-common'
 
 interface AgentConfig {
@@ -478,7 +478,27 @@ async function processJob(config: AgentConfig, job: PublishJob): Promise<void> {
 
   // Auth and posting are one transaction in one browser: probe the saved
   // session, pop a headed window for the operator only when it's stale, then
-  // (US-005) post in that same context.
+  // (US-005) post in that same context. If the probe passed but the site
+  // still bounced the poster to its login page, the saved session is dead:
+  // drop it and go round once more with a forced headed login.
+  const outcome = await attemptPost(config, job, task, adCopy, platform, taskDir, false)
+  if (outcome === 'login_expired') {
+    const authPath = path.join(AUTH_DIR, `${job.platform}.json`)
+    fs.rmSync(authPath, { force: true })
+    log(`${job.platform}: saved session discarded (${authPath}); opening the login window`)
+    await attemptPost(config, job, task, adCopy, platform, taskDir, true)
+  }
+}
+
+async function attemptPost(
+  config: AgentConfig,
+  job: PublishJob,
+  task: PosterTask,
+  adCopy: AdCopy,
+  platform: PlatformConfig,
+  taskDir: string,
+  forceLogin: boolean
+): Promise<'done' | 'login_expired'> {
   log(`checking ${job.platform} session in a headed browser on this machine`)
   const auth = await authenticate({
     platformKey: job.platform,
@@ -488,6 +508,7 @@ async function processJob(config: AgentConfig, job: PublishJob): Promise<void> {
     onAwaitingAuth: () => reportPosting(config, job, { status: 'awaiting_auth' }),
     extensionDirs: config.extensionDirs,
     profileDir: POSTER_PROFILE_DIR,
+    forceLogin,
   })
 
   if (auth.outcome !== 'ready') {
@@ -498,7 +519,7 @@ async function processJob(config: AgentConfig, job: PublishJob): Promise<void> {
       // cancelled") — don't prefix it.
       lastError: auth.outcome === 'cancelled' ? auth.message : `agent: ${auth.message}`,
     })
-    return
+    return 'done'
   }
 
   // Post in the same, already-authenticated browser context, then push every
@@ -522,6 +543,10 @@ async function processJob(config: AgentConfig, job: PublishJob): Promise<void> {
       })
     } catch (err) {
       const message = oneLineError(err)
+      if (isLoginExpiredError(err) && !auth.usedHeadedLogin && !forceLogin) {
+        log(`${job.platform}: ${message}`)
+        return 'login_expired'
+      }
       log(`job ${job.platform}/${job.taskId} failed: ${message}`)
       const screenshotPath = await captureFailureProof(config, job, auth.page, taskDir)
       await reportPosting(config, job, {
@@ -529,7 +554,7 @@ async function processJob(config: AgentConfig, job: PublishJob): Promise<void> {
         lastError: `agent: ${message}`,
         ...(screenshotPath && { screenshotPath }),
       })
-      return
+      return 'done'
     }
 
     // saveProofScreenshot returns a PROJECT_ROOT-relative path; the local file
@@ -543,6 +568,7 @@ async function processJob(config: AgentConfig, job: PublishJob): Promise<void> {
       ...(screenshotPath && { screenshotPath }),
     })
     log(`job ${job.platform}/${job.taskId} posted: ${result.listingUrl ?? '(no listing URL)'}`)
+    return 'done'
   } finally {
     await auth.browser.close().catch(() => {})
   }
