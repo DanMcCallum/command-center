@@ -85,8 +85,14 @@ export const LAND_COM_SELECTORS = {
   // --- location step ---
   addListing: 'button:has-text("Add Listing")',
   placesSearch: '#places-autocomplete',
-  modeAddress: '[role="button"]:has-text("Address")',
-  modeLatLong: '[role="button"]:has-text("Lat/Long")',
+  // The mode dropdown is a Material UI Select. Older MUI renders the closed
+  // control with role="button"; MUI 5.14+ renders it with role="combobox",
+  // and the open menu's entries are li[role="option"]. Match every form and
+  // let the caller pick the visible one (hidden duplicates exist in the DOM).
+  modeAddress:
+    '[role="button"]:has-text("Address"), [role="combobox"]:has-text("Address"), [aria-haspopup="listbox"]:has-text("Address")',
+  modeLatLong:
+    '[role="option"]:has-text("Lat/Long"), [role="button"]:has-text("Lat/Long"), li:has-text("Lat/Long")',
   latitude: '#latitude',
   longitude: '#longitude',
   latLongSearch: 'xpath=//input[@id="longitude"]/following::button[1]',
@@ -285,9 +291,27 @@ async function createDraftAtLocation(
 
   // Switch the search box from Address to Lat/Long.
   log('land_com: switching the location search to Lat/Long')
-  await page.locator(LAND_COM_SELECTORS.modeAddress).first().click()
-  await page.locator(LAND_COM_SELECTORS.modeLatLong).first().waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator(LAND_COM_SELECTORS.modeLatLong).first().click()
+  // "visible=true" skips the hidden copies of these controls so .first()
+  // is never a non-clickable element (that stalled the click for 30 s on
+  // 2026-11-02 when the hub's dropdown markup changed).
+  const modeAddress = page.locator(LAND_COM_SELECTORS.modeAddress).locator('visible=true').first()
+  try {
+    await modeAddress.click({ timeout: 15_000 })
+  } catch (err) {
+    throw new Error(
+      `The location-mode dropdown ("Address") was not clickable at ${page.url()}: ${(err as Error).message.split('\n')[0]}. ` +
+        `The hub's markup may have changed; update modeAddress in LAND_COM_SELECTORS (${SCRIPT}).`
+    )
+  }
+  const modeLatLong = page.locator(LAND_COM_SELECTORS.modeLatLong).locator('visible=true').first()
+  try {
+    await modeLatLong.click({ timeout: 10_000 })
+  } catch (err) {
+    throw new Error(
+      `The "Lat/Long" option did not appear after opening the location-mode dropdown: ${(err as Error).message.split('\n')[0]}. ` +
+        `Update modeLatLong in LAND_COM_SELECTORS (${SCRIPT}).`
+    )
+  }
   await page.locator(LAND_COM_SELECTORS.latitude).first().waitFor({ state: 'visible', timeout: 15_000 })
   await page.waitForTimeout(300)
 
