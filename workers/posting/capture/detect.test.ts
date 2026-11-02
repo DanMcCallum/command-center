@@ -232,3 +232,10 @@ test('storage signal: Access Denied still wins over the key', () => {
   const denied = { cookies: [], url: 'https://x/', title: 'Access Denied', hasStorageMarker: true }
   assert.strictEqual(detectLogin({ local_storage_key: 'apiToken' }, denied, { sawLoginPage: false }), 'blocked')
 })
+
+test('Cloudflare block page is blocked, never logged in or a login prompt', () => {
+  const signal = { redirect_off: '/sign-in', logged_in_selector: 'a[href="/sign-in/signout"]' }
+  const snap = { cookies: [{ name: 'cf_clearance' }], url: 'https://my.landflip.com/listings', title: 'Attention Required! | Cloudflare' }
+  assert.strictEqual(detectLogin(signal, snap, { sawLoginPage: true }), 'blocked')
+  assert.strictEqual(detectLogin(signal, { ...snap, title: 'Sorry, you have been blocked' }, { sawLoginPage: false }), 'blocked')
+})

@@ -123,6 +123,25 @@ export function requireAuthState(platformKey: string): string {
   return authPath
 }
 
+/**
+ * True when the page is an edge denial (Cloudflare "Sorry, you have been
+ * blocked" / "Attention Required!", Akamai "Access Denied") rather than
+ * anything the site itself served. Posters check this before judging a
+ * page as logged-out, so a block is reported as a block.
+ */
+export async function onEdgeBlockPage(page: Page): Promise<boolean> {
+  const title = (await page.title().catch(() => '')).trim()
+  if (/^(access denied|attention required! \| cloudflare)$/i.test(title)) return true
+  return (await page.locator('h1:has-text("Sorry, you have been blocked")').count().catch(() => 0)) > 0
+}
+
+export function edgeBlockedError(platformKey: string, currentUrl: string): Error {
+  return new Error(
+    `${platformKey}: the site's edge (Cloudflare/Akamai) blocked this browser at ${currentUrl} ("Sorry, you have been blocked"). ` +
+      `This is not a login problem. Wait a while before retrying, or post this one by hand`
+  )
+}
+
 /** Marker on loginExpiredError so the agent can discard the session and re-login. */
 export const LOGIN_EXPIRED_CODE = 'LOGIN_EXPIRED'
 

@@ -41,8 +41,12 @@ export interface RedirectTracker {
   sawLoginPage: boolean
 }
 
-/** The Akamai edge denial page's exact title (land-com spike, 2026-07-11). */
-const ACCESS_DENIED_TITLE = /^access denied$/i
+/**
+ * Edge denial pages: Akamai's "Access Denied" (land-com spike, 2026-07-11)
+ * and Cloudflare's "Attention Required! | Cloudflare" / "Sorry, you have been
+ * blocked" (my.landflip.com, 2026-11-02). Neither is a login page.
+ */
+const ACCESS_DENIED_TITLE = /^(access denied|attention required! \| cloudflare|sorry, you have been blocked)$/i
 
 function pathnameOf(url: string): string | null {
   try {

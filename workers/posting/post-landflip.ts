@@ -56,7 +56,9 @@ import {
   PostResult,
   listPhotos,
   loadPlatformConfig,
+  edgeBlockedError,
   loginExpiredError,
+  onEdgeBlockPage,
   requireListingFacts,
   resolveLocation,
   saveProofScreenshot,
@@ -201,6 +203,7 @@ export async function postToLandflip(
   log('landflip: opening Listings')
   await page.goto(LANDFLIP_SELECTORS.listingsUrl, { waitUntil: 'domcontentloaded' })
   await settle(page)
+  if (await onEdgeBlockPage(page)) throw edgeBlockedError(PLATFORM, page.url())
   if (await onLoginPage(page)) throw loginExpiredError(PLATFORM, page.url())
   const cards = await readListingCards(page)
   const atLimit = (await page.locator(LANDFLIP_SELECTORS.planLimitNotice).count().catch(() => 0)) > 0
