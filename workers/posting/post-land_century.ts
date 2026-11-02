@@ -155,7 +155,13 @@ export const LANDCENTURY_SELECTORS = {
   notificationMessage: '.ant-notification-notice-message',
   notificationDescription: '.ant-notification-notice-description',
   message: '.ant-message-notice',
-  modalClose: '.ant-modal-wrap:not([style*="display: none"]) .ant-modal-close',
+  // Ant modals plus the site's own "Let's keep in touch" newsletter pop-up
+  // (2026-11-02: it opened a few minutes into the session and sat on top of
+  // the Media step's Next button until the click timed out).
+  modalClose:
+    '.ant-modal-wrap:not([style*="display: none"]) .ant-modal-close, ' +
+    '[role="dialog"] button[aria-label="Close"], [role="dialog"] .ant-modal-close, ' +
+    '[class*="modal" i]:not([style*="display: none"]) [class*="close" i]',
 }
 
 const FORM_URL_RE = /\/admin\/listings\/form\/(\d+)/
@@ -700,9 +706,18 @@ async function clickNext(page: Page, label: 'Next' | 'Save Changes' | 'Publish',
     throw new Error(`Could not find the "${label}" button on the Land Century form. Update the SELECTORS block in ${SCRIPT}.`)
   }
   const urlBefore = page.url()
+  await dismissModals(page, log)
   await closeDropdowns(page)
   await btn.scrollIntoViewIfNeeded().catch(() => {})
-  await btn.click()
+  try {
+    await btn.click({ timeout: 10_000 })
+  } catch {
+    // A pop-up may have opened between the check and the click (the site's
+    // newsletter modal is on a timer). Clear it and try once more.
+    await dismissModals(page, log)
+    await closeDropdowns(page)
+    await btn.click({ timeout: 20_000 })
+  }
   // The button shows a spinner while the request is in flight.
   await page.waitForTimeout(500)
   await page
@@ -1023,12 +1038,22 @@ async function latestMessage(page: Page): Promise<string> {
 }
 
 /** Closes upsell modals (Showcase / add funds / newsletter) that the site opens on top of the admin. */
-async function dismissModals(page: Page): Promise<void> {
+async function dismissModals(page: Page, log?: (m: string) => void): Promise<void> {
   for (let i = 0; i < 3; i++) {
-    const close = page.locator(LANDCENTURY_SELECTORS.modalClose).first()
-    if ((await close.count()) === 0 || !(await close.isVisible().catch(() => false))) return
+    const close = page.locator(LANDCENTURY_SELECTORS.modalClose).locator('visible=true').first()
+    if ((await close.count()) === 0) return
+    if (log) {
+      const title = await close
+        .locator('xpath=ancestor::*[contains(@class,"modal") or @role="dialog"][1]')
+        .innerText()
+        .then((t) => t.trim().split('\n')[0].slice(0, 60))
+        .catch(() => '')
+      log(`land_century: closing a pop-up${title ? ` ("${title}")` : ''} that covers the form`)
+    }
     await close.click({ force: true }).catch(() => {})
     await page.waitForTimeout(400)
+    if ((await close.count()) > 0) await page.keyboard.press('Escape').catch(() => {})
+    await page.waitForTimeout(300)
   }
 }
 
