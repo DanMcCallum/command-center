@@ -279,8 +279,11 @@ if [[ $CLAUDE_EXIT -ne 0 ]]; then
   fi
   # A stale session id makes --resume fail instantly on every run; clear it so
   # the next attempt starts a fresh session instead of looping forever.
-  if [[ "$CLAUDE_OUTPUT" == *"No conversation found with session ID"* ]]; then
-    log "Stale claudeSessionId detected; clearing it so the next run starts fresh."
+  # Same for a session the API's safeguard classifier now refuses to continue
+  # ("safeguards flagged this message", 2026-11-02): every resume of that
+  # session fails in seconds, so only a fresh session can make progress.
+  if [[ "$CLAUDE_OUTPUT" == *"No conversation found with session ID"* || "$CLAUDE_OUTPUT" == *"safeguards flagged this message"* ]]; then
+    log "Stale or refused claudeSessionId detected; clearing it so the next run starts fresh."
     api_patch "$TASK_ID" "$(jq -n --arg note "$ERROR_NOTE" \
       '{status: "pending", claudeNotes: $note, claudeSessionId: null}')" >/dev/null
   else
