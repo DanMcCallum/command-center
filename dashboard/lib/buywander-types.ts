@@ -8,7 +8,13 @@ export interface BuywanderEbayComps {
   /** Median sold price of the matching comps, null when none matched. */
   median_sold: number | null;
   comp_count: number;
-  /** The eBay sold-items search the agent used. */
+  /**
+   * exact: same model. loose: same brand and product type after a second,
+   * broader search (model, size, colour dropped). none: nothing matched.
+   * Absent on runs before 2026-11-08 evening.
+   */
+  match?: 'exact' | 'loose' | 'none';
+  /** The eBay sold-items search the agent used (the broader one for loose). */
   search_url: string;
   /** Free text: what matched, why it was skipped, etc. */
   note?: string;

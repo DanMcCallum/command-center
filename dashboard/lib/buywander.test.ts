@@ -100,6 +100,8 @@ test('validateAgentOutput accepts a good payload and names the bad field', () =>
   assert.equal(validateAgentOutput(output({ scanned_ids: [1] as unknown as string[] })), 'scanned_ids must be an array of strings');
   assert.match(validateAgentOutput(output({ finds: [find({ retail_value: '9' as unknown as number })] }))!, /retail_value/);
   assert.match(validateAgentOutput(output({ finds: [find({ ebay: { median_sold: 'x' as unknown as number, comp_count: 1, search_url: '' } })] }))!, /median_sold/);
+  assert.match(validateAgentOutput(output({ finds: [find({ ebay: { median_sold: 1, comp_count: 1, search_url: '', match: 'fuzzy' as 'loose' } })] }))!, /match/);
+  assert.equal(validateAgentOutput(output({ finds: [find({ ebay: { median_sold: 1, comp_count: 1, search_url: '', match: 'loose' } })] })), null);
   assert.equal(validateAgentOutput(output({ skipped: [{ auction_id: 's', url: '', title: 't', retail_value: 500, reason: 'pallet' }] })), null);
 });
 

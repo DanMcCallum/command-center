@@ -87,7 +87,19 @@ median is the middle value (average of the two middle values for an even
 count). Record `comp_count` as the number of comps you kept, the exact eBay
 URL you loaded as `search_url`, and a one-line `note` saying what matched
 (for example "6 sold V3 strollers, Oct-Nov, $650-$800; ignored bassinets").
-With no matching comps, set `median_sold` to null and `comp_count` 0.
+Set `match` to `"exact"` when the comps are the same model.
+
+**Second, looser search.** If the first search leaves you with no
+same-product comps, search once more with a broader query: keep the brand
+and the product type, drop the model number, size, colour and finish (for
+example "Kingston Brass pressure balanced shower faucet" instead of
+"Kingston KB8340BXSO", or "Caracole nightstand" instead of "Caracole
+Lyon Nightstand"). Keep sold items that are the same kind of product from
+the same brand at a comparable tier, still dropping parts, accessories and
+bundles. Record these with `match` set to `"loose"`, `search_url` set to
+the second URL, and a `note` that says what you widened to. Only if the
+second search also finds nothing, set `median_sold` to null, `comp_count`
+0, `match` to `"none"`, and `search_url` to the first URL.
 
 Do this in the one tab, sequentially. Do not open extra tabs.
 
@@ -113,7 +125,7 @@ no commentary in the file):
       "category": "<categoryName as given, trimmed>",
       "bwsku": "<bwsku>",
       "size_description": "<size exactly as given, or null>",
-      "ebay": { "median_sold": 725, "comp_count": 6, "search_url": "<url>", "note": "<one line>" }
+      "ebay": { "median_sold": 725, "comp_count": 6, "match": "exact", "search_url": "<url>", "note": "<one line>" }
     }
   ],
   "skipped": [

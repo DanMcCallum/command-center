@@ -114,6 +114,9 @@ export function validateAgentOutput(body: unknown): string | null {
       return `finds[${i}].ebay.median_sold must be a number or null`;
     }
     if (typeof f.ebay.comp_count !== 'number') return `finds[${i}].ebay.comp_count must be a number`;
+    if (f.ebay.match !== undefined && !['exact', 'loose', 'none'].includes(f.ebay.match as string)) {
+      return `finds[${i}].ebay.match must be exact, loose or none`;
+    }
     if (typeof f.ebay.search_url !== 'string') return `finds[${i}].ebay.search_url must be a string`;
   }
   if (body.skipped !== undefined) {
@@ -266,7 +269,8 @@ export function ntfyMessage(run: BuywanderAgentOutput, dashboardUrl = DEFAULT_DA
   const priced = finds.filter(f => f.spread !== null && f.spread !== undefined);
   const lines = priced.slice(0, 5).map(f => {
     const title = f.title.length > 48 ? f.title.slice(0, 47).trimEnd() + '…' : f.title;
-    return `${title}: eBay ${fmtMoney(f.ebay.median_sold)} vs bid ${fmtMoney(f.current_bid)}, spread ${fmtMoney(f.spread)} (${fmtPct(f.margin)}), ship ${f.shipping_est === null ? 'freight' : fmtMoney(f.shipping_est)}, max bid ${f.max_bid === null ? 'n/a' : fmtMoney(f.max_bid)}`;
+    const loose = f.ebay.match === 'loose' ? ' (loose match)' : '';
+    return `${title}: eBay ${fmtMoney(f.ebay.median_sold)}${loose} vs bid ${fmtMoney(f.current_bid)}, spread ${fmtMoney(f.spread)} (${fmtPct(f.margin)}), ship ${f.shipping_est === null ? 'freight' : fmtMoney(f.shipping_est)}, max bid ${f.max_bid === null ? 'n/a' : fmtMoney(f.max_bid)}`;
   });
   const unpriced = n - priced.length;
   if (unpriced > 0) lines.push(`${unpriced} more with no eBay comps`);

@@ -38,7 +38,8 @@ export default function DealsPage() {
         </div>
         <p className="text-sm text-[#6B6B6B] max-w-2xl">
           Nightly BuyWander scan at 5pm Mountain: new lots with a retail value
-          over $400, priced against eBay sold comps. Spread is the eBay median
+          over $400, priced against eBay sold comps (a &quot;loose&quot; tag means
+          the same brand and product type, not the exact model). Spread is the eBay median
           minus the current bid. Ship est is a UPS Ground planning number from the
           lot&apos;s listed size and weight (hover a value for the billable weight).
           Max bid is the eBay median net of eBay fees, less the target margin,
@@ -161,6 +162,9 @@ function FindRow({ find }: { find: BuywanderFind }) {
           {hasComps ? fmtMoney(find.ebay.median_sold) : 'none'}
         </a>
         {hasComps && <span className="text-[#6B6B6B]"> ({find.ebay.comp_count})</span>}
+        {hasComps && find.ebay.match === 'loose' && (
+          <span className="ml-1 text-[10px] uppercase tracking-wide text-amber-300" title="Same brand and product type, not the exact model">loose</span>
+        )}
       </td>
       <td className="px-3 py-2 text-right font-mono">{fmtMoney(find.spread)}</td>
       <td className={`px-3 py-2 text-right font-mono ${marginClass}`}>{fmtPct(margin)}</td>
