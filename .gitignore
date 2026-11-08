@@ -23,6 +23,9 @@ workers/logs/
 # Worker runtime state
 dashboard/data/worker-state.json
 dashboard/data/agent-status.json
+dashboard/data/buywander-runs.json
+dashboard/data/buywander-seen.json
+workers/buywander/runs/
 .foreman/
 
 # PATLive intake runtime state (processed-email ledger, probe verdict)

@@ -8,6 +8,7 @@ const ITEMS = [
   { href: '/tasks', label: 'Tasks' },
   { href: '/fronts', label: 'Fronts' },
   { href: '/calls', label: 'Calls' },
+  { href: '/deals', label: 'Deals' },
   { href: '/roadmap', label: 'Roadmap' },
 ];
 
