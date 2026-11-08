@@ -207,13 +207,16 @@ export function sortFinds(finds: BuywanderFind[]): BuywanderFind[] {
 export const OVER_MAX_REASON = 'over max';
 
 /**
- * Which auction ids a run settles: the lots it priced and the lots it skipped
- * for cause. Lots skipped as "over max" stay unseen so a later run prices
- * them. Pure.
+ * Which auction ids a run settles: the lots it priced with at least one eBay
+ * comp and the lots it skipped for cause. Lots skipped as "over max" and
+ * lots that found no comps at all stay unseen, so a later run tries them
+ * again while they are live (auctions close within a few days). Pure.
  */
 export function idsToRemember(output: BuywanderAgentOutput): string[] {
   const ids = new Set<string>();
-  for (const f of output.finds) ids.add(f.auction_id);
+  for (const f of output.finds) {
+    if (f.ebay.median_sold !== null && f.ebay.comp_count > 0) ids.add(f.auction_id);
+  }
   for (const s of output.skipped ?? []) {
     if (s.reason.trim().toLowerCase() !== OVER_MAX_REASON) ids.add(s.auction_id);
   }

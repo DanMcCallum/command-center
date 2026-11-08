@@ -126,11 +126,11 @@ test('ntfyMessage uses normal priority for thin margins and singular wording', (
   assert.equal(msg.click, 'https://dashboard.ownaloha.land/deals');
 });
 
-test('idsToRemember keeps priced and skipped-for-cause lots, not over-max ones', () => {
+test('idsToRemember keeps priced and skipped-for-cause lots, not over-max or no-comp ones', () => {
   const ids = idsToRemember(
     output({
-      scanned_ids: ['a1', 'p1', 'c1', 'x1'],
-      finds: [find({ auction_id: 'p1' })],
+      scanned_ids: ['a1', 'p1', 'n1', 'c1', 'x1'],
+      finds: [find({ auction_id: 'p1' }), find({ auction_id: 'n1', ebay: { median_sold: null, comp_count: 0, search_url: '' } })],
       skipped: [
         { auction_id: 'c1', url: '', title: 'pallet', retail_value: 400, reason: 'mixed pallet' },
         { auction_id: 'x1', url: '', title: 'later', retail_value: 500, reason: 'Over max' },
