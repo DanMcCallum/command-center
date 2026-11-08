@@ -129,7 +129,7 @@ if [[ "$code" != "201" ]]; then
   log "dashboard answered $code: $body"
   exit 1
 fi
-python3 -c 'import json,sys; d=json.loads(sys.argv[1]); e=d.get("email",{}); print("stored run", d.get("id"), "finds", len(d.get("finds",[])), "new", d.get("new_count"), "| email:", "sent to "+str(e.get("to")) if e.get("sent") else ("not sent" + (": "+e["error"] if e.get("error") else " (no finds)")))' "$body"
+python3 -c 'import json,sys; d=json.loads(sys.argv[1]); n=d.get("notify",{}); print("stored run", d.get("id"), "finds", len(d.get("finds",[])), "new", d.get("new_count"), "| push:", "sent" if n.get("sent") else ("not sent" + (": "+n["error"] if n.get("error") else " (no finds)")))' "$body"
 
 # Keep the last few run directories for debugging.
 ls -1dt "$RUNS_DIR"/*/ 2>/dev/null | tail -n +$((KEEP_RUNS + 1)) | xargs -r rm -rf
