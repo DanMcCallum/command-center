@@ -144,3 +144,29 @@ export function fmtEnds(iso: string, timeZone = 'America/Denver'): string {
 export function fmtCondition(c: string): string {
   return c.replace(/([a-z])([A-Z])/g, '$1 $2');
 }
+
+/**
+ * A lot the operator won. Lot fields are copied from the find at purchase
+ * time so the record outlives the run (runs roll off after MAX_RUNS).
+ * Stored in data/buywander-purchases.json, newest first.
+ */
+export interface BuywanderPurchase {
+  auction_id: string;
+  /** Run the lot was copied from; null when recorded without one. */
+  run_id: string | null;
+  purchased_at: string;
+  /** Hammer price in dollars; null when the operator skipped the prompt. */
+  paid_usd: number | null;
+  title: string;
+  url: string;
+  bwsku: string | null;
+  category: string | null;
+  condition: string | null;
+  retail_value: number | null;
+  size_description: string | null;
+  ebay: BuywanderEbayComps | null;
+  shipping_est: number | null;
+  notes: string;
+  /** Ad-builder task created for this lot, once there is one. */
+  task_id: string | null;
+}

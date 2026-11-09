@@ -1,29 +1,110 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { useCallback, useEffect, useState } from 'react';
 import {
   fmtCondition,
   fmtEnds,
   fmtMoney,
   fmtPct,
   type BuywanderFind,
+  type BuywanderPurchase,
   type BuywanderRun,
 } from '@/lib/buywander-types';
 import { formatRelative } from '@/lib/utils';
 
+const BTN_SMALL = 'text-xs px-2 py-1 rounded bg-[#2F2F2F] text-[#D4D4D4] hover:bg-[#3A3A3A] disabled:opacity-60 disabled:cursor-default';
+
+/** Asks for a dollar amount; null for blank or cancel. */
+function promptPrice(label: string, current: number | null | undefined): number | null | undefined {
+  const raw = window.prompt(label, current === null || current === undefined ? '' : String(current));
+  if (raw === null) return undefined;
+  const cleaned = raw.replace(/[$,\s]/g, '');
+  if (cleaned === '') return null;
+  const n = Number(cleaned);
+  return Number.isFinite(n) ? n : null;
+}
+
 export default function DealsPage() {
   const [runs, setRuns] = useState<BuywanderRun[]>([]);
+  const [purchases, setPurchases] = useState<BuywanderPurchase[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch('/api/buywander/runs', { cache: 'no-store' })
-      .then(r => r.json())
-      .then((data: BuywanderRun[]) => {
+    Promise.all([
+      fetch('/api/buywander/runs', { cache: 'no-store' }).then(r => r.json()).catch(() => []),
+      fetch('/api/buywander/purchases', { cache: 'no-store' }).then(r => r.json()).catch(() => ({ purchases: [] })),
+    ])
+      .then(([data, bought]: [BuywanderRun[], { purchases?: BuywanderPurchase[] }]) => {
         setRuns(Array.isArray(data) ? data : []);
+        setPurchases(Array.isArray(bought?.purchases) ? bought.purchases : []);
         setLoading(false);
       })
       .catch(() => setLoading(false));
   }, []);
+
+  const upsertPurchase = useCallback((p: BuywanderPurchase) => {
+    setPurchases(prev => {
+      const rest = prev.filter(x => x.auction_id !== p.auction_id);
+      return [p, ...rest].sort((a, b) => Date.parse(b.purchased_at) - Date.parse(a.purchased_at));
+    });
+  }, []);
+
+  const markBought = useCallback(async (find: BuywanderFind, runId: string) => {
+    // BuyWander's settled finalAmount beats the bid the scan saw; fall back quietly.
+    let paidDefault: number | null | undefined = find.current_bid;
+    try {
+      const lotRes = await fetch(`/api/buywander/lot/${encodeURIComponent(find.auction_id)}`);
+      if (lotRes.ok) {
+        const { lot } = (await lotRes.json()) as { lot?: { final_amount?: number | null } };
+        if (typeof lot?.final_amount === 'number') paidDefault = lot.final_amount;
+      }
+    } catch {
+      // ignore
+    }
+    const paid = promptPrice('Price paid (blank if unknown)', paidDefault);
+    if (paid === undefined) return;
+    const res = await fetch('/api/buywander/purchases', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ auction_id: find.auction_id, run_id: runId, paid_usd: paid }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      window.alert(`Could not record the purchase: ${err.error ?? res.status}`);
+      return;
+    }
+    const { purchase } = (await res.json()) as { purchase: BuywanderPurchase };
+    upsertPurchase(purchase);
+  }, [upsertPurchase]);
+
+  const editPrice = useCallback(async (p: BuywanderPurchase) => {
+    const paid = promptPrice('Price paid (blank to clear)', p.paid_usd);
+    if (paid === undefined) return;
+    const res = await fetch(`/api/buywander/purchases/${encodeURIComponent(p.auction_id)}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ paid_usd: paid }),
+    });
+    if (!res.ok) {
+      window.alert(`Could not update the price (${res.status})`);
+      return;
+    }
+    const { purchase } = (await res.json()) as { purchase: BuywanderPurchase };
+    upsertPurchase(purchase);
+  }, [upsertPurchase]);
+
+  const removePurchase = useCallback(async (p: BuywanderPurchase) => {
+    if (!window.confirm(`Remove "${p.title}" from purchased lots?`)) return;
+    const res = await fetch(`/api/buywander/purchases/${encodeURIComponent(p.auction_id)}`, { method: 'DELETE' });
+    if (!res.ok && res.status !== 404) {
+      window.alert(`Could not remove the purchase (${res.status})`);
+      return;
+    }
+    setPurchases(prev => prev.filter(x => x.auction_id !== p.auction_id));
+  }, []);
+
+  const boughtIds = new Set(purchases.map(p => p.auction_id));
 
   return (
     <div className="space-y-8">
@@ -49,6 +130,10 @@ export default function DealsPage() {
         </p>
       </header>
 
+      {!loading && (
+        <PurchasedSection purchases={purchases} onEditPrice={editPrice} onRemove={removePurchase} />
+      )}
+
       {loading ? (
         <div className="text-sm text-[#6B6B6B]">Loading…</div>
       ) : runs.length === 0 ? (
@@ -61,7 +146,7 @@ export default function DealsPage() {
       ) : (
         <div className="space-y-10">
           {runs.map(run => (
-            <RunSection key={run.id} run={run} />
+            <RunSection key={run.id} run={run} boughtIds={boughtIds} onBought={markBought} />
           ))}
         </div>
       )}
@@ -69,7 +154,122 @@ export default function DealsPage() {
   );
 }
 
-function RunSection({ run }: { run: BuywanderRun }) {
+function PurchasedSection({
+  purchases,
+  onEditPrice,
+  onRemove,
+}: {
+  purchases: BuywanderPurchase[];
+  onEditPrice: (p: BuywanderPurchase) => void;
+  onRemove: (p: BuywanderPurchase) => void;
+}) {
+  return (
+    <section className="space-y-3">
+      <div className="flex items-baseline gap-3">
+        <h2 className="text-lg font-semibold">Purchased</h2>
+        {purchases.length > 0 && (
+          <span className="text-xs font-mono text-[#6B6B6B]">
+            {purchases.length} {purchases.length === 1 ? 'lot' : 'lots'}
+          </span>
+        )}
+      </div>
+      {purchases.length === 0 ? (
+        <p className="text-sm text-[#6B6B6B]">No purchased lots yet. Mark a lot Bought below after you win it.</p>
+      ) : (
+        <div className="overflow-x-auto border border-[#2F2F2F] rounded-lg">
+          <table className="w-full text-sm">
+            <thead className="text-left text-xs uppercase tracking-wide text-[#6B6B6B] bg-[#1F1F1F]">
+              <tr>
+                <th className="px-3 py-2 font-medium">Item</th>
+                <th className="px-3 py-2 font-medium">SKU</th>
+                <th className="px-3 py-2 font-medium text-right">Paid</th>
+                <th className="px-3 py-2 font-medium text-right">eBay sold</th>
+                <th className="px-3 py-2 font-medium">Purchased</th>
+                <th className="px-3 py-2 font-medium">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {purchases.map(p => (
+                <PurchaseRow key={p.auction_id} purchase={p} onEditPrice={onEditPrice} onRemove={onRemove} />
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function PurchaseRow({
+  purchase: p,
+  onEditPrice,
+  onRemove,
+}: {
+  purchase: BuywanderPurchase;
+  onEditPrice: (p: BuywanderPurchase) => void;
+  onRemove: (p: BuywanderPurchase) => void;
+}) {
+  const builderHref = `/item-ad-builder?auction_id=${encodeURIComponent(p.auction_id)}`;
+  const median = p.ebay?.median_sold ?? null;
+  return (
+    <tr className="border-t border-[#2F2F2F] align-top">
+      <td className="px-3 py-2 max-w-xs">
+        <a href={p.url} target="_blank" rel="noreferrer" className="text-white hover:underline">
+          {p.title}
+        </a>
+        {p.notes && <div className="text-xs text-[#6B6B6B] mt-0.5 whitespace-pre-wrap">{p.notes}</div>}
+      </td>
+      <td className="px-3 py-2 font-mono whitespace-nowrap">{p.bwsku ?? <span className="text-[#6B6B6B]">none</span>}</td>
+      <td className="px-3 py-2 text-right font-mono whitespace-nowrap">
+        {p.paid_usd === null ? <span className="text-[#6B6B6B]">unknown</span> : fmtMoney(p.paid_usd)}
+      </td>
+      <td className="px-3 py-2 text-right font-mono whitespace-nowrap">
+        {median === null ? (
+          <span className="text-[#6B6B6B]">none</span>
+        ) : p.ebay?.search_url ? (
+          <a href={p.ebay.search_url} target="_blank" rel="noreferrer" className="hover:underline">{fmtMoney(median)}</a>
+        ) : (
+          fmtMoney(median)
+        )}
+      </td>
+      <td className="px-3 py-2 whitespace-nowrap">{fmtEnds(p.purchased_at)}</td>
+      <td className="px-3 py-2 whitespace-nowrap">
+        <div className="flex items-center gap-2">
+          {p.task_id ? (
+            <>
+              <Link href={`/tasks?focus=${encodeURIComponent(p.task_id)}`} className="text-xs px-2 py-1 rounded bg-[#4DAB9A] text-black font-medium hover:opacity-90">
+                Open task
+              </Link>
+              <Link href={builderHref} className="text-xs text-[#6B6B6B] hover:text-white underline decoration-dotted">
+                Rebuild
+              </Link>
+            </>
+          ) : (
+            <Link href={builderHref} className="text-xs px-2 py-1 rounded bg-[#4DAB9A] text-black font-medium hover:opacity-90">
+              Build ads
+            </Link>
+          )}
+          <button type="button" onClick={() => onEditPrice(p)} className={BTN_SMALL}>
+            Edit price
+          </button>
+          <button type="button" onClick={() => onRemove(p)} className={`${BTN_SMALL} hover:text-red-300`}>
+            Remove
+          </button>
+        </div>
+      </td>
+    </tr>
+  );
+}
+
+function RunSection({
+  run,
+  boughtIds,
+  onBought,
+}: {
+  run: BuywanderRun;
+  boughtIds: Set<string>;
+  onBought: (find: BuywanderFind, runId: string) => void;
+}) {
   const [showSkipped, setShowSkipped] = useState(false);
   const skipped = run.skipped ?? [];
   return (
@@ -102,11 +302,12 @@ function RunSection({ run }: { run: BuywanderRun }) {
                 <th className="px-3 py-2 font-medium">Ends</th>
                 <th className="px-3 py-2 font-medium">Condition</th>
                 <th className="px-3 py-2 font-medium">Category</th>
+                <th className="px-3 py-2 font-medium"></th>
               </tr>
             </thead>
             <tbody>
               {run.finds.map(f => (
-                <FindRow key={f.auction_id} find={f} />
+                <FindRow key={f.auction_id} find={f} bought={boughtIds.has(f.auction_id)} onBought={() => onBought(f, run.id)} />
               ))}
             </tbody>
           </table>
@@ -142,7 +343,7 @@ function RunSection({ run }: { run: BuywanderRun }) {
   );
 }
 
-function FindRow({ find }: { find: BuywanderFind }) {
+function FindRow({ find, bought, onBought }: { find: BuywanderFind; bought: boolean; onBought: () => void }) {
   const hasComps = find.ebay.median_sold !== null;
   const margin = find.margin ?? null;
   const marginClass =
@@ -175,6 +376,17 @@ function FindRow({ find }: { find: BuywanderFind }) {
       <td className="px-3 py-2 whitespace-nowrap">{fmtEnds(find.ends_at)}</td>
       <td className="px-3 py-2 whitespace-nowrap">{fmtCondition(find.condition)}</td>
       <td className="px-3 py-2">{find.category}</td>
+      <td className="px-3 py-2 whitespace-nowrap">
+        <button
+          type="button"
+          onClick={onBought}
+          disabled={bought}
+          className={bought ? `${BTN_SMALL} text-[#4DAB9A]` : BTN_SMALL}
+          title={bought ? 'Recorded under Purchased' : 'Mark this lot as won'}
+        >
+          {bought ? 'Bought ✓' : 'Bought'}
+        </button>
+      </td>
     </tr>
   );
 }

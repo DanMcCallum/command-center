@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 
 const ITEMS = [
   { href: '/ad-builder', label: 'Ad Builder' },
+  { href: '/item-ad-builder', label: 'Item Ads' },
   { href: '/tasks', label: 'Tasks' },
   { href: '/fronts', label: 'Fronts' },
   { href: '/calls', label: 'Calls' },

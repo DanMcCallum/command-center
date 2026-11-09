@@ -104,6 +104,55 @@
       "login_success": {
         "redirect_off": "/signin"
       }
+    },
+    "ebay_item": {
+      "display_name": "eBay (item)",
+      "enabled": false,
+      "manual": true,
+      "_doc": "Post-by-hand entry for the item ad builder (BuyWander lots and other goods). No eBay poster exists; the key `ebay` belongs to land ads (long-form listing HTML from knowledge-base/ebay). The worker writes <workspace>/ebay_item.md with HEADLINE (80 max), ITEM SPECIFICS and DESCRIPTION sections; ManualPublishCard shows the copy, the photos in order (24 max on a standard listing) and records the live URL.",
+      "login_url": "https://signin.ebay.com/",
+      "new_listing_url": "https://www.ebay.com/sl/sell",
+      "manual_photo_cap": 24,
+      "manual_steps": [
+        "Open the sell form, search the item or pick the category eBay suggests, then choose the condition that matches the task (New, Open box, Used, For parts).",
+        "Paste the title (80 characters max). Drag the photos below onto the listing in order; the first one is the gallery photo.",
+        "Fill the item specifics (brand, model, type, size, colour) from the ITEM SPECIFICS section of ebay_item.md; leave anything unknown blank.",
+        "Paste the description. Set the price as Buy It Now; turn on Best Offer when the task says offers are accepted.",
+        "Shipping or local pickup as the task says: calculated shipping with the package weight and dimensions from the task, free shipping, or local pickup only. List it.",
+        "Open the live listing, copy its URL (ebay.com/itm/...) and record it below."
+      ]
+    },
+    "fb_item": {
+      "display_name": "Facebook Marketplace (item)",
+      "enabled": false,
+      "manual": true,
+      "_doc": "Post-by-hand entry for the item ad builder. Same create form as the land facebook_marketplace entry but a regular Item for sale with a real category and condition. The worker writes <workspace>/fb_item.md with HEADLINE and DESCRIPTION sections. Location is the pickup area (metadata.pickup_area), not a property town.",
+      "login_url": "https://www.facebook.com/",
+      "new_listing_url": "https://www.facebook.com/marketplace/create/item",
+      "manual_photo_cap": 10,
+      "manual_steps": [
+        "Open the create form (Item for sale). Drag the photos below onto it in order; the first one is the cover.",
+        "Paste the title and the price (digits only). Pick the closest category and the condition from the task.",
+        "Paste the description.",
+        "Set the location to the pickup area from the task so local buyers see it. Turn on shipping only when the task says the buyer pays shipping or shipping is free. Next, then Publish.",
+        "Open the published listing, copy its URL from the address bar, and record it below."
+      ]
+    },
+    "ksl": {
+      "display_name": "KSL Classifieds",
+      "enabled": false,
+      "manual": true,
+      "_doc": "Post-by-hand entry for the item ad builder. KSL Classifieds (Utah) has no public listing API and blocks headless browsers and plain HTTP clients with a 403, so the create URL and the 12-photo cap are from the site as seen in a normal browser, not confirmed by code; correct them here if the form differs. The worker writes <workspace>/ksl.md with HEADLINE and DESCRIPTION sections.",
+      "login_url": "https://classifieds.ksl.com/login",
+      "new_listing_url": "https://classifieds.ksl.com/sell",
+      "manual_photo_cap": 10,
+      "manual_steps": [
+        "Open the sell form and pick the category and subcategory that fit the item.",
+        "Paste the title and the price. Pick the condition from the task; tick negotiable when the task says offers are accepted.",
+        "Paste the description. Drag the photos below onto the form in order; the first one is the main photo.",
+        "Set the location (city and zip) to the pickup area from the task, then review and post.",
+        "Open the live listing, copy its URL from the address bar, and record it below."
+      ]
     }
   }
 }

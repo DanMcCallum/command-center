@@ -24,6 +24,7 @@ workers/logs/
 dashboard/data/worker-state.json
 dashboard/data/agent-status.json
 dashboard/data/buywander-runs.json
+dashboard/data/buywander-purchases.json
 dashboard/data/buywander-seen.json
 workers/buywander/runs/
 .foreman/

@@ -1,0 +1,96 @@
+{
+  "_doc": "Per-platform caps and rules for consumer-goods ads (BuyWander liquidation lots resold on eBay, Facebook Marketplace and KSL Classifieds). Read by workers/commands/generate-item-ad.md and the item ad builder UI. Separate from config/ad-platforms.json on purpose: workers/dreams-gate.sh keys on that file's platforms, and item ads are never DREAMS-scored, so these keys must never be added there. Caps are hard limits for the generator. Confirmed figures and their sources are in each platform's _source. Unconfirmed picks (2026-11-09): KSL description_max 2000 and photo_cap 10 are conservative choices because KSL publishes no description or photo limit (its 2022 blog says 95 title characters; an older KSL article says you can add about as many photos as you want); Facebook Marketplace description_max 2000 is conservative (one third-party guide claims 5000) and headline_max 99 comes from this repo's own 2026-11-02 refusal of a 100-character title. Re-check against the live posting forms when a cap matters.",
+  "platforms": {
+    "ebay_item": {
+      "display_name": "eBay",
+      "headline_max": 80,
+      "description_max": 5000,
+      "photo_cap": 24,
+      "format": "blocks",
+      "template": "knowledge-base/items/listing-template.md",
+      "seller_terms": "knowledge-base/items/seller-terms.md",
+      "condition_values": {
+        "New": "New",
+        "Appears new / open box": "New: Open box (pick 'Open box' when the category offers it, else 'New other')",
+        "Used, good": "Used",
+        "Used, fair": "Used (state the wear in the condition description) or Acceptable where the category offers it",
+        "For parts": "For parts or not working"
+      },
+      "buyer_profile": "National search-driven marketplace. The buyer typed a brand and model into the search box and is comparing a column of near-identical titles by price, condition and photo; title keywords decide whether the listing is seen at all, and the item specifics table is what the buyer trusts over the prose. Audience: deal hunters who know roughly what the item retails for, parts buyers, and people replacing a broken unit who care about exact model and what ships in the box. They read the condition line and the CONDITION block hardest, because a liquidation item is a return or open box and they have been burned before. The description is scanned in blocks on a phone, so plain ALL-CAPS block headers and one fact per line work; nobody reads a paragraph of adjectives. Shipping cost and handling time are part of the price to this buyer; say which it is.",
+      "rules": [
+        "Title is 80 characters, hard limit. Formula: Brand + Model + the one or two specs a searcher types (size, capacity, colour) + condition word. No filler words (look, wow, L@@K, nice, great), no ALL CAPS beyond brand names and model codes, no punctuation runs, no keyword spamming of other brands.",
+        "No phone numbers, email addresses, web links or off-eBay payment instructions anywhere in the title, description or photos (eBay contact-information and off-site-sales policies). Contact is 'message us through eBay'.",
+        "Payment is eBay checkout only; never name Venmo, Zelle, cash or PayPal-direct in the copy.",
+        "The description is plain blocks from knowledge-base/items/listing-template.md: ALL-CAPS header lines, '- ' bullets, no markdown '#' headings inside the description (the render parser stops at the first one), no HTML, no tables.",
+        "Condition word in the title and the CONDITION block must match metadata.condition exactly as mapped in condition_values. 'New' only when metadata.condition is New. 'Appears new / open box' is written as open box or new open box, never as new.",
+        "Every defect in metadata.defects and every line of metadata.condition_notes appears in the CONDITION block. Nothing visible in the photos that contradicts the copy.",
+        "The asking price appears in the description (eBay also shows it, but the copy must stand on its own in the file). When metadata.accept_offers is true, say 'Best Offer welcome'; when false, do not mention offers.",
+        "Shipping and pickup lines follow metadata.shipping exactly (calculated, free, or local pickup only). Local pickup only listings say where in plain words (the pickup_area, no street address).",
+        "Returns line comes from knowledge-base/items/seller-terms.md, eBay section. Never promise a return window the terms file does not state.",
+        "Item specifics: Brand, Model, Type, Condition, Color, Material, Dimensions from metadata or photos; MPN and UPC are 'Does not apply' when unknown. Never guess a UPC or MPN."
+      ],
+      "fees_note": "Final value fee 13.6% of the total sale (item plus shipping) up to $7,500 per item, plus $0.30 per order at or under $10 and $0.40 over $10; first 250 listings a month free, then $0.35 each. Confirmed 2026-11-09 on eBay's selling fees page.",
+      "_source": "Title 80 characters and the contact-information rule: eBay Help, 'Creating a listing' and 'Contact information policy' (https://www.ebay.com/help/policies/listing-policies/contact-information-policy?id=4249). Fees: https://www.ebay.com/help/selling/fees-credits-invoices/selling-fees?id=4822, read 2026-11-09. Photo cap 24 is eBay's free photo allowance per listing. Dated 2026-11-09."
+    },
+    "fb_item": {
+      "display_name": "Facebook Marketplace",
+      "headline_max": 99,
+      "description_max": 2000,
+      "photo_cap": 10,
+      "format": "short-form",
+      "manual": true,
+      "condition_values": {
+        "New": "New",
+        "Appears new / open box": "Used - Like New (Marketplace has no open-box option; the first description line says open box)",
+        "Used, good": "Used - Good",
+        "Used, fair": "Used - Fair",
+        "For parts": "Used - Fair (the title and first line say for parts or not working)"
+      },
+      "buyer_profile": "Local and regional buyers scrolling a photo grid on a phone, not searching by model number. The grid shows the first photo, the price and the first few words of the title, so the title says what the item is in plain words first (sectional sofa, espresso machine), then brand and model, then the one spec that matters. They are comparing against new retail at Walmart, Amazon or Costco and respond to a clear retail-versus-asking gap, a pickup spot they can reach after work, and a seller who answers fast. They are wary of scams, so a plain condition line and an offer to demo it at pickup carry more weight than adjectives. The description is read after a tap: lead with what it is, the price and the pickup area, keep paragraphs to one or two lines, one fact per line in lists, and close with 'message me'.",
+      "rules": [
+        "Title is 99 characters, hard limit (a 100-character title was refused on 2026-11-02). Plain words first: say what the object is before the brand and model code.",
+        "Description is 2000 characters, hard limit. Phone-screen structure: short lines, one fact per line, no walls of text.",
+        "The asking price appears in the description's first two lines along with what the item is and the pickup area.",
+        "The retail value may be named as a comparison ('retails for $680') when metadata.retail_value is present; never present it as what the buyer pays.",
+        "Local pickup line always present when metadata.local_pickup is true: the pickup_area in plain words, no street address. If shipping is also offered, one line saying so with who pays.",
+        "Payment line: cash, Venmo or Zelle at pickup, from knowledge-base/items/seller-terms.md. No holds without payment. No financing words of any kind (down payment, payments, monthly, no credit check): Marketplace reviews those as financial products.",
+        "Condition stated honestly in the first lines and again in a short CONDITION list; liquidation items say 'open box' or 'retail return' in plain words. Never 'new' unless metadata.condition is New.",
+        "Phone number allowed (from seller-terms) but the primary call to action is 'message me on Marketplace'. No external links.",
+        "Posted by hand through the dashboard's Post by hand card: the copy must paste cleanly as plain text (no markdown emphasis, no headers with #).",
+        "No brand-name stuffing, no emoji walls, no 'DM for price' (the price is always stated)."
+      ],
+      "fees_note": "Free to list and sell locally. Shipped Marketplace sales carry a Meta selling fee; local pickup with payment at pickup carries none.",
+      "_source": "Title cap: this repo's own evidence, a 100-character title refused with 'Please enter a shorter title' on 2026-11-02 and a 90-character title accepted 2026-10-13 (config/ad-platforms.json facebook_marketplace). Third-party guides disagree (The Drum, 100: https://www.thedrum.com/news/how-use-facebook-marketplace-step-step-guide; others claim 150 or 200), and Meta publishes no figure. Description cap 2000 is conservative; a 1998-character description went in unchanged 2026-10-13 and one third-party car-listing guide claims 5000. Photo cap 10 observed on the create form 2026-10-12. Dated 2026-11-09."
+    },
+    "ksl": {
+      "display_name": "KSL Classifieds",
+      "headline_max": 95,
+      "description_max": 2000,
+      "photo_cap": 10,
+      "format": "short-form",
+      "manual": true,
+      "condition_values": {
+        "New": "New",
+        "Appears new / open box": "Like New (first description line says open box)",
+        "Used, good": "Good",
+        "Used, fair": "Fair",
+        "For parts": "Poor or For Parts, whichever the category offers (operator to confirm the exact option names on the posting form)"
+      },
+      "buyer_profile": "Utah's own classifieds, used along the Wasatch Front the way other states use Craigslist. Buyers are local households and small contractors who expect to drive over, look at the item and pay in person; many search KSL first for furniture, appliances, tools and baby gear because they can skip shipping. They respond to a city name they recognise (Salt Lake City, Murray, West Valley, Sandy), a price that is clearly under retail, and plain honest wording about condition. KSL readers are comfortable calling or texting, so the phone number works here. They distrust listings that read like national ads or that hide the price. Structure: first line says what it is and the price, then condition, then what is included, then pickup city and how to reach us.",
+      "rules": [
+        "Title is 95 characters, hard limit (KSL's own 2022 blog figure; not re-confirmed on the form). Plain words first, then brand and model, then the key spec.",
+        "Description is 2000 characters, a conservative hard limit set by us because KSL publishes no figure.",
+        "The asking price appears in the first line of the description and in the price field.",
+        "Pickup city or area from metadata.pickup_area appears in the description; no street address. Say 'cash or Venmo at pickup' (seller-terms); no holds without payment.",
+        "Phone number and 'call or text' are allowed and encouraged; KSL's own messaging is the alternative. No external links.",
+        "Condition honest in the first lines: 'open box' or 'retail return' in plain words; 'new' only when metadata.condition is New.",
+        "No financing or payment-plan words. No 'OBO' unless metadata.accept_offers is true, then write 'reasonable offers considered'.",
+        "Shipping: KSL is a local marketplace; mention shipping only when metadata.shipping is not 'Local pickup only', as one line with who pays.",
+        "KSL title text is plain; no ALL CAPS words except brand names and model codes, no emoji, no punctuation runs.",
+        "Individuals may post unlimited General listings; a business account is capped at five at a time (KSL Terms of Use). Posting duplicates to crowd a search page is prohibited."
+      ],
+      "fees_note": "Free for individuals in General merchandise categories (KSL getting-started page, 2026). Some categories and business accounts carry fees; posting in the wrong category to dodge a fee gets the listing removed.",
+      "_source": "Title 95 characters: KSL Classifieds blog 'Pro tips for creating listings that sell on KSL Classifieds' (2022, https://classifieds.ksl.com/resources/helpful-tips/pro-tips-for-creating-listings-that-sell-on-ksl-classifieds), found via search 2026-11-09; the page itself returns 403 to this server. Free posting: https://classifieds.ksl.com/resources/helpful-tips/welcome-getting-started-with-ksl-classifieds. Business cap and duplicate rule: https://www.ksl.com/article/50077580/ksl-classifieds-terms-of-use. Description and photo caps unconfirmed; 2000 and 10 are conservative picks, see _doc. Dated 2026-11-09."
+    }
+  }
+}

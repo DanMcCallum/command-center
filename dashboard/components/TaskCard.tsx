@@ -79,8 +79,13 @@ export default function TaskCard({ task, parentTitle, onChange }: Props) {
     };
   }, [expanded, task.workspacePath, task.updatedAt]);
 
+  // Land ad: posters, eBay listing HTML and the land knowledge base apply.
   const isAdBuilderTask =
     task.slashCommand === 'generate-ad' || task.tags.includes('ad-builder');
+  // Item ad (BuyWander lots and other goods): every platform is post-by-hand,
+  // so only ManualPublishCard applies; the land-only controls stay hidden.
+  const isItemAdTask =
+    task.slashCommand === 'generate-item-ad' || task.tags.includes('item-ad-builder');
   const frontTags = task.tags.filter(t => t.startsWith('front:')).map(t => t.slice('front:'.length));
   const plainTags = task.tags.filter(t => !t.startsWith('front:'));
 
@@ -249,7 +254,7 @@ export default function TaskCard({ task, parentTitle, onChange }: Props) {
                             </span>
                           )}
                         </button>
-                        {e.name === 'ebay.md' && (
+                        {isAdBuilderTask && e.name === 'ebay.md' && (
                           <button
                             type="button"
                             onClick={() => setEbayListingOpen(true)}
@@ -283,7 +288,7 @@ export default function TaskCard({ task, parentTitle, onChange }: Props) {
           {isAdBuilderTask && (
             <PublishButtons task={task} onChange={onChange} />
           )}
-          {isAdBuilderTask && (
+          {(isAdBuilderTask || isItemAdTask) && (
             <ManualPublishCard task={task} onChange={onChange} />
           )}
 

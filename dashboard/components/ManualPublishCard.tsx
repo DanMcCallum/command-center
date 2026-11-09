@@ -9,7 +9,10 @@ import type { AdPosting, Task } from '@/lib/types';
  * Marketplace: no seller API and automated posting is against Meta's terms).
  * Shows the generated copy with copy buttons, the photos in upload order,
  * a link to the site's create form, and a box to record the live URL as a
- * posting like the automated ones.
+ * posting like the automated ones. Used by land ad tasks (facebook_marketplace)
+ * and item ad tasks (ebay_item, fb_item, ksl): the card reads
+ * <workspace>/<key>.md, metadata.price_usd, metadata.platforms and
+ * <workspace>/photos the same way for both.
  */
 
 interface ManualPlatform {
@@ -309,7 +312,7 @@ function ManualPlatformPanel({
                 type="url"
                 value={url}
                 onChange={e => setUrl(e.target.value)}
-                placeholder="https://www.facebook.com/marketplace/item/..."
+                placeholder={`Live ${platform.name} listing URL (https://...)`}
                 className="flex-1 min-w-[16rem] bg-[#2F2F2F] text-white border border-[#373737] rounded px-2 py-1 text-xs outline-none focus:border-[#4DAB9A]"
               />
               <button

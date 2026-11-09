@@ -1,0 +1,49 @@
+{
+  "type": "Single",
+  "id": "08df3c6c-cb5d-5e67-0a58-a9feac020000",
+  "startDate": "2026-11-07T01:16:47.592816+00:00",
+  "endDate": "2026-11-09T02:21:00+00:00",
+  "finalAmount": 120.75,
+  "winningBid": {
+    "amount": 105.0,
+    "placedAt": "2026-11-09T01:35:06.144345+00:00"
+  },
+  "computedBidHistory": [
+    {
+      "amount": 104.0,
+      "placedAt": "2026-11-09T00:25:21.048854+00:00"
+    },
+    {
+      "amount": 105.0,
+      "placedAt": "2026-11-09T01:35:06.144345+00:00"
+    }
+  ],
+  "historyStatus": null,
+  "pickupByDate": "2026-11-18T02:00:00+00:00",
+  "item": {
+    "bwsku": "SLC-716197",
+    "condition": "AppearsNew",
+    "title": "Marsail Modular Sectional Sofa, 142\" U-Shaped Modular Sectional Couch with Deep Seat, Freely Combinable Sectional Cloud Sofa for Living Room, No Assembly, Plush Corduroy Fabric, Beige",
+    "description": "Convertible & Custom Layout: Flip the chaise left/right with our reversible cloud sofa. Freely combine modular sofa pieces to create unique configurations perfect for living room movie nights or hosting. Instant Setup & No Tools: The modular cloud couch sectional arrives fully built. No assembly required - just unfold the plush corduroy couch in your living room and start relaxing instantly. Claw-",
+    "categoryName": "Furniture",
+    "sizeDescription": "142 Inch-U Shape",
+    "price": 679.99,
+    "images": [
+      "https://m.media-amazon.com/images/I/91ErK6qxfrL.jpg",
+      "https://cdn.buywander.com/items/8e9db7e5-42d8-4e0e-8d7b-0dc29562b806",
+      "https://cdn.buywander.com/items/20729d3c-65f1-4b61-91d5-205190074810",
+      "https://cdn.buywander.com/items/ab04c97d-25e6-489a-9b13-8aa1d0904406",
+      "https://cdn.buywander.com/items/543ab269-28b1-495c-8634-bfcf3736de18",
+      "https://m.media-amazon.com/images/I/91oKTZUAXmL.jpg",
+      "https://m.media-amazon.com/images/I/91pRL1ifHyL.jpg",
+      "https://m.media-amazon.com/images/I/91WQQFGYAcL.jpg",
+      "https://m.media-amazon.com/images/I/91NJYhhVJQL.jpg",
+      "https://m.media-amazon.com/images/I/912PWRqRX-L.jpg",
+      "https://m.media-amazon.com/images/I/71UmZVwRmQL.jpg",
+      "https://m.media-amazon.com/images/I/718hwLx4rOL.jpg"
+    ]
+  },
+  "storeLocation": {
+    "name": "Salt Lake City"
+  }
+}
