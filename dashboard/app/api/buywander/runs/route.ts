@@ -3,6 +3,7 @@ import { requireAgentToken } from '@/lib/agent-auth';
 import {
   bidRuleFromEnv,
   getRuns,
+  hasPricedFind,
   notifyRun,
   recordRun,
   updateRunNotify,
@@ -42,7 +43,7 @@ export async function POST(request: Request) {
   const run = await recordRun(body as BuywanderAgentOutput, rule);
 
   let notify: BuywanderNotify = { sent: false, channel: 'ntfy', error: null };
-  if (run.finds.length > 0) {
+  if (hasPricedFind(run)) {
     try {
       await notifyRun(run, rule);
       notify = { sent: true, channel: 'ntfy', error: null };

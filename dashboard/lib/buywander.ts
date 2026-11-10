@@ -289,6 +289,15 @@ export function ntfyMessage(run: BuywanderAgentOutput, dashboardUrl = DEFAULT_DA
 }
 
 /** Pushes the run summary; the route records success or the error on the run. */
+/**
+ * A run is worth a phone push only when at least one find was priced against
+ * eBay. A night where eBay refused every search leaves finds with no median,
+ * and those are retried on the next run anyway.
+ */
+export function hasPricedFind(run: Pick<BuywanderAgentOutput, 'finds'>): boolean {
+  return run.finds.some((f) => typeof f.ebay?.median_sold === 'number' && (f.ebay?.comp_count ?? 0) > 0);
+}
+
 export async function notifyRun(run: BuywanderAgentOutput, rule: BuywanderBidRule = DEFAULT_BID_RULE): Promise<void> {
   const base = readProjectEnvVar('DASHBOARD_PUBLIC_URL') ?? DEFAULT_DASHBOARD_PUBLIC_URL;
   await publishNtfy(NTFY_TOPIC_VAR, ntfyMessage(run, base, rule));

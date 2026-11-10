@@ -74,9 +74,22 @@ await new Promise(r => setTimeout(r, 1500));
 })).filter(x => x.title && x.price && !/Shop on eBay/i.test(x.title)).slice(0, 40)
 ```
 
-If the page is an eBay "verify you are human" or error page, wait 10 seconds
-and retry once; if it still fails, set `median_sold` to null with the note
-"ebay blocked" and move on. Do not try to solve any challenge.
+Every eBay search is a real navigation of the tab, one lot at a time. Never
+call `fetch()` (or XHR) against ebay.com from page JavaScript and never loop
+over several queries in one script: a burst of scripted searches is what gets
+this browser refused by eBay. After reading each result page, wait 3 seconds
+before the next eBay navigation (add `await new Promise(r => setTimeout(r,
+3000))` to the end of the script above, or run it on its own).
+
+If the page is an eBay error page (title "Error Page | eBay", "Something went
+wrong on our end"), wait 30 seconds and navigate to the same URL again; if
+that fails too, wait 90 seconds and try a third time. If the third try fails,
+set `median_sold` to null, `comp_count` 0, `match` `"none"` and the note
+"ebay blocked" for that lot. When two lots in a row end "ebay blocked", stop
+searching: give every remaining lot the same "ebay blocked" record without
+loading eBay again, and say so in `notes`. If the page is a "verify you are
+human" challenge, do not retry and do not try to solve it: mark the lot and
+every remaining lot "ebay blocked" and say so in `notes`.
 
 From the results keep only comps that are the SAME product (same brand and
 model or equivalent; the same generation or version when the title states

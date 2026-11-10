@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
+  hasPricedFind,
   idsToRemember,
   median,
   ntfyMessage,
@@ -138,4 +139,11 @@ test('idsToRemember keeps priced and skipped-for-cause lots, not over-max or no-
     }),
   );
   assert.deepEqual(ids.sort(), ['c1', 'p1']);
+});
+
+test('hasPricedFind is false when eBay priced nothing, true with one priced find', () => {
+  const blocked = find({ auction_id: 'n1', ebay: { median_sold: null, comp_count: 0, search_url: '' } });
+  assert.equal(hasPricedFind(output({ finds: [] })), false);
+  assert.equal(hasPricedFind(output({ finds: [blocked, blocked] })), false);
+  assert.equal(hasPricedFind(output({ finds: [blocked, find()] })), true);
 });
