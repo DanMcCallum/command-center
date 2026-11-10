@@ -129,6 +129,15 @@
       "_doc": "Post-by-hand entry for the item ad builder. Same create form as the land facebook_marketplace entry but a regular Item for sale with a real category and condition. The worker writes <workspace>/fb_item.md with HEADLINE and DESCRIPTION sections. Location is the pickup area (metadata.pickup_area), not a property town.",
       "login_url": "https://www.facebook.com/",
       "new_listing_url": "https://www.facebook.com/marketplace/create/item",
+      "groups": [
+        "WEBER DAVIS COUNTY YARD SALE AND BUSINESS DEALS",
+        "Box Elder County Classifieds",
+        "Buy & Sell Locally In Northern Utah",
+        "Weber/Davis County Yard Sale",
+        "UtahsDaily.com - Utah Citizens & Classifieds",
+        "Weber / Ogden: Buy, Sell or Trade."
+      ],
+      "_groups_source": "The six buy/sell groups the operator listed the Samsung T9 SSD in by hand, read from that listing on 2026-11-10 (operator: use these for every future item post). Names must match the group names on the \"List in more places\" step exactly; a group the account has left is skipped and reported.",
       "manual_photo_cap": 10,
       "manual_steps": [
         "Open the create form (Item for sale). Drag the photos below onto it in order; the first one is the cover.",

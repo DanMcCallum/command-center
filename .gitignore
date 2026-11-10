@@ -38,3 +38,6 @@ __pycache__/
 
 # Fronts: session summaries the operator marks private stay on this machine
 fronts/memory/*-private.md
+
+# Item poster run directories (prompts, Claude logs, result files)
+workers/item-poster/runs/

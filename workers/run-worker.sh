@@ -405,6 +405,33 @@ fi
 api_patch "$TASK_ID" "$UPDATE_BODY" >/dev/null
 log "SUCCESS: task $TASK_ID -> $FINAL_STATUS"
 
+# --- Item ads: post to KSL and Facebook Marketplace automatically -------------
+# A finished generate-item-ad task is handed to workers/item-poster/run.sh,
+# which drives the operator's Chrome (claude -p --chrome) and records each
+# listing on the task as a posting. It runs detached with its own lock and
+# log so a slow browser never holds the worker lock (fd 200 is closed for it).
+# Off switches: ITEM_AUTOPOST=0 in the environment or the root .env.local,
+# or metadata.autopost=false on the task. Platforms already posted are skipped,
+# so a revision run does not post twice.
+ITEM_POSTER_SCRIPT="$WORKERS_DIR/item-poster/run.sh"
+if [[ "$TASK_SLASH_COMMAND" == "generate-item-ad" && "$FINAL_STATUS" == "needs_review" ]]; then
+  ITEM_AUTOPOST_VALUE="${ITEM_AUTOPOST:-}"
+  if [[ -z "$ITEM_AUTOPOST_VALUE" && -f "$PROJECT_ROOT/.env.local" ]]; then
+    ITEM_AUTOPOST_VALUE=$(sed -n -E 's/^(export[[:space:]]+)?ITEM_AUTOPOST=//p' "$PROJECT_ROOT/.env.local" | head -1 | tr -d "\"'")
+  fi
+  TASK_AUTOPOST=$(echo "$TASK_JSON" | jq -r 'if .metadata.autopost == false then "false" else "true" end')
+  if [[ "$ITEM_AUTOPOST_VALUE" == "0" || "$TASK_AUTOPOST" == "false" ]]; then
+    log "Item auto-post is off for this task; leaving it for the post-by-hand card"
+  elif [[ ! -x "$ITEM_POSTER_SCRIPT" ]]; then
+    log "WARN: item poster missing or not executable at $ITEM_POSTER_SCRIPT"
+  else
+    log "Starting item poster for $TASK_ID (log: $WORKERS_DIR/logs/item-poster.log)"
+    DASHBOARD_URL="$DASHBOARD_URL" nohup setsid "$ITEM_POSTER_SCRIPT" "$TASK_ID" \
+      >> "$WORKERS_DIR/logs/item-poster.log" 2>&1 200>&- < /dev/null &
+    disown || true
+  fi
+fi
+
 # --- Step 12: Update cron config ---------------------------------------------
 update_worker_state "$TASK_ID"
 
