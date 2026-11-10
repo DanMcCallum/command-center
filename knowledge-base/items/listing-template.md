@@ -82,6 +82,10 @@ Sits after `## Why this angle` in `ebay_item.md`. These are form fields, not des
 - Returns: <the seller-terms eBay returns line, short>
 ```
 
+## CATEGORY and CONDITION sections (form fields)
+
+Every platform file carries `## CONDITION` between `## DESCRIPTION` and `## Why this angle`: one line, the option name mapped from `metadata.condition` through the platform's `condition_values` in `config/item-ad-platforms.json`. `fb_item.md` also carries `## CATEGORY` just above it: one line, an entry from the platform's `categories` list ("Home & Garden > Furniture"). These are dropdowns the operator sets on the form; the dashboard card shows them beside the title and price. They are never part of the description text.
+
 ## Short-form pattern: Facebook Marketplace (`fb_item`)
 
 Plain text, phone-screen shape, within 2000 characters.

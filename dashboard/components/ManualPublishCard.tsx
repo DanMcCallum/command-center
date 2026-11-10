@@ -31,6 +31,9 @@ interface Props {
 interface AdSections {
   headline: string;
   description: string;
+  /** Form dropdown values the generator suggests (item ads); absent on land ads. */
+  category?: string;
+  condition?: string;
 }
 
 let platformsPromise: Promise<ManualPlatform[]> | null = null;
@@ -73,7 +76,10 @@ function loadManualPlatforms(): Promise<ManualPlatform[]> {
   return platformsPromise;
 }
 
-/** Pulls the HEADLINE and DESCRIPTION sections out of a <platform>.md file. */
+/**
+ * Pulls the HEADLINE and DESCRIPTION sections out of a <platform>.md file,
+ * plus the optional one-line CATEGORY and CONDITION sections item ads carry.
+ */
 export function parseAdSections(markdown: string): AdSections | null {
   const section = (name: string): string | null => {
     const re = new RegExp(`^## ${name}\\b[^\\n]*\\n([\\s\\S]*?)(?=^## |(?![\\s\\S]))`, 'm');
@@ -83,7 +89,14 @@ export function parseAdSections(markdown: string): AdSections | null {
   const headline = section('HEADLINE');
   const description = section('DESCRIPTION');
   if (headline === null || description === null) return null;
-  return { headline, description };
+  const firstLine = (text: string | null): string | undefined =>
+    text?.split('\n').map(l => l.trim()).find(l => l.length > 0) || undefined;
+  return {
+    headline,
+    description,
+    category: firstLine(section('CATEGORY')),
+    condition: firstLine(section('CONDITION')),
+  };
 }
 
 const PHOTO_EXT = /\.(jpe?g|png|webp|gif)$/i;
@@ -270,6 +283,12 @@ function ManualPlatformPanel({
             <div className="space-y-2">
               <CopyField label="Title" value={ad.headline} />
               {price && <CopyField label="Price" value={price} />}
+              {(ad.category || ad.condition) && (
+                <div className="flex flex-wrap gap-x-6 gap-y-2">
+                  {ad.category && <PickField label="Category" value={ad.category} />}
+                  {ad.condition && <PickField label="Condition" value={ad.condition} />}
+                </div>
+              )}
               <CopyField label="Description" value={ad.description} multiline />
             </div>
           )}
@@ -328,6 +347,20 @@ function ManualPlatformPanel({
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+/** A dropdown value to pick on the form by hand; nothing to paste. */
+function PickField({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <div className="text-xs font-medium text-[#6B6B6B] uppercase tracking-wide mb-1">
+        {label} <span className="normal-case font-normal">(pick on the form)</span>
+      </div>
+      <div className="inline-block text-xs text-white bg-[#191919] border border-[#373737] rounded px-2 py-1 select-all">
+        {value}
+      </div>
     </div>
   );
 }

@@ -132,7 +132,7 @@
       "manual_photo_cap": 10,
       "manual_steps": [
         "Open the create form (Item for sale). Drag the photos below onto it in order; the first one is the cover.",
-        "Paste the title and the price (digits only). Pick the closest category and the condition from the task.",
+        "Paste the title and the price (digits only). Set Category and Condition to the two values shown below the price.",
         "Paste the description.",
         "Set the location to the pickup area from the task so local buyers see it. Turn on shipping only when the task says the buyer pays shipping or shipping is free. Next, then Publish.",
         "Open the published listing, copy its URL from the address bar, and record it below."
@@ -148,7 +148,7 @@
       "manual_photo_cap": 10,
       "manual_steps": [
         "Open the sell form and pick the category and subcategory that fit the item.",
-        "Paste the title and the price. Pick the condition from the task; tick negotiable when the task says offers are accepted.",
+        "Paste the title and the price. Set Condition to the value shown below the price; tick negotiable when the task says offers are accepted.",
         "Paste the description. Drag the photos below onto the form in order; the first one is the main photo.",
         "Set the location (city and zip) to the pickup area from the task, then review and post.",
         "Open the live listing, copy its URL from the address bar, and record it below."

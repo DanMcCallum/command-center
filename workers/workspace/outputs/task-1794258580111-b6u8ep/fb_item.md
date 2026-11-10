@@ -29,5 +29,11 @@ Cash, Venmo or Zelle at pickup. No holds without payment. Look the box over befo
 
 Message me on Marketplace, or call or text 385-462-6366. Daniel.
 
+## CATEGORY
+Electronics > Electronics & Computers
+
+## CONDITION
+New
+
 ## Why this angle
 Marketplace buyers compare against store prices, so line one shows it is a sealed-box Samsung T9 2TB at $305 against $574.99 retail, and the condition lines say plainly that the New grade is the auction's.

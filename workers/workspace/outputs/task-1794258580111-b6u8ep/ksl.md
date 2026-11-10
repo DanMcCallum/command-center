@@ -28,5 +28,8 @@ Local pickup only, not shipped. Sold as is, look it over before you pay. Reasona
 
 Call or text 385-462-6366 or message through KSL. Daniel.
 
+## CONDITION
+New
+
 ## Why this angle
 KSL buyers want the price and a Salt Lake pickup up front, so the retail gap and the boxed condition lead, with the not-yet-inspected note right under it.

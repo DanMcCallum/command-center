@@ -30,6 +30,7 @@ Caps are enforced from `config/item-ad-platforms.json`; this file explains where
 - Photos: 10 per listing on the create form seen 2026-10-12, plus one video.
 - Form fields seen 2026-10-12: photos, title, price, category, condition (New, Used - Like New, Used - Good, Used - Fair), description, location (defaults to the account's home town; set to the pickup area), availability, optional tags, hide-from-friends toggle, shipping toggle.
 - Condition mapping: no open-box option, so "Appears new / open box" posts as Used - Like New and the first description line says open box.
+- Category and condition are form dropdowns, not copy: `fb_item.md` carries a `## CATEGORY` section (one entry from the `categories` list in the config, "Group > Category") and a `## CONDITION` section (the mapped option), and the Post by hand card shows both. The category list was written from memory of the form on 2026-11-10 and not re-read live; correct the config if the form differs.
 - Payment and fees: local pickup with cash, Venmo or Zelle at pickup costs nothing. Marketplace shipping (checkout through Meta) carries a selling fee and a label flow; we do not use it unless the task's `shipping` says otherwise.
 - Never any financing words (down payment, monthly, payments, no credit check): Meta's review treats them as financial products. Items are rarely affected, but the rule from the land side stands.
 - Sources: this repo's `config/ad-platforms.json` (facebook_marketplace entry) and AGENTS.md; The Drum's guide (https://www.thedrum.com/news/how-use-facebook-marketplace-step-step-guide) for the 100 figure.
@@ -40,7 +41,7 @@ Caps are enforced from `config/item-ad-platforms.json`; this file explains where
 - Title: 95 characters per KSL's own 2022 blog post "Pro tips for creating listings that sell on KSL Classifieds" (https://classifieds.ksl.com/resources/helpful-tips/pro-tips-for-creating-listings-that-sell-on-ksl-classifieds). The page returns 403 to this server, so the figure came through the search snippet; confirm on the form.
 - Description: no published limit found. Our cap is 2000, conservative, unconfirmed.
 - Photos: an older KSL help article says you can add about as many as you want, preferred size 640 x 480. Our cap is 10, conservative, unconfirmed.
-- Posting flow (from KSL's how-to-sell page and the form as remembered; unconfirmed detail): sign in with a KSL account, Post a listing, pick category then subcategory, title, description, price (with a "price negotiable" style toggle), condition (New, Like New, Good, Fair, Poor; exact option names to confirm), photos, location by city and ZIP, contact preferences (KSL messaging, phone, text). Listings run for a set period and can be renewed from My Listings.
+- Posting flow (from KSL's how-to-sell page and the form as remembered; unconfirmed detail): sign in with a KSL account, Post a listing, pick category then subcategory, title, description, price (with a "price negotiable" style toggle), condition (read on the live form 2026-11-10: New; Used - Excellent, like new; Used - Good, minimal wear; Used - Fair, normal wear; Used - Poor; Used - Damaged, parts only; Not Applicable; `ksl.md` carries the mapped one in a `## CONDITION` section), photos, location by city and ZIP, contact preferences (KSL messaging, phone, text). Listings run for a set period and can be renewed from My Listings.
 - Rules from KSL's Terms of Use (https://www.ksl.com/article/50077580/ksl-classifieds-terms-of-use): listing content must be concise and limited to the goods offered; individuals may post unlimited General listings, business accounts are capped at five at a time unless approved; posting multiple listings to take over a search page is prohibited.
 - Payment: cash or Venmo at pickup; KSL offers no checkout. Phone number is normal here and the buyers use it.
 - Shipping: a local site; mention shipping only when the task's `shipping` field is not local pickup only.
@@ -49,6 +50,5 @@ Caps are enforced from `config/item-ad-platforms.json`; this file explains where
 ## What was not confirmed on 2026-11-09
 
 - KSL description character limit and photo cap (we chose 2000 and 10).
-- KSL condition option names and the current posting form field order.
 - Facebook Marketplace's true title and description caps (we use 99 and 2000 from our own evidence).
 - Whether the KSL 95-character title figure from 2022 still matches the live form.

@@ -46,11 +46,40 @@
         "Used, fair": "Used - Fair",
         "For parts": "Used - Fair (the title and first line say for parts or not working)"
       },
+      "categories": [
+        "Home & Garden > Tools",
+        "Home & Garden > Furniture",
+        "Home & Garden > Household",
+        "Home & Garden > Garden",
+        "Home & Garden > Appliances",
+        "Entertainment > Video Games",
+        "Entertainment > Books, Movies & Music",
+        "Clothing & Accessories > Bags & Luggage",
+        "Clothing & Accessories > Women's Clothing & Shoes",
+        "Clothing & Accessories > Men's Clothing & Shoes",
+        "Clothing & Accessories > Jewelry & Accessories",
+        "Family > Health & Beauty",
+        "Family > Pet Supplies",
+        "Family > Baby & Kids",
+        "Family > Toys & Games",
+        "Electronics > Electronics & Computers",
+        "Electronics > Mobile Phones",
+        "Hobbies > Bicycles",
+        "Hobbies > Arts & Crafts",
+        "Hobbies > Sports & Outdoors",
+        "Hobbies > Auto Parts",
+        "Hobbies > Musical Instruments",
+        "Hobbies > Antiques & Collectibles",
+        "Classifieds > Garage Sale",
+        "Classifieds > Miscellaneous"
+      ],
+      "_categories_note": "The Category dropdown on the Item for sale form, written 'Group > Category'. The operator picks the part after the '>'. Written from the form as remembered on 2026-11-10 and not re-read on the live form (this repo never drives Facebook with a browser); if the form shows a different name, correct it here. Kitchen and laundry machines, heaters and air conditioners go under Appliances; computer parts and storage under Electronics & Computers; car and truck parts under Auto Parts; anything that fits nothing goes under Miscellaneous.",
       "buyer_profile": "Local and regional buyers scrolling a photo grid on a phone, not searching by model number. The grid shows the first photo, the price and the first few words of the title, so the title says what the item is in plain words first (sectional sofa, espresso machine), then brand and model, then the one spec that matters. They are comparing against new retail at Walmart, Amazon or Costco and respond to a clear retail-versus-asking gap, a pickup spot they can reach after work, and a seller who answers fast. They are wary of scams, so a plain condition line and an offer to demo it at pickup carry more weight than adjectives. The description is read after a tap: lead with what it is, the price and the pickup area, keep paragraphs to one or two lines, one fact per line in lists, and close with 'message me'.",
       "rules": [
         "Title is 99 characters, hard limit (a 100-character title was refused on 2026-11-02). Plain words first: say what the object is before the brand and model code.",
         "Description is 2000 characters, hard limit. Phone-screen structure: short lines, one fact per line, no walls of text.",
         "The asking price appears in the description's first two lines along with what the item is and the pickup area.",
+        "Form fields: fb_item.md carries a CATEGORY section (exactly one entry from categories) and a CONDITION section (the mapped condition_values option, option name only); the Post by hand card shows both next to the title and price.",
         "The retail value may be named as a comparison ('retails for $680') when metadata.retail_value is present; never present it as what the buyer pays.",
         "Local pickup line always present when metadata.local_pickup is true: the pickup_area in plain words, no street address. If shipping is also offered, one line saying so with who pays.",
         "Payment line: cash, Venmo or Zelle at pickup, from knowledge-base/items/seller-terms.md. No holds without payment. No financing words of any kind (down payment, payments, monthly, no credit check): Marketplace reviews those as financial products.",
@@ -71,10 +100,10 @@
       "manual": true,
       "condition_values": {
         "New": "New",
-        "Appears new / open box": "Like New (first description line says open box)",
-        "Used, good": "Good",
-        "Used, fair": "Fair",
-        "For parts": "Poor or For Parts, whichever the category offers (operator to confirm the exact option names on the posting form)"
+        "Appears new / open box": "Used - Excellent, like new (first description line says open box)",
+        "Used, good": "Used - Good, minimal wear",
+        "Used, fair": "Used - Fair, normal wear",
+        "For parts": "Used - Damaged, parts only"
       },
       "buyer_profile": "Utah's own classifieds, used along the Wasatch Front the way other states use Craigslist. Buyers are local households and small contractors who expect to drive over, look at the item and pay in person; many search KSL first for furniture, appliances, tools and baby gear because they can skip shipping. They respond to a city name they recognise (Salt Lake City, Murray, West Valley, Sandy), a price that is clearly under retail, and plain honest wording about condition. KSL readers are comfortable calling or texting, so the phone number works here. They distrust listings that read like national ads or that hide the price. Structure: first line says what it is and the price, then condition, then what is included, then pickup city and how to reach us.",
       "rules": [
@@ -86,11 +115,12 @@
         "Condition honest in the first lines: 'open box' or 'retail return' in plain words; 'new' only when metadata.condition is New.",
         "No financing or payment-plan words. No 'OBO' unless metadata.accept_offers is true, then write 'reasonable offers considered'.",
         "Shipping: KSL is a local marketplace; mention shipping only when metadata.shipping is not 'Local pickup only', as one line with who pays.",
+        "Form fields: ksl.md carries a CONDITION section with the mapped condition_values option (option name only). KSL offers its own Suggested Category chips once the title is typed, so no category is written.",
         "KSL title text is plain; no ALL CAPS words except brand names and model codes, no emoji, no punctuation runs.",
         "Individuals may post unlimited General listings; a business account is capped at five at a time (KSL Terms of Use). Posting duplicates to crowd a search page is prohibited."
       ],
       "fees_note": "Free for individuals in General merchandise categories (KSL getting-started page, 2026). Some categories and business accounts carry fees; posting in the wrong category to dodge a fee gets the listing removed.",
-      "_source": "Title 95 characters: KSL Classifieds blog 'Pro tips for creating listings that sell on KSL Classifieds' (2022, https://classifieds.ksl.com/resources/helpful-tips/pro-tips-for-creating-listings-that-sell-on-ksl-classifieds), found via search 2026-11-09; the page itself returns 403 to this server. Free posting: https://classifieds.ksl.com/resources/helpful-tips/welcome-getting-started-with-ksl-classifieds. Business cap and duplicate rule: https://www.ksl.com/article/50077580/ksl-classifieds-terms-of-use. Description and photo caps unconfirmed; 2000 and 10 are conservative picks, see _doc. Dated 2026-11-09."
+      "_source": "Title 95 characters: KSL Classifieds blog 'Pro tips for creating listings that sell on KSL Classifieds' (2022, https://classifieds.ksl.com/resources/helpful-tips/pro-tips-for-creating-listings-that-sell-on-ksl-classifieds), found via search 2026-11-09; the page itself returns 403 to this server. Free posting: https://classifieds.ksl.com/resources/helpful-tips/welcome-getting-started-with-ksl-classifieds. Business cap and duplicate rule: https://www.ksl.com/article/50077580/ksl-classifieds-terms-of-use. Description and photo caps unconfirmed; 2000 and 10 are conservative picks, see _doc. Dated 2026-11-09. Condition option names read on the live sell form 2026-11-10 (New; Used - Excellent, like new; Used - Good, minimal wear; Used - Fair, normal wear; Used - Poor; Used - Damaged, parts only; Not Applicable)."
     }
   }
 }

@@ -14,7 +14,7 @@ The project root is `/home/mazer/claude/command-center`. All paths below are rel
    - `source_images` is the list of lot image urls the operator kept; it is for the record only, read the files in `OUTPUT_DIR/photos/` instead.
 2. **Photos**: every file in `OUTPUT_DIR/photos/` (`NN_name.ext`, `00_` is the primary). Files named `NN_bw-<k>.jpg` came from the BuyWander lot page: some are BuyWander's own photos of the actual item, others are the retailer's stock shots of a new unit, and the filename does not say which. Read each one with the Read tool and write down, in the notes file, what is visible: colour, finish, visible wear, what accessories are in frame, whether the box is present, any label or model sticker you can read, and whether the shot looks like a studio stock image (white background, rendered lighting, no wear) or a warehouse photo of this unit. Describe only what the photos show. When judging wear, missing parts or box condition, prefer the warehouse photos over the stock shots and never let a stock shot of a complete kit stand in for what is actually in the lot. The photos are a fact source equal to the metadata. If the folder is missing or empty, note it and work from metadata alone.
 3. **Knowledge base**: `knowledge-base/items/README.md`, then `knowledge-base/items/seller-terms.md` (terms, shipping, returns, contact lines; only filled-in lines, any `TODO` line is skipped and listed in the notes file under "Seller terms still TODO"), then `knowledge-base/items/listing-template.md` (block structure, title formula, short-form patterns, two worked examples), then `knowledge-base/items/platforms.md` (posting notes).
-4. **Platform constraints**: `config/item-ad-platforms.json`. For each key in the task's `platforms` array use its `display_name`, `headline_max`, `description_max`, `buyer_profile`, `rules` and `condition_values`. Caps are hard limits. If a requested key is not in the file, write no file for it and report it in the notes and in `claudeNotes`.
+4. **Platform constraints**: `config/item-ad-platforms.json`. For each key in the task's `platforms` array use its `display_name`, `headline_max`, `description_max`, `buyer_profile`, `rules`, `condition_values` and, where the platform has one, `categories`. Caps are hard limits. If a requested key is not in the file, write no file for it and report it in the notes and in `claudeNotes`.
 5. **Voice samples**: every file in `voice/clean/`. These are the operator's phone calls about land; borrow the cadence (plain, short sentences, direct answers, numbers stated flat) and nothing about land. Never quote a sample.
 6. **Anti-slop rules**: `skills/anti-slop.md`. Apply during self-critique (step 4).
 
@@ -52,6 +52,10 @@ For each platform in `metadata.platforms`, write the title first, then the descr
 
 **Every variant** states the asking price (`price_usd`) in the description, states the condition word honestly, and carries every defect and every line of `condition_notes`. `must_include` appears verbatim in every variant where the platform's rules allow it (if it holds a phone number or link it is dropped from `ebay_item` and the drop is logged).
 
+**Form fields (category and condition).** These are dropdowns on the posting form, not copy, and the operator sets them by hand from the dashboard card.
+- Condition, every platform: look up `metadata.condition` in the platform's `condition_values` and take the option name only, dropping any bracketed guidance (`Used - Like New`, not the note after it). This is a lookup, never a judgement from the photos.
+- Category, only for a platform whose config has a `categories` list (today `fb_item`): pick exactly one entry from that list, copied character for character, using `metadata.category`, the item type and the config's `_categories_note`. Never invent a category that is not on the list; when nothing fits, use the Miscellaneous entry and say so in the notes file.
+
 **eBay item specifics.** Build the `## ITEM SPECIFICS` section for `ebay_item.md` from the template's list: Category (best guess from `metadata.category`, marked "operator to confirm"), Listing format, Condition (mapped), Condition description (one line), Brand, Model, Type, Color, Material, Dimensions, MPN and UPC ("Does not apply" unless metadata names one), Shipping, Returns. Never guess a UPC, MPN, weight or year.
 
 ### Step 4: Self-critique (exactly one pass)
@@ -65,6 +69,7 @@ Read `skills/anti-slop.md`. For each variant (title and description), list in th
 6. Character counts: compute `len()` of each title and description and compare with the caps. Over the cap is a failure; cut facts of least value to the buyer, never the condition notes or the price.
 7. No em dashes in any file, including the notes.
 8. At most one exclamation mark per variant.
+9. Each file's `## CONDITION` line is the `condition_values` option for `metadata.condition`, and each `## CATEGORY` line appears verbatim in that platform's `categories` list.
 
 Then one voice pass: read each variant against the cadence of `voice/clean/`. Rewrite any sentence that sounds like marketing copy rather than the operator explaining the item to a buyer on the phone. No quoting of samples.
 
@@ -107,16 +112,22 @@ Write to `OUTPUT_DIR`:
   ## DESCRIPTION (X/Y chars)
   <the description, plain text, no # headings inside>
 
+  ## CATEGORY
+  <one entry from the platform's categories list, e.g. Home & Garden > Furniture>
+
+  ## CONDITION
+  <the mapped option name from condition_values, e.g. Used - Like New>
+
   ## Why this angle
   <one sentence>
   ```
-  `ebay_item.md` adds `## ITEM SPECIFICS` (the list from step 3) after `## Why this angle`. X is the exact character count, Y the cap from the config. Nothing else goes in these files; the dashboard parses the sections by these headers.
+  `## CONDITION` goes in every platform file. `## CATEGORY` goes only in files for platforms whose config has a `categories` list (`fb_item.md`); leave the section out of the others. Each is a single line with nothing after it. `ebay_item.md` adds `## ITEM SPECIFICS` (the list from step 3) after `## Why this angle`. X is the exact character count, Y the cap from the config. Nothing else goes in these files; the dashboard parses the sections by these headers.
 
 - **Notes file** (path from the task prompt): the `## Facts` and `## Not known` lists, the photo observations, the step-2 angle, the step-4 violations log with before and after text, "Seller terms still TODO" and any dropped `must_include` text with the reason.
 
 ### Step 6: Update the task
 
-Use the exact curl command from the task prompt's Output section. Set `status` to `needs_review` (never `completed`; the operator decides that), `completionFile` to `workers/workspace/outputs/<task id>/README.md`, and `claudeNotes` to a short summary the operator can act on: the item and price, which platform files were written with their character counts, the selling angle, and the open questions (condition word used, any assumed seller terms, any dropped `must_include`). If a platform could not be written, say which and why. If the API call fails, record the full response in the notes file and try once more; if it still fails, leave the notes for manual reconciliation.
+Use the exact curl command from the task prompt's Output section. Set `status` to `needs_review` (never `completed`; the operator decides that), `completionFile` to `workers/workspace/outputs/<task id>/README.md`, and `claudeNotes` to a short summary the operator can act on: the item and price, which platform files were written with their character counts, the selling angle, the category and condition set for each form, and the open questions (condition word used, any assumed seller terms, any dropped `must_include`). If a platform could not be written, say which and why. If the API call fails, record the full response in the notes file and try once more; if it still fails, leave the notes for manual reconciliation.
 
 ## Hard constraints
 
